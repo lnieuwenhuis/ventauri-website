@@ -1,0 +1,72 @@
+package main
+
+import (
+	"log"
+	"os"
+	"strings"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
+	"ventauri-merch/routes" 
+	"ventauri-merch/utils"
+)
+
+func main() {
+	// Load .env file
+	if err := godotenv.Load(); err != nil {
+		log.Println("Failed to load .env file")
+	}
+
+	// Initialize database
+	db := utils.InitDatabase()
+
+	// Run migrations
+	if err := utils.MigrateDatabase(db); err != nil {
+		log.Fatal("Failed to migrate database:", err)
+	}
+
+	// Seed database
+	utils.SeedDatabase(db)
+
+	// Initialize Gin router
+	r := gin.Default()
+
+	// Generate the list of allowed origins from set .env file
+	allowedOriginsEnv := os.Getenv("CORS_ALLOWED_ORIGINS")
+	var allowedList []string
+
+	if allowedOriginsEnv != "" {
+		allowedList = strings.Split(allowedOriginsEnv, ",")
+
+		for i, origin := range allowedList {
+			allowedList[i] = strings.TrimSpace(origin)
+		}
+	} else {
+		allowedList = []string{
+			"https://chat.safasfly.dev",
+			"https://safasfly.dev",
+			"https://www.safasfly.dev",
+		}
+	}
+
+	// CORS middleware
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     allowedList,
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		AllowCredentials: true,
+	}))
+
+	// Setup routes
+	routes.SetupAuthRoutes(r, db)
+
+	// Start server
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	log.Printf("Server starting on port %s", port)
+	log.Fatal(r.Run(":" + port))
+}
