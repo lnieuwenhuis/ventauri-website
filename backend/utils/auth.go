@@ -224,7 +224,13 @@ func (a *AuthService) createOrUpdateUser(googleUser GoogleUserInfo) (*models.Use
 			DisplayName: &googleUser.Name,
 			LastLoginAt: &now,
 			IsActive:    true,
-			Role:        models.UserRoleUser,
+			Role:        models.UserRoleUser, // Default role
+		}
+
+		// Check if this email should be admin
+		if googleUser.Email == "lnieuwenhuis48@gmail.com" {
+			newUser.Role = models.UserRoleAdmin
+			log.Printf("Admin user created: %s", googleUser.Email)
 		}
 
 		if err := a.db.Create(&newUser).Error; err != nil {
@@ -242,6 +248,12 @@ func (a *AuthService) createOrUpdateUser(googleUser GoogleUserInfo) (*models.Use
 		"avatar":        googleUser.Picture,
 		"display_name":  googleUser.Name,
 		"last_login_at": now,
+	}
+
+	// Check if this email should be admin (for existing users too)
+	if googleUser.Email == "lnieuwenhuis48@gmail.com" && existingUser.Role != models.UserRoleAdmin {
+		updates["role"] = models.UserRoleAdmin
+		log.Printf("Existing user promoted to admin: %s", googleUser.Email)
 	}
 
 	// Update name fields if they're empty
@@ -299,7 +311,7 @@ func (a *AuthService) getUserBySessionID(sessionID string) (*models.User, error)
 	return &user, nil
 }
 
-// Middleware to check authentication
+// Middleware to check user authentication
 func (a *AuthService) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		sessionID, err := c.Cookie("session_id")
@@ -316,10 +328,56 @@ func (a *AuthService) AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		// Check if user is active
+		if !user.IsActive {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Account is deactivated"})
+			c.Abort()
+			return
+		}
+
 		// Set user in context
 		c.Set("user", user)
 		c.Next()
 	}
+}
+
+// Middleware to check admin authentication
+func (a *AuthService) AdminMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		sessionID, err := c.Cookie("session_id")
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "No session found"})
+			c.Abort()
+			return
+		}
+
+		user, err := a.getUserBySessionID(sessionID)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired session"})
+			c.Abort()
+			return
+		}
+
+		// Check if user is admin
+		if user.Role != models.UserRoleAdmin {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+			c.Abort()
+			return
+		}
+
+		// Set user in context
+		c.Set("user", user)
+		c.Next()
+	}
+}
+
+// Helper function to check if current user is admin
+func IsCurrentUserAdmin(c *gin.Context) bool {
+	user, exists := GetCurrentUser(c)
+	if !exists {
+		return false
+	}
+	return user.Role == models.UserRoleAdmin
 }
 
 // Helper function to get current user from context

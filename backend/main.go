@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -54,12 +55,23 @@ func main() {
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     allowedList,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With"},
 		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
 	}))
 
 	// Setup routes
 	routes.SetupAuthRoutes(r, db)
+	routes.SetupAddressRoutes(r, db)
+	routes.SetupCartRoutes(r, db)
+	routes.SetupCategoryRoutes(r, db)
+	routes.SetupCouponRoutes(r, db)
+	routes.SetupOrderRoutes(r, db)
+	routes.SetupPaymentRoutes(r, db)
+	routes.SetupProductRoutes(r, db)
+	routes.SetupReviewRoutes(r, db)
+	routes.SetupUserRoutes(r, db)
+	routes.SetupWishlistRoutes(r, db)
 
 	// Start server
 	port := os.Getenv("PORT")

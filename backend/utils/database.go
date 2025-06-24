@@ -3,6 +3,7 @@ package utils
 import (
 	"log"
 	"os"
+	"strconv"
 
 	"golang.org/x/crypto/bcrypt"
 	"github.com/joho/godotenv"
@@ -11,6 +12,20 @@ import (
 
 	"ventauri-merch/models"
 )
+
+// ParseInt converts a string to int with a default value if conversion fails
+func ParseInt(s string, defaultValue int) int {
+	if s == "" {
+		return defaultValue
+	}
+	
+	value, err := strconv.Atoi(s)
+	if err != nil {
+		return defaultValue
+	}
+	
+	return value
+}
 
 func InitDatabase() *gorm.DB {
 	// Load .env file
