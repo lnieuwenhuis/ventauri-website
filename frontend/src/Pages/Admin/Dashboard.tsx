@@ -16,18 +16,51 @@ export default function AdminDashboard() {
         totalProducts: 0
     });
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const apiURL = import.meta.env.VITE_BACKEND_URL || "";
+
+    const getAuthToken = () => {
+        return localStorage.getItem('authToken') || localStorage.getItem('token');
+    };
+
+    const fetchDashboardStats = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            
+            const token = getAuthToken();
+            if (!token) {
+                setError('No authorization token found');
+                setLoading(false);
+                return;
+            }
+            
+            const response = await fetch(`${apiURL}/api/admin/stats/dashboard`, {
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Failed to fetch dashboard stats: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            setStats(result.data);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'An error occurred');
+            console.error('Error fetching dashboard stats:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        // TODO: Fetch dashboard stats from API
-        setTimeout(() => {
-            setStats({
-                totalUsers: 1234,
-                totalOrders: 567,
-                totalRevenue: 89012.34,
-                totalProducts: 89
-            });
-            setLoading(false);
-        }, 1000);
+        fetchDashboardStats();
+    //eslint-disable-next-line
     }, []);
 
     const statCards = [
@@ -63,6 +96,12 @@ export default function AdminDashboard() {
                 <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
                 <p className="text-gray-600 mt-2">Welcome to your e-commerce admin panel</p>
             </div>
+
+            {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                    {error}
+                </div>
+            )}
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

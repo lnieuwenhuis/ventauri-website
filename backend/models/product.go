@@ -8,19 +8,18 @@ import (
 
 type Product struct {
 	ID        	uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
-	CreatedAt 	time.Time      `gorm:"default:current_timestamp" json:"createdAt"`
+	CreatedAt 	time.Time      `gorm:"default:current_timestamp;index:idx_product_active_created,priority:2" json:"createdAt"`
 	UpdatedAt 	time.Time      `gorm:"default:current_timestamp" json:"updatedAt"`
 	DeletedAt 	gorm.DeletedAt `gorm:"index" json:"deletedAt"`
-	Name      	string         `gorm:"unique" json:"name"`
-	Price     	float64        `json:"price"` 
+	Name      	string         `gorm:"unique;index:idx_product_name_search" json:"name"`
+	Price     	float64        `gorm:"index:idx_product_price_range" json:"price"`
 	Images    	string         `gorm:"type:json" json:"images"`
-	CategoryID 	uuid.UUID      `gorm:"type:char(36)" json:"categoryId"`
-	Description string         `gorm:"type:text" json:"description"`
-	SKU        	string         `gorm:"unique" json:"sku"`
+	CategoryID 	uuid.UUID      `gorm:"type:char(36);index:idx_product_category_active,priority:1" json:"categoryId"`
+	Description string         `gorm:"type:text;index:idx_product_desc_search" json:"description"`
+	SKU        	string         `gorm:"unique;index:idx_product_sku" json:"sku"`
 	Weight     	float64        `json:"weight"`
-	IsActive   	bool           `gorm:"default:true" json:"isActive"`
+	IsActive   	bool           `gorm:"default:true;index:idx_product_active_created,priority:1;index:idx_product_category_active,priority:2" json:"isActive"`
 	
-	// Relationships
 	Category   Category         `gorm:"foreignKey:CategoryID" json:"category"`
 	Variants   []ProductVariant `gorm:"foreignKey:ProductID" json:"variants"`
 	Reviews    []Review         `gorm:"foreignKey:ProductID" json:"reviews"`

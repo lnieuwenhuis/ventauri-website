@@ -219,23 +219,69 @@ func cancelOrder(db *gorm.DB) gin.HandlerFunc {
 func getAllOrders(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var orders []models.Order
-		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-		limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
-		offset := (page - 1) * limit
-
-		query := db.Preload("User").Preload("Product").Preload("ProductVariant").Preload("ShippingAddress").Preload("BillingAddress")
-		
+		page := c.DefaultQuery("page", "1")
+		limit := c.DefaultQuery("limit", "10")
+		search := c.Query("search")
 		status := c.Query("status")
-		if status != "" {
-			query = query.Where("status = ?", status)
+		
+		// Build query with proper preloading
+		query := db.Model(&models.Order{}).
+			Preload("User").
+			Preload("Product").
+			Preload("BillingAddress").
+			Preload("ShippingAddress")
+		
+		if search != "" {
+			query = query.Joins("LEFT JOIN users ON orders.user_id = users.id").
+				Joins("LEFT JOIN products ON orders.product_id = products.id").
+				Where(`(orders.order_number ILIKE ? OR 
+					users.email ILIKE ? OR 
+					users.first_name ILIKE ? OR 
+					users.last_name ILIKE ? OR 
+					products.name ILIKE ?)`, 
+					"%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%")
 		}
-
-		if err := query.Order("created_at DESC").Offset(offset).Limit(limit).Find(&orders).Error; err != nil {
+		
+		if status != "" && status != "all" {
+			query = query.Where("orders.status = ?", status)
+		}
+		
+		// Count total with same filters
+		var total int64
+		countQuery := db.Model(&models.Order{})
+		if search != "" {
+			countQuery = countQuery.Joins("LEFT JOIN users ON orders.user_id = users.id").
+				Joins("LEFT JOIN products ON orders.product_id = products.id").
+				Where(`(orders.order_number ILIKE ? OR 
+					users.email ILIKE ? OR 
+					users.first_name ILIKE ? OR 
+					users.last_name ILIKE ? OR 
+					products.name ILIKE ?)`, 
+					"%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%")
+		}
+		if status != "" && status != "all" {
+			countQuery = countQuery.Where("orders.status = ?", status)
+		}
+		if err := countQuery.Count(&total).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to count orders"})
+			return
+		}
+		
+		offset := (utils.ParseInt(page, 1) - 1) * utils.ParseInt(limit, 10)
+		if err := query.Order("orders.created_at DESC").
+			Offset(offset).
+			Limit(utils.ParseInt(limit, 10)).
+			Find(&orders).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch orders"})
 			return
 		}
-
-		c.JSON(http.StatusOK, gin.H{"data": orders})
+		
+		c.JSON(http.StatusOK, gin.H{
+			"data": orders,
+			"total": total,
+			"page": utils.ParseInt(page, 1),
+			"limit": utils.ParseInt(limit, 10),
+		})
 	}
 }
 

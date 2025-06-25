@@ -20,7 +20,7 @@ func SetupCouponRoutes(router *gin.Engine, db *gorm.DB) {
 	{
 		coupons.POST("/validate", validateCoupon(db))
 	}
-
+	
 	// Admin coupon management
 	adminCoupons := router.Group("/api/admin/coupons")
 	adminCoupons.Use(auth.AdminMiddleware())
@@ -28,8 +28,32 @@ func SetupCouponRoutes(router *gin.Engine, db *gorm.DB) {
 		adminCoupons.GET("/", getAllCoupons(db))
 		adminCoupons.POST("/", createCoupon(db))
 		adminCoupons.PUT("/:id", updateCoupon(db))
+		adminCoupons.PUT("/:id/status", toggleCouponStatus(db)) // Add this line
 		adminCoupons.DELETE("/:id", deleteCoupon(db))
 		adminCoupons.GET("/:id/usage", getCouponUsage(db))
+	}
+}
+
+// Add this new function
+func toggleCouponStatus(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		var coupon models.Coupon
+		
+		if err := db.First(&coupon, "id = ?", id).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Coupon not found"})
+			return
+		}
+		
+		// Toggle the IsActive status
+		coupon.IsActive = !coupon.IsActive
+		
+		if err := db.Save(&coupon).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update coupon status"})
+			return
+		}
+		
+		c.JSON(http.StatusOK, gin.H{"data": coupon})
 	}
 }
 
@@ -113,12 +137,37 @@ func validateCoupon(db *gorm.DB) gin.HandlerFunc {
 func getAllCoupons(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var coupons []models.Coupon
-		if err := db.Order("created_at DESC").Find(&coupons).Error; err != nil {
+		var total int64
+		
+		// Get pagination parameters
+		page := c.DefaultQuery("page", "1")
+		limit := c.DefaultQuery("limit", "10")
+		search := c.Query("search")
+		
+		// Build query
+		query := db.Model(&models.Coupon{})
+		
+		// Apply search filter
+		if search != "" {
+			query = query.Where("code ILIKE ? OR name ILIKE ? OR description ILIKE ?", "%"+search+"%", "%"+search+"%", "%"+search+"%")
+		}
+		
+		// Get total count
+		query.Count(&total)
+		
+		// Apply pagination
+		offset := (utils.ParseInt(page, 1) - 1) * utils.ParseInt(limit, 10)
+		if err := query.Order("created_at DESC").Offset(offset).Limit(utils.ParseInt(limit, 10)).Find(&coupons).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch coupons"})
 			return
 		}
-
-		c.JSON(http.StatusOK, gin.H{"data": coupons})
+		
+		c.JSON(http.StatusOK, gin.H{
+			"data": coupons,
+			"total": total,
+			"page": utils.ParseInt(page, 1),
+			"limit": utils.ParseInt(limit, 10),
+		})
 	}
 }
 

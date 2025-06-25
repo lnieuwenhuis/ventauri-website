@@ -31,6 +31,8 @@ func SetupReviewRoutes(router *gin.Engine, db *gorm.DB) {
 		adminReviews.GET("/", getAllReviews(db))
 		adminReviews.PUT("/:id/approve", approveReview(db))
 		adminReviews.PUT("/:id/reject", rejectReview(db))
+		adminReviews.PUT("/:id/status", toggleReviewStatus(db)) // Add this line
+		adminReviews.DELETE("/:id", deleteReview(db)) // Add this line
 	}
 }
 
@@ -187,10 +189,19 @@ func getAllReviews(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var reviews []models.Review
 		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-		limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+		limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 		offset := (page - 1) * limit
+		search := c.Query("search")
 
 		query := db.Preload("User").Preload("Product")
+		
+		// Add search functionality
+		if search != "" {
+			query = query.Joins("LEFT JOIN users ON users.id = reviews.user_id").
+				Joins("LEFT JOIN products ON products.id = reviews.product_id").
+				Where("reviews.title ILIKE ? OR reviews.comment ILIKE ? OR users.first_name ILIKE ? OR users.last_name ILIKE ? OR users.email ILIKE ? OR products.name ILIKE ?",
+					"%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%")
+		}
 		
 		approved := c.Query("approved")
 		if approved != "" {
@@ -198,12 +209,21 @@ func getAllReviews(db *gorm.DB) gin.HandlerFunc {
 			query = query.Where("is_approved = ?", isApproved)
 		}
 
+		// Get total count
+		var total int64
+		query.Model(&models.Review{}).Count(&total)
+
 		if err := query.Order("created_at DESC").Offset(offset).Limit(limit).Find(&reviews).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch reviews"})
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"data": reviews})
+		c.JSON(http.StatusOK, gin.H{
+			"data":  reviews,
+			"total": total,
+			"page":  page,
+			"limit": limit,
+		})
 	}
 }
 
@@ -244,5 +264,39 @@ func rejectReview(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"data": review})
+	}
+}
+
+// Add these new functions at the end of the file
+func toggleReviewStatus(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		var review models.Review
+
+		if err := db.First(&review, "id = ?", id).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Review not found"})
+			return
+		}
+
+		review.IsApproved = !review.IsApproved
+		if err := db.Save(&review).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update review status"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"data": review})
+	}
+}
+
+func deleteReviewAdmin(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+
+		if err := db.Delete(&models.Review{}, "id = ?", id).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete review"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Review deleted successfully"})
 	}
 }

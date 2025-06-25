@@ -22,19 +22,18 @@ type PaymentMethod struct {
 	CreatedAt    time.Time         `gorm:"default:current_timestamp" json:"createdAt"`
 	UpdatedAt    time.Time         `gorm:"default:current_timestamp" json:"updatedAt"`
 	DeletedAt    gorm.DeletedAt    `gorm:"index" json:"deletedAt"`
-	UserID       uuid.UUID         `gorm:"type:char(36)" json:"userId"`
-	Type         PaymentMethodType `json:"type"`
-	Provider     string            `json:"provider"` // Visa, Mastercard, PayPal, etc.
-	Last4        string            `json:"last4"` // Last 4 digits for cards
+	UserID       uuid.UUID         `gorm:"type:char(36);index:idx_payment_user_active,priority:1;index:idx_payment_user_default,priority:1" json:"userId"`
+	Type         PaymentMethodType `gorm:"index:idx_payment_type" json:"type"`
+	Provider     string            `gorm:"index:idx_payment_provider" json:"provider"`
+	Last4        string            `gorm:"index:idx_payment_last4" json:"last4"`
 	ExpiryMonth  int               `json:"expiryMonth,omitempty"`
 	ExpiryYear   int               `json:"expiryYear,omitempty"`
-	HolderName   string            `json:"holderName"`
-	IsDefault    bool              `gorm:"default:false" json:"isDefault"`
-	IsActive     bool              `gorm:"default:true" json:"isActive"`
-	Token        string            `json:"token,omitempty"` // Payment gateway token
-	Fingerprint  string            `json:"fingerprint,omitempty"` // Unique card fingerprint
+	HolderName   string            `gorm:"index:idx_payment_holder" json:"holderName"`
+	IsDefault    bool              `gorm:"default:false;index:idx_payment_user_default,priority:2" json:"isDefault"`
+	IsActive     bool              `gorm:"default:true;index:idx_payment_user_active,priority:2" json:"isActive"`
+	Token        string            `json:"token,omitempty"`
+	Fingerprint  string            `gorm:"index:idx_payment_fingerprint" json:"fingerprint,omitempty"`
 	
-	// Relationships
 	User         User              `gorm:"foreignKey:UserID" json:"user"`
 }
 

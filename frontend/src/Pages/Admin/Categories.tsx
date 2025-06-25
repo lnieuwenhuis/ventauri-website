@@ -3,10 +3,10 @@ import React, { useState, useEffect } from 'react';
 interface Category {
     id: string;
     name: string;
-    description: string;
+    desc: string;
     parent_id?: string;
-    is_active: boolean;
-    created_at: string;
+    isActive: boolean;
+    createdAt: string;
 }
 
 interface CategoriesResponse {
@@ -212,7 +212,7 @@ const AdminCategories: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm text-gray-900 max-w-xs truncate">
-                                                {category.description}
+                                                {category.desc}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
@@ -222,15 +222,15 @@ const AdminCategories: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                                category.is_active 
+                                                category.isActive 
                                                     ? 'bg-green-100 text-green-800' 
                                                     : 'bg-red-100 text-red-800'
                                             }`}>
-                                                {category.is_active ? 'Active' : 'Inactive'}
+                                                {category.isActive ? 'Active' : 'Inactive'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {new Date(category.created_at).toLocaleDateString()}
+                                            {new Date(category.createdAt).toLocaleDateString()}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <div className="flex items-center justify-end space-x-2">
@@ -243,12 +243,12 @@ const AdminCategories: React.FC = () => {
                                                 <button 
                                                     onClick={() => toggleCategoryStatus(category.id)}
                                                     className={`inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                                                        category.is_active 
+                                                        category.isActive
                                                             ? 'bg-orange-600 hover:bg-orange-700 focus:ring-orange-500' 
                                                             : 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
                                                     }`}
                                                 >
-                                                    {category.is_active ? (
+                                                    {category.isActive ? (
                                                         <>
                                                             <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L5.636 5.636" />

@@ -15,24 +15,22 @@ const (
 
 type User struct {
 	ID          uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
-	CreatedAt   time.Time      `gorm:"default:current_timestamp" json:"createdAt"`
+	CreatedAt   time.Time      `gorm:"default:current_timestamp;index:idx_user_active_created,priority:2" json:"createdAt"`
 	UpdatedAt   time.Time      `gorm:"default:current_timestamp" json:"updatedAt"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deletedAt"`
-	Email       string         `gorm:"unique" json:"email"`
+	Email       string         `gorm:"unique;index:idx_user_email_search" json:"email"`
 	Password    *string        `json:"password,omitempty"` 
-	Role        UserRole       `gorm:"default:user" json:"role"`
-	FirstName   string         `json:"firstName"`
-	LastName    string         `json:"lastName"`
-	Phone       string         `json:"phone"`
-	IsActive    bool           `gorm:"default:true" json:"isActive"`
+	Role        UserRole       `gorm:"default:user;index:idx_user_role" json:"role"`
+	FirstName   string         `gorm:"index:idx_user_name_search,priority:1" json:"firstName"`
+	LastName    string         `gorm:"index:idx_user_name_search,priority:2" json:"lastName"`
+	Phone       string         `gorm:"index:idx_user_phone" json:"phone"`
+	IsActive    bool           `gorm:"default:true;index:idx_user_active_created,priority:1" json:"isActive"`
 	
-	// OAuth fields
-	GoogleID    *string        `gorm:"unique" json:"googleId,omitempty"`
+	GoogleID    *string        `gorm:"unique;index:idx_user_google" json:"googleId,omitempty"`
 	Avatar      *string        `json:"avatar,omitempty"`
 	DisplayName *string        `json:"displayName,omitempty"`
-	LastLoginAt *time.Time     `json:"lastLoginAt,omitempty"`
+	LastLoginAt *time.Time     `gorm:"index:idx_user_last_login" json:"lastLoginAt,omitempty"`
 	
-	// Relationships
 	Addresses      []Address       `gorm:"foreignKey:UserID" json:"addresses"`
 	Orders         []Order         `gorm:"foreignKey:UserID" json:"orders"`
 	Cart           []Cart          `gorm:"foreignKey:UserID" json:"cart"`
@@ -41,17 +39,16 @@ type User struct {
 	Sessions       []Session       `gorm:"foreignKey:UserID" json:"sessions"`
 }
 
-// Session model for managing user sessions
 type Session struct {
 	ID        uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
 	CreatedAt time.Time      `gorm:"default:current_timestamp" json:"createdAt"`
 	UpdatedAt time.Time      `gorm:"default:current_timestamp" json:"updatedAt"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt"`
-	UserID    uuid.UUID      `gorm:"type:char(36)" json:"userId"`
-	ExpiresAt time.Time      `json:"expiresAt"`
-	IsActive  bool           `gorm:"default:true" json:"isActive"`
+	UserID    uuid.UUID      `gorm:"type:char(36);index:idx_session_user_active,priority:1" json:"userId"`
+	Token     string         `gorm:"unique;index:idx_session_token" json:"token"`
+	ExpiresAt time.Time      `gorm:"index:idx_session_expires" json:"expiresAt"`
+	IsActive  bool           `gorm:"default:true;index:idx_session_user_active,priority:2" json:"isActive"`
 	
-	// Relationships
 	User      User           `gorm:"foreignKey:UserID" json:"user"`
 }
 

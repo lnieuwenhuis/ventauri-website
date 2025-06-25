@@ -1,9 +1,12 @@
 package utils
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strconv"
+	"strings"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 	"github.com/joho/godotenv"
@@ -65,6 +68,8 @@ func MigrateDatabase(db *gorm.DB) error {
 		&models.Order{},
 		&models.Cart{},
 		&models.Review{},
+		&models.Coupon{},     
+		&models.Wishlist{}, 
 	)
 }
 
@@ -79,6 +84,8 @@ func SeedDatabase(db *gorm.DB) {
 	seedPaymentMethods(db)
 	seedOrders(db)
 	seedReviews(db)
+	seedCoupons(db)
+	seedWishlists(db)
 	
 	log.Println("✅ Database seeding completed!")
 }
@@ -106,15 +113,19 @@ func seedUsers(db *gorm.DB) {
 			Phone:     "0123456789",
 			IsActive:  true,
 		},
-		{
-			Email:     "user@ventauri.com",
+	}
+
+	// Create 14 regular users
+	for i := 1; i <= 14; i++ {
+		users = append(users, models.User{
+			Email:     fmt.Sprintf("user%d@ventauri.com", i),
 			Password:  &userPassword,
 			Role:      models.UserRoleUser,
-			FirstName: "User",
-			LastName:  "User",
-			Phone:     "0123456789",
+			FirstName: fmt.Sprintf("User%d", i),
+			LastName:  fmt.Sprintf("LastName%d", i),
+			Phone:     fmt.Sprintf("012345678%d", i%10),
 			IsActive:  true,
-		},
+		})
 	}
 
 	for _, user := range users {
@@ -148,6 +159,18 @@ func seedCategories(db *gorm.DB) {
 		{Name: "T-Shirts", Desc: "Comfortable cotton t-shirts"},
 		{Name: "Hoodies", Desc: "Warm and cozy hoodies"},
 		{Name: "Accessories", Desc: "Various merchandise accessories"},
+		{Name: "Jackets", Desc: "Stylish outerwear jackets"},
+		{Name: "Pants", Desc: "Comfortable casual pants"},
+		{Name: "Shoes", Desc: "Trendy footwear collection"},
+		{Name: "Bags", Desc: "Functional and stylish bags"},
+		{Name: "Hats", Desc: "Fashionable headwear"},
+		{Name: "Socks", Desc: "Comfortable socks for everyday wear"},
+		{Name: "Belts", Desc: "Quality leather and fabric belts"},
+		{Name: "Watches", Desc: "Stylish timepieces"},
+		{Name: "Sunglasses", Desc: "UV protection eyewear"},
+		{Name: "Jewelry", Desc: "Fashion jewelry and accessories"},
+		{Name: "Tech Accessories", Desc: "Phone cases and tech gear"},
+		{Name: "Home Decor", Desc: "Ventauri branded home items"},
 	}
 
 	for _, category := range categories {
@@ -171,12 +194,13 @@ func seedProducts(db *gorm.DB) {
 	// Get categories from database
 	var categories []models.Category
 	db.Find(&categories)
-	if len(categories) < 3 {
-		log.Printf("Not enough categories found (%d), need at least 3 for product seeding", len(categories))
+	if len(categories) == 0 {
+		log.Println("No categories found, cannot seed products")
 		return
 	}
 
 	products := []models.Product{
+		// T-Shirts (3 products)
 		{
 			Name:        "Ventauri Classic T-Shirt",
 			Description: "Comfortable cotton t-shirt with Ventauri logo",
@@ -184,19 +208,61 @@ func seedProducts(db *gorm.DB) {
 			CategoryID:  categories[0].ID,
 			SKU:         "VEN-TSHIRT-001",
 			Weight:      0.2,
-			Images: 	 `["tshirt1.jpg", "tshirt2.jpg"]`,
+			Images:      `["tshirt1.jpg", "tshirt2.jpg"]`,
 			IsActive:    true,
 		},
 		{
-			Name:        "Ventauri Hoodie",
+			Name:        "Ventauri Premium T-Shirt",
+			Description: "Premium quality organic cotton t-shirt",
+			Price:       29.99,
+			CategoryID:  categories[0].ID,
+			SKU:         "VEN-TSHIRT-002",
+			Weight:      0.25,
+			Images:      `["tshirt3.jpg", "tshirt4.jpg"]`,
+			IsActive:    true,
+		},
+		{
+			Name:        "Ventauri Vintage T-Shirt",
+			Description: "Retro style vintage t-shirt",
+			Price:       24.99,
+			CategoryID:  categories[0].ID,
+			SKU:         "VEN-TSHIRT-003",
+			Weight:      0.22,
+			Images:      `["tshirt5.jpg", "tshirt6.jpg"]`,
+			IsActive:    true,
+		},
+		// Hoodies (3 products)
+		{
+			Name:        "Ventauri Classic Hoodie",
 			Description: "Warm and cozy hoodie perfect for cold days",
 			Price:       49.99,
 			CategoryID:  categories[1].ID,
 			SKU:         "VEN-HOODIE-001",
 			Weight:      0.8,
-			Images:      `["tshirt1.jpg", "tshirt2.jpg"]`,
+			Images:      `["hoodie1.jpg", "hoodie2.jpg"]`,
 			IsActive:    true,
 		},
+		{
+			Name:        "Ventauri Zip Hoodie",
+			Description: "Full zip hoodie with front pockets",
+			Price:       59.99,
+			CategoryID:  categories[1].ID,
+			SKU:         "VEN-HOODIE-002",
+			Weight:      0.85,
+			Images:      `["hoodie3.jpg", "hoodie4.jpg"]`,
+			IsActive:    true,
+		},
+		{
+			Name:        "Ventauri Oversized Hoodie",
+			Description: "Trendy oversized fit hoodie",
+			Price:       54.99,
+			CategoryID:  categories[1].ID,
+			SKU:         "VEN-HOODIE-003",
+			Weight:      0.9,
+			Images:      `["hoodie5.jpg", "hoodie6.jpg"]`,
+			IsActive:    true,
+		},
+		// Accessories (2 products)
 		{
 			Name:        "Ventauri Cap",
 			Description: "Stylish cap with embroidered logo",
@@ -204,7 +270,91 @@ func seedProducts(db *gorm.DB) {
 			CategoryID:  categories[2].ID,
 			SKU:         "VEN-CAP-001",
 			Weight:      0.15,
-			Images:      `["tshirt1.jpg", "tshirt2.jpg"]`,
+			Images:      `["cap1.jpg", "cap2.jpg"]`,
+			IsActive:    true,
+		},
+		{
+			Name:        "Ventauri Beanie",
+			Description: "Warm knitted beanie for winter",
+			Price:       19.99,
+			CategoryID:  categories[2].ID,
+			SKU:         "VEN-BEANIE-001",
+			Weight:      0.1,
+			Images:      `["beanie1.jpg", "beanie2.jpg"]`,
+			IsActive:    true,
+		},
+		// Jackets (2 products)
+		{
+			Name:        "Ventauri Windbreaker",
+			Description: "Lightweight windbreaker jacket",
+			Price:       79.99,
+			CategoryID:  categories[3].ID,
+			SKU:         "VEN-JACKET-001",
+			Weight:      0.6,
+			Images:      `["jacket1.jpg", "jacket2.jpg"]`,
+			IsActive:    true,
+		},
+		{
+			Name:        "Ventauri Bomber Jacket",
+			Description: "Classic bomber style jacket",
+			Price:       89.99,
+			CategoryID:  categories[3].ID,
+			SKU:         "VEN-JACKET-002",
+			Weight:      0.7,
+			Images:      `["jacket3.jpg", "jacket4.jpg"]`,
+			IsActive:    true,
+		},
+		// Pants (2 products)
+		{
+			Name:        "Ventauri Joggers",
+			Description: "Comfortable cotton joggers",
+			Price:       39.99,
+			CategoryID:  categories[4].ID,
+			SKU:         "VEN-PANTS-001",
+			Weight:      0.4,
+			Images:      `["pants1.jpg", "pants2.jpg"]`,
+			IsActive:    true,
+		},
+		{
+			Name:        "Ventauri Cargo Pants",
+			Description: "Utility cargo pants with multiple pockets",
+			Price:       49.99,
+			CategoryID:  categories[4].ID,
+			SKU:         "VEN-PANTS-002",
+			Weight:      0.5,
+			Images:      `["pants3.jpg", "pants4.jpg"]`,
+			IsActive:    true,
+		},
+		// Shoes (2 products)
+		{
+			Name:        "Ventauri Sneakers",
+			Description: "Comfortable everyday sneakers",
+			Price:       69.99,
+			CategoryID:  categories[5].ID,
+			SKU:         "VEN-SHOES-001",
+			Weight:      1.2,
+			Images:      `["shoes1.jpg", "shoes2.jpg"]`,
+			IsActive:    true,
+		},
+		{
+			Name:        "Ventauri Slides",
+			Description: "Comfortable slip-on slides",
+			Price:       34.99,
+			CategoryID:  categories[5].ID,
+			SKU:         "VEN-SHOES-002",
+			Weight:      0.8,
+			Images:      `["shoes3.jpg", "shoes4.jpg"]`,
+			IsActive:    true,
+		},
+		// Bag
+		{
+			Name:        "Ventauri Backpack",
+			Description: "Durable backpack for daily use",
+			Price:       59.99,
+			CategoryID:  categories[6].ID,
+			SKU:         "VEN-BAG-001",
+			Weight:      1.0,
+			Images:      `["bag1.jpg", "bag2.jpg"]`,
 			IsActive:    true,
 		},
 	}
@@ -235,66 +385,33 @@ func seedProductVariants(db *gorm.DB) {
 		return
 	}
 
-	productVariants := []models.ProductVariant{
-		// T-Shirt variants
-		{
-			ProductID:   products[0].ID,
-			SKU:         "VEN-TSHIRT-001-S-RED",
-			Size:        "S",
-			Color:       "Red",
-			Stock:       25,
-			PriceAdjust: 0,
-			Weight:      0.2,
-			IsActive:    true,
-		},
-		{
-			ProductID:   products[0].ID,
-			SKU:         "VEN-TSHIRT-001-M-RED",
-			Size:        "M",
-			Color:       "Red",
-			Stock:       30,
-			PriceAdjust: 0,
-			Weight:      0.2,
-			IsActive:    true,
-		},
-		{
-			ProductID:   products[0].ID,
-			SKU:         "VEN-TSHIRT-001-L-RED",
-			Size:        "L",
-			Color:       "Red",
-			Stock:       20,
-			PriceAdjust: 0,
-			Weight:      0.2,
-			IsActive:    true,
-		},
-		// Hoodie variants
-		{
-			ProductID:   products[1].ID,
-			SKU:         "VEN-HOODIE-001-M-BLUE",
-			Size:        "M",
-			Color:       "Blue",
-			Stock:       15,
-			PriceAdjust: 0,
-			Weight:      0.8,
-			IsActive:    true,
-		},
-		{
-			ProductID:   products[1].ID,
-			SKU:         "VEN-HOODIE-001-L-BLUE",
-			Size:        "L",
-			Color:       "Blue",
-			Stock:       12,
-			PriceAdjust: 0,
-			Weight:      0.8,
-			IsActive:    true,
-		},
-	}
+	colors := []string{"Red", "Blue", "Black", "White", "Green"}
+	sizes := []string{"XS", "S", "M", "L", "XL"}
+	variantCount := 0
 
-	for _, variant := range productVariants {
-		if err := db.Create(&variant).Error; err != nil {
-			log.Printf("Failed to create seed product variant %s: %v", variant.SKU, err)
-		} else {
-			log.Printf("✅ Created seed product variant: %s", variant.SKU)
+	// Create 3-5 variants per product
+	for i, product := range products {
+		numVariants := 3 + (i % 3) // 3-5 variants per product
+		for j := 0; j < numVariants && variantCount < 75; j++ { // Limit total variants
+			color := colors[j%len(colors)]
+			size := sizes[j%len(sizes)]
+			variant := models.ProductVariant{
+				ProductID:   product.ID,
+				SKU:         fmt.Sprintf("%s-%s-%s", product.SKU, size, strings.ToUpper(color[:3])),
+				Size:        size,
+				Color:       color,
+				Stock:       20 + (j * 5),
+				PriceAdjust: float64(j * 2),
+				Weight:      product.Weight,
+				IsActive:    true,
+			}
+
+			if err := db.Create(&variant).Error; err != nil {
+				log.Printf("Failed to create seed product variant %s: %v", variant.SKU, err)
+			} else {
+				log.Printf("✅ Created seed product variant: %s", variant.SKU)
+				variantCount++
+			}
 		}
 	}
 }
@@ -311,37 +428,42 @@ func seedAddresses(db *gorm.DB) {
 	// Get users from database
 	var users []models.User
 	db.Find(&users)
-	if len(users) < 2 {
+	if len(users) < 15 {
 		log.Println("Not enough users found, skipping address seeding")
 		return
 	}
 
-	addresses := []models.Address{
-		{
-			UserID:    users[0].ID,
-			Street:    "123 Admin Street",
-			City:      "Admin City",
-			State:     "AC",
-			ZipCode:   "12345",
-			Country:   "USA",
-			IsDefault: true,
-		},
-		{
-			UserID:    users[1].ID,
-			Street:    "456 User Avenue",
-			City:      "User City",
-			State:     "UC",
-			ZipCode:   "67890",
-			Country:   "USA",
-			IsDefault: true,
-		},
-	}
+	streets := []string{"Main Street", "Oak Avenue", "Pine Road", "Elm Drive", "Maple Lane"}
+	cities := []string{"Springfield", "Riverside", "Franklin", "Georgetown", "Madison"}
+	states := []string{"CA", "NY", "TX", "FL", "IL"}
 
-	for _, address := range addresses {
-		if err := db.Create(&address).Error; err != nil {
-			log.Printf("Failed to create seed address: %v", err)
-		} else {
-			log.Printf("✅ Created seed address for user %s", address.UserID)
+	addressCount := 0
+	// Create 2-3 addresses per user (total ~30-45 addresses, limit to 15)
+	for i, user := range users {
+		if addressCount >= 15 {
+			break
+		}
+		numAddresses := 1
+		if i < 10 { // First 10 users get 1 address, others get 1
+			numAddresses = 1
+		}
+		for j := 0; j < numAddresses && addressCount < 15; j++ {
+			address := models.Address{
+				UserID:    user.ID,
+				Street:    fmt.Sprintf("%d %s", 100+(i*10)+j, streets[j%len(streets)]),
+				City:      cities[i%len(cities)],
+				State:     states[i%len(states)],
+				ZipCode:   fmt.Sprintf("%05d", 10000+(i*100)+j),
+				Country:   "USA",
+				IsDefault: j == 0, // First address is default
+			}
+
+			if err := db.Create(&address).Error; err != nil {
+				log.Printf("Failed to create seed address: %v", err)
+			} else {
+				log.Printf("✅ Created seed address for user %s", address.UserID)
+				addressCount++
+			}
 		}
 	}
 }
@@ -358,39 +480,35 @@ func seedPaymentMethods(db *gorm.DB) {
 	// Get users from database
 	var users []models.User
 	db.Find(&users)
-	if len(users) < 2 {
+	if len(users) < 15 {
 		log.Println("Not enough users found, skipping payment method seeding")
 		return
 	}
 
-	paymentMethods := []models.PaymentMethod{
-		{
-			UserID:      users[0].ID,
-			Type:        models.PaymentMethodCreditCard,
-			Provider:    "Visa",
-			Last4:       "1234",
-			ExpiryMonth: 12,
-			ExpiryYear:  2025,
-			HolderName:  "Admin Admin",
-			IsDefault:   true,
-		},
-		{
-			UserID:      users[1].ID,
-			Type:        models.PaymentMethodCreditCard,
-			Provider:    "Mastercard",
-			Last4:       "5678",
-			ExpiryMonth: 6,
-			ExpiryYear:  2026,
-			HolderName:  "User User",
-			IsDefault:   true,
-		},
-	}
+	providers := []string{"Visa", "Mastercard", "American Express", "Discover"}
+	paymentCount := 0
 
-	for _, pm := range paymentMethods {
+	// Create 1 payment method per user (15 total)
+	for i, user := range users {
+		if paymentCount >= 15 {
+			break
+		}
+		pm := models.PaymentMethod{
+			UserID:      user.ID,
+			Type:        models.PaymentMethodCreditCard,
+			Provider:    providers[i%len(providers)],
+			Last4:       fmt.Sprintf("%04d", 1000+(i*111)),
+			ExpiryMonth: (i%12) + 1,
+			ExpiryYear:  2025 + (i % 3),
+			HolderName:  fmt.Sprintf("%s %s", user.FirstName, user.LastName),
+			IsDefault:   true,
+		}
+
 		if err := db.Create(&pm).Error; err != nil {
 			log.Printf("Failed to create seed payment method: %v", err)
 		} else {
 			log.Printf("✅ Created seed payment method for user %s", pm.UserID)
+			paymentCount++
 		}
 	}
 }
@@ -415,47 +533,63 @@ func seedOrders(db *gorm.DB) {
 	db.Find(&addresses)
 	db.Find(&paymentMethods)
 
-	if len(users) < 2 || len(products) < 1 || len(addresses) < 2 || len(paymentMethods) < 2 {
+	if len(users) < 15 || len(products) < 10 || len(addresses) < 15 || len(paymentMethods) < 15 {
 		log.Println("Not enough data found for order seeding")
 		return
 	}
 
-	orders := []models.Order{
-		{
-			UserID:            users[0].ID,
-			ProductID:         products[0].ID,
-			Quantity:          2,
-			Subtotal:          39.98,
-			Tax:               3.20,
-			Shipping:          5.99,
-			Total:             49.17,
-			Status:            "completed",
-			ShippingAddressID: addresses[0].ID,
-			BillingAddressID:  addresses[0].ID,
-			PaymentMethodID:   &paymentMethods[0].ID,
-			OrderNumber:       "ORD-001",
-		},
-		{
-			UserID:            users[1].ID,
-			ProductID:         products[1].ID,
-			Quantity:          1,
-			Subtotal:          49.99,
-			Tax:               4.00,
-			Shipping:          5.99,
-			Total:             59.98,
-			Status:            "pending",
-			ShippingAddressID: addresses[1].ID,
-			BillingAddressID:  addresses[1].ID,
-			PaymentMethodID:   &paymentMethods[1].ID,
-			OrderNumber:       "ORD-002",
-		},
-	}
+	statuses := []string{"pending", "processing", "shipped", "delivered", "completed", "cancelled"}
+	orderCount := 0
 
-	for _, order := range orders {
-		if err := db.Create(&order).Error; err != nil {
-			log.Printf("Failed to create seed order for user %s: %v", order.UserID, err)
-		} else {
-			log.Printf("✅ Created seed order %s for user %s", order.OrderNumber, order.UserID)
+	// Create 15 orders with multiple products each
+	for i := 0; i < 15; i++ {
+		userIndex := (i + 1) % len(users) // Skip admin user
+		if userIndex == 0 {
+			userIndex = 1
+		}
+		user := users[userIndex]
+
+		// Find user's address and payment method
+		var userAddress models.Address
+		var userPayment models.PaymentMethod
+		db.Where("user_id = ?", user.ID).First(&userAddress)
+		db.Where("user_id = ?", user.ID).First(&userPayment)
+
+		// Create order with 2-4 products
+		numProducts := 2 + (i % 3) // 2-4 products per order
+		for j := 0; j < numProducts; j++ {
+			productIndex := (i*3 + j) % len(products)
+			product := products[productIndex]
+			quantity := 1 + (j % 3) // 1-3 quantity
+			subtotal := product.Price * float64(quantity)
+			tax := subtotal * 0.08
+			shipping := 5.99
+			total := subtotal + tax + shipping
+
+			order := models.Order{
+				UserID:            user.ID,
+				ProductID:         product.ID,
+				Quantity:          quantity,
+				Subtotal:          subtotal,
+				Tax:               tax,
+				Shipping:          shipping,
+				Total:             total,
+				Status:            statuses[i%len(statuses)],
+				ShippingAddressID: userAddress.ID,
+				BillingAddressID:  userAddress.ID,
+				PaymentMethodID:   &userPayment.ID,
+				OrderNumber:       fmt.Sprintf("ORD-%03d-%d", i+1, j+1),
+			}
+
+			if err := db.Create(&order).Error; err != nil {
+				log.Printf("Failed to create seed order for user %s: %v", order.UserID, err)
+			} else {
+				log.Printf("✅ Created seed order %s for user %s", order.OrderNumber, order.UserID)
+				orderCount++
+				if orderCount >= 15 {
+					return
+				}
+			}
 		}
 	}
 }
@@ -478,39 +612,197 @@ func seedReviews(db *gorm.DB) {
 	db.Find(&products)
 	db.Find(&orders)
 
-	if len(users) < 2 || len(products) < 2 || len(orders) < 2 {
+	if len(users) < 10 || len(products) < 10 || len(orders) < 10 {
 		log.Println("Not enough data found for review seeding")
 		return
 	}
 
-	reviews := []models.Review{
-		{
-			UserID:     users[1].ID,
-			ProductID:  products[0].ID,
-			OrderID:    orders[0].ID,
-			Rating:     5,
-			Title:      "Great product!",
-			Comment:    "Really love this item, great quality!",
-			IsVerified: true,
-			IsApproved: true,
-		},
-		{
-			UserID:     users[1].ID,
-			ProductID:  products[1].ID,
-			OrderID:    orders[1].ID,
-			Rating:     4,
-			Title:      "Good value",
-			Comment:    "Nice product for the price.",
-			IsVerified: true,
-			IsApproved: true,
-		},
+	titles := []string{"Great product!", "Good value", "Excellent quality", "Love it!", "Highly recommend", "Perfect fit", "Amazing!", "Worth the price", "Fantastic", "Outstanding"}
+	comments := []string{
+		"Really love this item, great quality!",
+		"Nice product for the price.",
+		"Exceeded my expectations!",
+		"Perfect for everyday use.",
+		"Would definitely buy again.",
+		"Great material and design.",
+		"Fast shipping and great product.",
+		"Exactly what I was looking for.",
+		"High quality and comfortable.",
+		"Excellent customer service too.",
 	}
 
-	for _, review := range reviews {
+	// Create 15 reviews
+	for i := 0; i < 15; i++ {
+		userIndex := (i + 1) % len(users) // Skip admin
+		if userIndex == 0 {
+			userIndex = 1
+		}
+		productIndex := i % len(products)
+		orderIndex := i % len(orders)
+
+		review := models.Review{
+			UserID:     users[userIndex].ID,
+			ProductID:  products[productIndex].ID,
+			OrderID:    orders[orderIndex].ID,
+			Rating:     4 + (i % 2), // 4 or 5 stars
+			Title:      titles[i%len(titles)],
+			Comment:    comments[i%len(comments)],
+			IsVerified: true,
+			IsApproved: true,
+		}
+
 		if err := db.Create(&review).Error; err != nil {
 			log.Printf("Failed to create seed review: %v", err)
 		} else {
 			log.Printf("✅ Created seed review for product %s", review.ProductID)
+		}
+	}
+}
+
+func seedCoupons(db *gorm.DB) {
+	// Check if coupons already exist
+	var count int64
+	db.Model(&models.Coupon{}).Count(&count)
+	if count > 0 {
+		log.Println("Coupons already exist, skipping coupon seeding")
+		return
+	}
+
+	// Create 15 sample coupons
+	coupons := []models.Coupon{
+		{
+			Code:           "WELCOME10",
+			Name:           "Welcome Discount",
+			Description:    "10% off for new customers",
+			Type:           models.CouponTypePercentage,
+			Value:          10.0,
+			MinOrderAmount: 25.0,
+			MaxDiscount:    func() *float64 { v := 50.0; return &v }(),
+			UsageLimit:     func() *int { v := 100; return &v }(),
+			UserUsageLimit: func() *int { v := 1; return &v }(),
+			StartDate:      time.Now(),
+			EndDate:        time.Now().AddDate(0, 6, 0),
+			IsActive:       true,
+		},
+		{
+			Code:           "SAVE20",
+			Name:           "Save $20",
+			Description:    "$20 off orders over $100",
+			Type:           models.CouponTypeFixed,
+			Value:          20.0,
+			MinOrderAmount: 100.0,
+			UsageLimit:     func() *int { v := 50; return &v }(),
+			UserUsageLimit: func() *int { v := 2; return &v }(),
+			StartDate:      time.Now(),
+			EndDate:        time.Now().AddDate(0, 3, 0),
+			IsActive:       true,
+		},
+		{
+			Code:           "FREESHIP",
+			Name:           "Free Shipping",
+			Description:    "Free shipping on all orders",
+			Type:           models.CouponTypeFreeShipping,
+			Value:          0.0,
+			MinOrderAmount: 50.0,
+			UsageLimit:     func() *int { v := 200; return &v }(),
+			StartDate:      time.Now(),
+			EndDate:        time.Now().AddDate(0, 12, 0),
+			IsActive:       true,
+		},
+	}
+
+	// Add 12 more coupons
+	for i := 4; i <= 15; i++ {
+		couponType := []models.CouponType{models.CouponTypePercentage, models.CouponTypeFixed, models.CouponTypeFreeShipping}[i%3]
+		var value float64
+		var description string
+		var minOrder float64
+
+		switch couponType {
+		case models.CouponTypePercentage:
+			value = float64(5 + (i % 4) * 5) // 5%, 10%, 15%, 20%
+			description = fmt.Sprintf("%.0f%% off your order", value)
+			minOrder = float64(20 + (i % 5) * 10)
+		case models.CouponTypeFixed:
+			value = float64(5 + (i % 6) * 5) // $5, $10, $15, $20, $25, $30
+			description = fmt.Sprintf("$%.0f off your order", value)
+			minOrder = value * 3
+		case models.CouponTypeFreeShipping:
+			value = 0.0
+			description = "Free shipping on your order"
+			minOrder = float64(30 + (i % 4) * 10)
+		}
+
+		coupon := models.Coupon{
+			Code:           fmt.Sprintf("COUPON%02d", i),
+			Name:           fmt.Sprintf("Coupon %d", i),
+			Description:    description,
+			Type:           couponType,
+			Value:          value,
+			MinOrderAmount: minOrder,
+			UsageLimit:     func() *int { v := 25 + (i % 4) * 25; return &v }(),
+			UserUsageLimit: func() *int { v := 1 + (i % 3); return &v }(),
+			StartDate:      time.Now(),
+			EndDate:        time.Now().AddDate(0, 3+(i%6), 0),
+			IsActive:       true,
+		}
+
+		if couponType == models.CouponTypePercentage {
+			coupon.MaxDiscount = func() *float64 { v := value * 5; return &v }()
+		}
+
+		coupons = append(coupons, coupon)
+	}
+
+	for _, coupon := range coupons {
+		if err := db.Create(&coupon).Error; err != nil {
+			log.Printf("Failed to create seed coupon %s: %v", coupon.Code, err)
+		} else {
+			log.Printf("✅ Created seed coupon: %s", coupon.Code)
+		}
+	}
+}
+
+func seedWishlists(db *gorm.DB) {
+	// Check if wishlists already exist
+	var count int64
+	db.Model(&models.Wishlist{}).Count(&count)
+	if count > 0 {
+		log.Println("Wishlists already exist, skipping wishlist seeding")
+		return
+	}
+
+	// Get required data from database
+	var users []models.User
+	var products []models.Product
+
+	db.Find(&users)
+	db.Find(&products)
+
+	if len(users) < 10 || len(products) < 10 {
+		log.Println("Not enough users or products found for wishlist seeding")
+		return
+	}
+
+	wishlistCount := 0
+	// Create 15 wishlist entries with multiple products per user
+	for i := 1; i < len(users) && wishlistCount < 15; i++ { // Skip admin user
+		user := users[i]
+		// Each user gets 2-4 wishlist items
+		numItems := 2 + (i % 3)
+		for j := 0; j < numItems && wishlistCount < 15; j++ {
+			productIndex := (i*3 + j) % len(products)
+			wishlist := models.Wishlist{
+				UserID:    user.ID,
+				ProductID: products[productIndex].ID,
+			}
+
+			if err := db.Create(&wishlist).Error; err != nil {
+				log.Printf("Failed to create seed wishlist entry: %v", err)
+			} else {
+				log.Printf("✅ Created seed wishlist entry for user %s, product %s", wishlist.UserID, wishlist.ProductID)
+				wishlistCount++
+			}
 		}
 	}
 }

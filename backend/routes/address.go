@@ -30,6 +30,7 @@ func SetupAddressRoutes(router *gin.Engine, db *gorm.DB) {
 		adminAddresses.GET("/:id", getAddressByID(db))
 		adminAddresses.PUT("/:id", updateAddressAdmin(db))
 		adminAddresses.DELETE("/:id", deleteAddressAdmin(db))
+		adminAddresses.PUT("/:id/status", toggleAddressStatus(db))
 	}
 }
 
@@ -45,8 +46,8 @@ func getAllAddresses(db *gorm.DB) gin.HandlerFunc {
 		
 		if search != "" {
 			query = query.Joins("JOIN users ON addresses.user_id = users.id").Where(
-				"addresses.street ILIKE ? OR addresses.city ILIKE ? OR addresses.state ILIKE ? OR users.first_name ILIKE ? OR users.last_name ILIKE ?", 
-				"%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%")
+				"addresses.street ILIKE ? OR addresses.city ILIKE ? OR addresses.state ILIKE ? OR addresses.country ILIKE ? OR users.first_name ILIKE ? OR users.last_name ILIKE ?", 
+				"%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%")
 		}
 		
 		var total int64
@@ -262,6 +263,28 @@ func setDefaultAddress(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		tx.Commit()
+		c.JSON(http.StatusOK, gin.H{"data": address})
+	}
+}
+
+// Add new status toggle function
+func toggleAddressStatus(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		var address models.Address
+		
+		if err := db.First(&address, "id = ?", id).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Address not found"})
+			return
+		}
+		
+		address.IsActive = !address.IsActive
+		
+		if err := db.Save(&address).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update address status"})
+			return
+		}
+		
 		c.JSON(http.StatusOK, gin.H{"data": address})
 	}
 }

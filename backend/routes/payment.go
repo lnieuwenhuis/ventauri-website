@@ -30,6 +30,29 @@ func SetupPaymentRoutes(router *gin.Engine, db *gorm.DB) {
 		adminPayments.GET("/:id", getPaymentMethodByID(db))
 		adminPayments.PUT("/:id", updatePaymentMethodAdmin(db))
 		adminPayments.DELETE("/:id", deletePaymentMethodAdmin(db))
+		adminPayments.PUT("/:id/status", togglePaymentMethodStatus(db))
+	}
+}
+
+// Add new status toggle function
+func togglePaymentMethodStatus(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		var paymentMethod models.PaymentMethod
+		
+		if err := db.First(&paymentMethod, "id = ?", id).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Payment method not found"})
+			return
+		}
+		
+		paymentMethod.IsActive = !paymentMethod.IsActive
+		
+		if err := db.Save(&paymentMethod).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update payment method status"})
+			return
+		}
+		
+		c.JSON(http.StatusOK, gin.H{"data": paymentMethod})
 	}
 }
 
@@ -45,8 +68,8 @@ func getAllPaymentMethods(db *gorm.DB) gin.HandlerFunc {
 		
 		if search != "" {
 			query = query.Joins("JOIN users ON payment_methods.user_id = users.id").Where(
-				"users.first_name ILIKE ? OR users.last_name ILIKE ? OR users.email ILIKE ? OR payment_methods.provider ILIKE ? OR payment_methods.last4 ILIKE ?", 
-				"%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%")
+				"users.first_name ILIKE ? OR users.last_name ILIKE ? OR users.email ILIKE ? OR payment_methods.provider ILIKE ? OR payment_methods.last4 ILIKE ? OR payment_methods.holder_name ILIKE ?", 
+				"%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%")
 		}
 		
 		var total int64

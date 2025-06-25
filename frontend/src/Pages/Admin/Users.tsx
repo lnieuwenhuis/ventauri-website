@@ -19,7 +19,7 @@ interface User {
 }
 
 interface UsersResponse {
-    users: User[];
+    data: User[];
     total: number;
     page: number;
     limit: number;
@@ -36,7 +36,6 @@ const Users: React.FC = () => {
 
     const apiURL = import.meta.env.VITE_BACKEND_URL || "";
 
-    // Get authorization token from localStorage or your auth context
     const getAuthToken = () => {
         return localStorage.getItem('authToken') || localStorage.getItem('token');
     };
@@ -59,22 +58,20 @@ const Users: React.FC = () => {
                 return;
             }
             
-            const response = await fetch(`${apiURL}/api/admin/users?${params}`, {
+            const response = await fetch(`${apiURL}/api/admin/users/?${params}`, {
                 credentials: 'include',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             });
-        
-            console.log(response);
             
             if (!response.ok) {
                 throw new Error(`Failed to fetch users: ${response.status}`);
             }
             
             const result: UsersResponse = await response.json();
-            setUsers(result.users);  // Changed from result.data to result.users
+            setUsers(result.data);
             setTotalUsers(result.total);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An error occurred');
@@ -91,7 +88,7 @@ const Users: React.FC = () => {
 
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchTerm(e.target.value);
-        setCurrentPage(1); // Reset to first page when searching
+        setCurrentPage(1);
     };
 
     const toggleUserStatus = async (userId: string) => {
@@ -110,12 +107,11 @@ const Users: React.FC = () => {
                     'Content-Type': 'application/json'
                 }
             });
-            
+
             if (!response.ok) {
                 throw new Error('Failed to update user status');
             }
-            
-            // Refresh the users list
+
             fetchUsers(currentPage, searchTerm);
         } catch (err) {
             console.error('Error updating user status:', err);
@@ -143,12 +139,11 @@ const Users: React.FC = () => {
                     'Content-Type': 'application/json'
                 }
             });
-            
+
             if (!response.ok) {
                 throw new Error('Failed to delete user');
             }
-            
-            // Refresh the users list
+
             fetchUsers(currentPage, searchTerm);
         } catch (err) {
             console.error('Error deleting user:', err);
@@ -157,14 +152,6 @@ const Users: React.FC = () => {
     };
 
     const totalPages = Math.ceil(totalUsers / itemsPerPage);
-
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
-        );
-    }
 
     return (
         <div className="space-y-6">
@@ -201,104 +188,120 @@ const Users: React.FC = () => {
                         <thead className="bg-gray-50">
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {users.map((user) => (
-                                <tr key={user.id} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="flex items-center">
-                                            {user.avatar && (
-                                                <img 
-                                                    className="h-8 w-8 rounded-full mr-3" 
-                                                    src={user.avatar} 
-                                                    alt={user.displayName || `${user.firstName} ${user.lastName}`}
-                                                />
-                                            )}
-                                            <div>
-                                                <div className="text-sm font-medium text-gray-900">
-                                                    {user.displayName || `${user.firstName} ${user.lastName}`}
-                                                </div>
-                                                <div className="text-sm text-gray-500">{user.email}</div>
-                                                {user.phone && (
-                                                    <div className="text-sm text-gray-500">{user.phone}</div>
-                                                )}
-                                                {user.googleId && (
-                                                    <div className="text-xs text-blue-500">Google OAuth</div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                            user.role === 'admin' 
-                                                ? 'bg-purple-100 text-purple-800' 
-                                                : 'bg-gray-100 text-gray-800'
-                                        }`}>
-                                            {user.role}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                            user.isActive 
-                                                ? 'bg-green-100 text-green-800' 
-                                                : 'bg-red-100 text-red-800'
-                                        }`}>
-                                            {user.isActive ? 'Active' : 'Inactive'}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {new Date(user.createdAt).toLocaleDateString()}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <div className="flex items-center justify-end space-x-2">
-                                            <button className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
-                                                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                </svg>
-                                                Edit
-                                            </button>
-                                            <button 
-                                                onClick={() => toggleUserStatus(user.id)}
-                                                className={`inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                                                    user.isActive 
-                                                        ? 'bg-orange-600 hover:bg-orange-700 focus:ring-orange-500' 
-                                                        : 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
-                                                }`}
-                                            >
-                                                {user.isActive ? (
-                                                    <>
-                                                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L5.636 5.636" />
-                                                        </svg>
-                                                        Deactivate
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                        </svg>
-                                                        Activate
-                                                    </>
-                                                )}
-                                            </button>
-                                            <button 
-                                                onClick={() => deleteUser(user.id)}
-                                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
-                                            >
-                                                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                                Delete
-                                            </button>
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-12">
+                                        <div className="flex items-center justify-center">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                                            <span className="ml-3 text-gray-500">Loading users...</span>
                                         </div>
                                     </td>
                                 </tr>
-                            ))}
+                            ) : users.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                                        No users found
+                                    </td>
+                                </tr>
+                            ) : (
+                                users.map((user) => (
+                                    <tr key={user.id} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center">
+                                                <div className="flex-shrink-0 h-10 w-10">
+                                                    {user.avatar ? (
+                                                        <img
+                                                            className="h-10 w-10 rounded-full"
+                                                            src={user.avatar}
+                                                            alt={`${user.firstName} ${user.lastName}`}
+                                                        />
+                                                    ) : (
+                                                        <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                                                            <span className="text-sm font-medium text-gray-700">
+                                                                {user.firstName.charAt(0)}{user.lastName.charAt(0)}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="ml-4">
+                                                    <div className="text-sm font-medium text-gray-900">
+                                                        {user.displayName || `${user.firstName} ${user.lastName}`}
+                                                    </div>
+                                                    <div className="text-sm text-gray-500">
+                                                        ID: {user.id.substring(0, 8)}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="text-sm font-medium text-gray-900">{user.email}</div>
+                                            <div className="text-sm text-gray-500">{user.phone || 'No phone'}</div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                                user.role === 'admin' 
+                                                    ? 'bg-purple-100 text-purple-800' 
+                                                    : 'bg-blue-100 text-blue-800'
+                                            }`}>
+                                                {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                                user.isActive 
+                                                    ? 'bg-green-100 text-green-800' 
+                                                    : 'bg-red-100 text-red-800'
+                                            }`}>
+                                                {user.isActive ? 'Active' : 'Inactive'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {new Date(user.createdAt).toLocaleDateString()}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <div className="flex items-center justify-end space-x-2">
+                                                <button className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
+                                                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                    View
+                                                </button>
+                                                <button
+                                                    onClick={() => toggleUserStatus(user.id)}
+                                                    className={`inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-200 ${
+                                                        user.isActive
+                                                            ? 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500'
+                                                            : 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
+                                                    }`}
+                                                >
+                                                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+                                                    </svg>
+                                                    {user.isActive ? 'Deactivate' : 'Activate'}
+                                                </button>
+                                                <button
+                                                    onClick={() => deleteUser(user.id)}
+                                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
+                                                >
+                                                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>
