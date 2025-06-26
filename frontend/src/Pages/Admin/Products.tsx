@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import FormModal from '../../Components/Admin/FormModal';
 
 interface Product {
     id: string;
@@ -6,7 +7,7 @@ interface Product {
     description: string;
     price: number;
     categoryId: string;
-    imageUrl: string;
+    images: string; // This is a JSON string from the backend
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
@@ -20,6 +21,15 @@ interface ProductsResponse {
     limit: number;
 }
 
+interface ProductFormData {
+    name: string;
+    description: string;
+    price: number;
+    categoryId: string;
+    images?: string[]; // This remains an array for the form
+    isActive: boolean;
+}
+
 const Products: React.FC = () => {
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
@@ -27,6 +37,10 @@ const Products: React.FC = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalProducts, setTotalProducts] = useState(0);
     const [error, setError] = useState<string | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+    const [modalLoading, setModalLoading] = useState(false);
+    const [categories, setCategories] = useState<{id: string, name: string}[]>([]);
     const itemsPerPage = 10;
 
     const apiURL = import.meta.env.VITE_BACKEND_URL || "";
@@ -61,13 +75,13 @@ const Products: React.FC = () => {
                 }
             });
 
-            console.log(response)
-            
             if (!response.ok) {
                 throw new Error(`Failed to fetch products: ${response.status}`);
             }
             
             const result: ProductsResponse = await response.json();
+
+            console.log(result)
             setProducts(result.data);
             setTotalProducts(result.total);
         } catch (err) {
@@ -78,8 +92,33 @@ const Products: React.FC = () => {
         }
     };
 
+    const fetchCategories = async () => {
+        try {
+            const token = getAuthToken();
+            if (!token) return;
+            
+            const response = await fetch(`${apiURL}/api/admin/categories/`, {
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                setCategories(result.data || []);
+            } else {
+                console.error('Failed to fetch categories:', response.status);
+            }
+        } catch (err) {
+            console.error('Error fetching categories:', err);
+        }
+    };
+
     useEffect(() => {
         fetchProducts(currentPage, searchTerm);
+        fetchCategories();
     // eslint-disable-next-line
     }, [currentPage, searchTerm]);
 
@@ -87,6 +126,132 @@ const Products: React.FC = () => {
         setSearchTerm(e.target.value);
         setCurrentPage(1);
     };
+
+    const handleCreateProduct = () => {
+        setEditingProduct(null);
+        setIsModalOpen(true);
+    };
+
+    const handleEditProduct = (product: Product) => {
+        setEditingProduct(product);
+        setIsModalOpen(true);
+    };
+
+    const handleSubmitProduct = async (formData: any) => {
+        try {
+            setModalLoading(true);
+            const token = getAuthToken();
+            if (!token) {
+                setError('No authorization token found');
+                return;
+            }
+    
+            // Convert images array to JSON string for backend
+            const processedData = {
+                ...formData,
+                images: Array.isArray(formData.images) 
+                    ? JSON.stringify(formData.images.filter((url: string) => url.trim() !== ''))
+                    : JSON.stringify([])
+            };
+    
+            const url = editingProduct 
+                ? `${apiURL}/api/admin/products/${editingProduct.id}`
+                : `${apiURL}/api/admin/products/`;
+            
+            const method = editingProduct ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method,
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(processedData)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Failed to ${editingProduct ? 'update' : 'create'} product`);
+            }
+            
+            fetchProducts(currentPage, searchTerm);
+            setIsModalOpen(false);
+        } catch (err) {
+            console.error('Error submitting product:', err);
+            setError(err instanceof Error ? err.message : 'Failed to submit product');
+        } finally {
+            setModalLoading(false);
+        }
+    };
+
+    const convertProductToFormData = (product: Product): ProductFormData => {
+        let parsedImages: string[] = [];
+        try {
+            if (product.images && product.images.trim() !== '') {
+                parsedImages = JSON.parse(product.images);
+                if (!Array.isArray(parsedImages)) {
+                    parsedImages = [];
+                }
+            }
+        } catch (error) {
+            console.error('Error parsing product images:', error);
+            parsedImages = [];
+        }
+        
+        return {
+            name: product.name,
+            description: product.description,
+            price: product.price,
+            categoryId: product.categoryId,
+            images: parsedImages,
+            isActive: product.isActive
+        };
+    };
+
+    const productFields = useMemo(() => [
+        {
+            name: 'name',
+            label: 'Product Name',
+            type: 'text' as const,
+            required: true,
+            placeholder: 'Enter product name'
+        },
+        {
+            name: 'description',
+            label: 'Description',
+            type: 'textarea' as const,
+            required: true,
+            placeholder: 'Enter product description'
+        },
+        {
+            name: 'price',
+            label: 'Price',
+            type: 'number' as const,
+            required: true,
+            placeholder: '0.00'
+        },
+        {
+            name: 'categoryId',
+            label: 'Category',
+            type: 'select' as const,
+            required: true,
+            options: categories.map(cat => ({ value: cat.id, label: cat.name }))
+        },
+        {
+            name: 'images',
+            label: 'Image URL',
+            type: 'array' as const,
+            arrayType: 'url' as const,
+            required: false,
+            placeholder: 'https://example.com/image.jpg'
+        },
+        {
+            name: 'isActive',
+            label: 'Active',
+            type: 'checkbox' as const,
+            required: false
+        }
+    ], [categories]);
 
     const toggleProductStatus = async (productId: string) => {
         try {
@@ -154,7 +319,10 @@ const Products: React.FC = () => {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold text-gray-900">Products Management</h1>
-                <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                <button 
+                    onClick={handleCreateProduct}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                >
                     Add New Product
                 </button>
             </div>
@@ -208,89 +376,117 @@ const Products: React.FC = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                products.map((product) => (
-                                    <tr key={product.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center">
-                                                {product.imageUrl && (
-                                                    <img 
-                                                        className="h-12 w-12 rounded-lg mr-4 object-cover" 
-                                                        src={product.imageUrl} 
-                                                        alt={product.name}
-                                                    />
-                                                )}
-                                                <div>
-                                                    <div className="text-sm font-medium text-gray-900">
-                                                        {product.name}
-                                                    </div>
-                                                    <div className="text-sm text-gray-500 max-w-xs truncate">
-                                                        {product.description}
+                                products.map((product) => {
+                                    // Parse images from JSON string to array
+                                    let productImages: string[] = [];
+                                    try {
+                                        if (typeof product.images === 'string' && product.images.trim()) {
+                                            productImages = JSON.parse(product.images);
+                                        } else if (Array.isArray(product.images)) {
+                                            productImages = product.images;
+                                        }
+                                    } catch (error) {
+                                        console.warn('Failed to parse product images:', error);
+                                        productImages = [];
+                                    }
+                                
+                                    return (
+                                        <tr key={product.id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex items-center">
+                                                    {productImages && productImages.length > 0 && (
+                                                        <div className="flex -space-x-2 mr-4">
+                                                            {productImages.slice(0, 3).map((imageUrl, index) => (
+                                                                <img 
+                                                                    key={index}
+                                                                    className="h-12 w-12 rounded-lg object-cover border-2 border-white" 
+                                                                    src={imageUrl && /^https?:\/\/.+/.test(imageUrl) ? imageUrl : 'https://picsum.photos/200'} 
+                                                                    alt={`${product.name} ${index + 1}`}
+                                                                />
+                                                            ))}
+                                                            {productImages.length > 3 && (
+                                                                <div className="h-12 w-12 rounded-lg bg-gray-200 border-2 border-white flex items-center justify-center text-xs text-gray-600">
+                                                                    +{productImages.length - 3}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    <div>
+                                                        <div className="text-sm font-medium text-gray-900">
+                                                            {product.name}
+                                                        </div>
+                                                        <div className="text-sm text-gray-500 max-w-xs truncate">
+                                                            {product.description}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm font-medium text-gray-900">
-                                                ${product.price.toFixed(2)}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                                product.isActive 
-                                                    ? 'bg-green-100 text-green-800' 
-                                                    : 'bg-red-100 text-red-800'
-                                            }`}>
-                                                {product.isActive ? 'Active' : 'Inactive'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {new Date(product.createdAt).toLocaleDateString()}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <div className="flex items-center justify-end space-x-2">
-                                                <button className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
-                                                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                    </svg>
-                                                    Edit
-                                                </button>
-                                                <button 
-                                                    onClick={() => toggleProductStatus(product.id)}
-                                                    className={`inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                                                        product.isActive 
-                                                            ? 'bg-orange-600 hover:bg-orange-700 focus:ring-orange-500' 
-                                                            : 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
-                                                    }`}
-                                                >
-                                                    {product.isActive ? (
-                                                        <>
-                                                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L5.636 5.636" />
-                                                            </svg>
-                                                            Deactivate
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                            </svg>
-                                                            Activate
-                                                        </>
-                                                    )}
-                                                </button>
-                                                <button 
-                                                    onClick={() => deleteProduct(product.id)}
-                                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
-                                                >
-                                                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
-                                                    Delete
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="text-sm font-medium text-gray-900">
+                                                    ${product.price.toFixed(2)}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                                    product.isActive 
+                                                        ? 'bg-green-100 text-green-800' 
+                                                        : 'bg-red-100 text-red-800'
+                                                }`}>
+                                                    {product.isActive ? 'Active' : 'Inactive'}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {new Date(product.createdAt).toLocaleDateString()}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                <div className="flex items-center justify-end space-x-2">
+                                                    <button 
+                                                        onClick={() => handleEditProduct(product)}
+                                                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                                                    >
+                                                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                        </svg>
+                                                        Edit
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => toggleProductStatus(product.id)}
+                                                        className={`inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                                                            product.isActive 
+                                                                ? 'bg-orange-600 hover:bg-orange-700 focus:ring-orange-500' 
+                                                                : 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
+                                                        }`}
+                                                    >
+                                                        {product.isActive ? (
+                                                            <>
+                                                                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L5.636 5.636" />
+                                                                </svg>
+                                                                Deactivate
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                </svg>
+                                                                Activate
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => deleteProduct(product.id)}
+                                                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
+                                                    >
+                                                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
                             )}
                         </tbody>
                     </table>
@@ -323,6 +519,16 @@ const Products: React.FC = () => {
                     </div>
                 )}
             </div>
+            
+            <FormModal<ProductFormData>
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSubmit={handleSubmitProduct}
+                title={editingProduct ? 'Edit Product' : 'Create New Product'}
+                fields={productFields}
+                initialData={editingProduct ? convertProductToFormData(editingProduct) : { isActive: true }}
+                isLoading={modalLoading}
+            />
         </div>
     );
 };

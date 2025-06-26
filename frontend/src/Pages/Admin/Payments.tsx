@@ -73,8 +73,6 @@ export default function Payments() {
             }
             
             const result: PaymentMethodsResponse = await response.json();
-
-            console.log(result);
             setPayments(result.data);
             setTotalPayments(result.total);
         } catch (err) {

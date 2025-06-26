@@ -3,6 +3,9 @@ package routes
 import (
 	"net/http"
 	"strconv"
+	"time"
+	"fmt"
+	"gorm.io/gorm/logger"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -166,24 +169,127 @@ func createProduct(db *gorm.DB) gin.HandlerFunc {
 func updateProduct(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
-		var product models.Product
+		var existingProduct models.Product
 
-		if err := db.First(&product, "id = ?", id).Error; err != nil {
+		// First, get the existing product with all its relationships
+		if err := db.Preload("Category").Preload("Variants").First(&existingProduct, "id = ?", id).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
 			return
 		}
 
-		if err := c.ShouldBindJSON(&product); err != nil {
+		// Parse the incoming product data
+		var updatedProduct models.Product
+		if err := c.ShouldBindJSON(&updatedProduct); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		if err := db.Save(&product).Error; err != nil {
+		// Preserve the ID and timestamps
+		updatedProduct.ID = existingProduct.ID
+		updatedProduct.CreatedAt = existingProduct.CreatedAt
+
+		// Start a transaction to ensure data consistency
+		tx := db.Begin()
+		defer func() {
+			if r := recover(); r != nil {
+				tx.Rollback()
+			}
+		}()
+
+		// Update the main product fields (excluding variants for now)
+		productUpdate := models.Product{
+			ID:          updatedProduct.ID,
+			CreatedAt:   updatedProduct.CreatedAt,
+			UpdatedAt:   updatedProduct.UpdatedAt,
+			Name:        updatedProduct.Name,
+			Price:       updatedProduct.Price,
+			Images:      updatedProduct.Images,
+			CategoryID:  updatedProduct.CategoryID,
+			Description: updatedProduct.Description,
+			SKU:         updatedProduct.SKU,
+			Weight:      updatedProduct.Weight,
+			IsActive:    updatedProduct.IsActive,
+		}
+
+		if err := tx.Save(&productUpdate).Error; err != nil {
+			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update product"})
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"data": product})
+		// Handle variants if they are provided
+		if len(updatedProduct.Variants) > 0 {
+			// Delete existing variants
+			if err := tx.Where("product_id = ?", existingProduct.ID).Delete(&models.ProductVariant{}).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete existing variants"})
+				return
+			}
+
+			// Create new variants with fresh IDs
+			for i := range updatedProduct.Variants {
+				// Clear the ID to let GORM generate a new one
+				updatedProduct.Variants[i].ID = uuid.Nil
+				updatedProduct.Variants[i].ProductID = updatedProduct.ID
+				// Clear timestamps to let GORM handle them
+				updatedProduct.Variants[i].CreatedAt = time.Time{}
+				updatedProduct.Variants[i].UpdatedAt = time.Time{}
+				
+				// Generate a unique SKU to avoid empty string duplicates
+				if updatedProduct.Variants[i].SKU == "" {
+					// Generate a temporary unique SKU using UUID
+					updatedProduct.Variants[i].SKU = fmt.Sprintf("TEMP-%s", uuid.New().String())
+				} else {
+					// If SKU is provided, ensure it's unique
+					originalSKU := updatedProduct.Variants[i].SKU
+					counter := 1
+					for {
+						var existingVariant models.ProductVariant
+						// Use Session with Logger set to Silent mode to suppress "record not found" logs
+						err := db.Session(&gorm.Session{Logger: db.Logger.LogMode(logger.Silent)}).Where("sku = ?", updatedProduct.Variants[i].SKU).First(&existingVariant).Error
+						if err == gorm.ErrRecordNotFound {
+							// SKU is unique, we can use it
+							break
+						}
+						if err != nil {
+							// Handle other potential errors
+							tx.Rollback()
+							c.JSON(http.StatusInternalServerError, gin.H{"error": "Error checking SKU uniqueness"})
+							return
+						}
+						// SKU exists, try with a suffix
+						updatedProduct.Variants[i].SKU = fmt.Sprintf("%s-%d", originalSKU, counter)
+						counter++
+						if counter > 1000 {
+							tx.Rollback()
+							c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to generate unique SKU"})
+							return
+						}
+					}
+				}
+				
+				if err := tx.Create(&updatedProduct.Variants[i]).Error; err != nil {
+					tx.Rollback()
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create product variants"})
+					return
+				}
+			}
+		}
+
+		// Commit the transaction
+		if err := tx.Commit().Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
+			return
+		}
+
+		// Fetch the updated product with all relationships for the response
+		var responseProduct models.Product
+		if err := db.Preload("Category").Preload("Variants").First(&responseProduct, "id = ?", id).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch updated product"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"data": responseProduct})
 	}
 }
 

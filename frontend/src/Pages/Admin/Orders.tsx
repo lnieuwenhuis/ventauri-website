@@ -91,7 +91,6 @@ export default function AdminOrders() {
             }
             
             const result: OrdersResponse = await response.json();
-            console.log(result)
             setOrders(result.data);
             setTotalOrders(result.total);
         } catch (err) {
