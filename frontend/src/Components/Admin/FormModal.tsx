@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
-interface FormField {
-    name: string;
+interface FormField<T = Record<string, unknown>> {
+    name: keyof T;
     label: string;
     type: 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'url' | 'array';
     required?: boolean;
@@ -10,17 +10,17 @@ interface FormField {
     arrayType?: 'url' | 'text';
 }
 
-interface FormModalProps<T = Record<string, any>> {
+interface FormModalProps<T extends Record<string, unknown> = Record<string, unknown>> {
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (data: T) => Promise<void>;
     title: string;
-    fields: FormField[];
+    fields: FormField<T>[];
     initialData?: Partial<T>;
     isLoading?: boolean;
 }
 
-const FormModal = <T extends Record<string, any> = Record<string, any>>({
+const FormModal = <T extends Record<string, unknown> = Record<string, unknown>>({
     isOpen,
     onClose,
     onSubmit,
@@ -39,18 +39,20 @@ const FormModal = <T extends Record<string, any> = Record<string, any>>({
         }
     }, [isOpen, initialData]);
 
-    const handleInputChange = (name: keyof T, value: any) => {
+    const handleInputChange = (name: keyof T, value: unknown) => {
         setFormData((prev: Partial<T>) => ({ ...prev, [name]: value }));
-        if (errors[name as string]) {
-            setErrors((prev: Record<string, string | null>) => ({ ...prev, [name as string]: null }));
+        const fieldName = String(name);
+        if (errors[fieldName]) {
+            setErrors((prev: Record<string, string | null>) => ({ ...prev, [fieldName]: null }));
         }
     };
 
     const validateForm = (): boolean => {
         const newErrors: Record<string, string> = {};
         fields.forEach(field => {
-            if (field.required && (!formData[field.name as keyof T] || formData[field.name as keyof T] === '')) {
-                newErrors[field.name] = `${field.label} is required`;
+            const fieldName = String(field.name);
+            if (field.required && (!formData[field.name] || formData[field.name] === '')) {
+                newErrors[fieldName] = `${field.label} is required`;
             }
         });
         setErrors(newErrors);
@@ -69,9 +71,10 @@ const FormModal = <T extends Record<string, any> = Record<string, any>>({
         }
     };
 
-    const renderField = (field: FormField) => {
+    const renderField = (field: FormField<T>) => {
         const value = formData[field.name as keyof T] || '';
-        const error = errors[field.name];
+        const fieldName = String(field.name);
+        const error = errors[fieldName];
     
         switch (field.type) {
             case 'textarea':
@@ -129,7 +132,7 @@ const FormModal = <T extends Record<string, any> = Record<string, any>>({
                         <span className="text-sm text-gray-700">{field.label}</span>
                     </label>
                 );
-            case 'array':
+            case 'array': {
                 const arrayValue: string[] = Array.isArray(value) ? (value as string[]) : [];
                 return (
                     <div className="space-y-2">
@@ -172,6 +175,7 @@ const FormModal = <T extends Record<string, any> = Record<string, any>>({
                         </button>
                     </div>
                 );
+            }
             default:
                 return (
                     <input
@@ -206,20 +210,23 @@ const FormModal = <T extends Record<string, any> = Record<string, any>>({
 
                 <form onSubmit={handleSubmit} className="p-6">
                     <div className="space-y-4">
-                        {fields.map(field => (
-                            <div key={field.name}>
-                                {field.type !== 'checkbox' && (
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        {field.label}
-                                        {field.required && <span className="text-red-500 ml-1">*</span>}
-                                    </label>
-                                )}
-                                {renderField(field)}
-                                {errors[field.name] && (
-                                    <p className="text-red-500 text-xs mt-1">{errors[field.name]}</p>
-                                )}
-                            </div>
-                        ))}
+                        {fields.map(field => {
+                            const fieldName = String(field.name);
+                            return (
+                                <div key={fieldName}>
+                                    {field.type !== 'checkbox' && (
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            {field.label}
+                                            {field.required && <span className="text-red-500 ml-1">*</span>}
+                                        </label>
+                                    )}
+                                    {renderField(field)}
+                                    {errors[fieldName] && (
+                                        <p className="text-red-500 text-xs mt-1">{errors[fieldName]}</p>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
 
                     <div className="flex justify-end space-x-3 mt-6">
@@ -238,7 +245,7 @@ const FormModal = <T extends Record<string, any> = Record<string, any>>({
                             {isLoading && (
                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                             )}
-                            {(initialData as any)?.id ? 'Update' : 'Create'}
+                            {(initialData as Record<string, unknown>)?.id ? 'Update' : 'Create'}
                         </button>
                     </div>
                 </form>

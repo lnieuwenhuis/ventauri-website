@@ -31,6 +31,7 @@ func SetupOrderRoutes(router *gin.Engine, db *gorm.DB) {
 	{
 		adminOrders.GET("/", getAllOrders(db))
 		adminOrders.PUT("/:id/status", updateOrderStatus(db))
+		adminOrders.PUT("/:id", updateOrder(db))
 		adminOrders.GET("/:id", getOrderAdmin(db))
 		adminOrders.DELETE("/:id", deleteOrderAdmin(db))
 	}
@@ -339,4 +340,62 @@ func deleteOrderAdmin(db *gorm.DB) gin.HandlerFunc {
 		
 		c.JSON(http.StatusOK, gin.H{"message": "Order deleted successfully"})
 	}
+}
+
+func updateOrder(db *gorm.DB) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        id := c.Param("id")
+        var req struct {
+            Quantity  *int     `json:"quantity,omitempty"`
+            Subtotal  *float64 `json:"subtotal,omitempty"`
+            Tax       *float64 `json:"tax,omitempty"`
+            Shipping  *float64 `json:"shipping,omitempty"`
+            Total     *float64 `json:"total,omitempty"`
+            Status    *string  `json:"status,omitempty"`
+        }
+
+        if err := c.ShouldBindJSON(&req); err != nil {
+            c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+            return
+        }
+
+        var order models.Order
+        if err := db.First(&order, "id = ?", id).Error; err != nil {
+            c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
+            return
+        }
+
+        // Update only provided fields
+        if req.Quantity != nil {
+            order.Quantity = *req.Quantity
+        }
+        if req.Subtotal != nil {
+            order.Subtotal = *req.Subtotal
+        }
+        if req.Tax != nil {
+            order.Tax = *req.Tax
+        }
+        if req.Shipping != nil {
+            order.Shipping = *req.Shipping
+        }
+        if req.Total != nil {
+            order.Total = *req.Total
+        }
+        if req.Status != nil {
+            order.Status = *req.Status
+        }
+
+        if err := db.Save(&order).Error; err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update order"})
+            return
+        }
+
+        // Return updated order with relationships
+        if err := db.Preload("User").Preload("Product").Preload("ProductVariant").Preload("ShippingAddress").Preload("BillingAddress").Preload("PaymentMethod").First(&order, "id = ?", id).Error; err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch updated order"})
+            return
+        }
+
+        c.JSON(http.StatusOK, gin.H{"data": order})
+    }
 }

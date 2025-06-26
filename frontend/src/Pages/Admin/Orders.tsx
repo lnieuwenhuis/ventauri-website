@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import FormModal from '../../Components/Admin/FormModal';
 
 interface Order {
     id: string;
@@ -43,6 +44,16 @@ interface OrdersResponse {
     limit: number;
 }
 
+interface OrderFormData extends Record<string, unknown> {
+    id: string;
+    status: string;
+    quantity?: number;
+    subtotal?: number;
+    tax?: number;
+    shipping?: number;
+    total?: number;
+}
+
 export default function AdminOrders() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
@@ -51,6 +62,9 @@ export default function AdminOrders() {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalOrders, setTotalOrders] = useState(0);
     const [error, setError] = useState<string | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+    const [modalLoading, setModalLoading] = useState(false);
     const itemsPerPage = 10;
 
     const apiURL = import.meta.env.VITE_BACKEND_URL || "";
@@ -115,6 +129,117 @@ export default function AdminOrders() {
         setStatusFilter(e.target.value);
         setCurrentPage(1);
     };
+
+    const handleEditOrder = (order: Order) => {
+        setEditingOrder(order);
+        setIsModalOpen(true);
+    };
+
+    const handleSubmitOrder = async (formData: OrderFormData) => {
+        if (!editingOrder) return;
+        
+        try {
+            setModalLoading(true);
+            const token = getAuthToken();
+            if (!token) {
+                setError('No authorization token found');
+                return;
+            }
+
+            // For orders, we typically only allow status updates
+            const response = await fetch(`${apiURL}/api/admin/orders/${editingOrder.id}`, {
+                method: 'PUT',
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    status: formData.status,
+                    quantity: formData.quantity,
+                    subtotal: formData.subtotal,
+                    tax: formData.tax,
+                    shipping: formData.shipping,
+                    total: formData.total
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to update order');
+            }
+            
+            fetchOrders(currentPage, searchTerm, statusFilter);
+            setIsModalOpen(false);
+        } catch (err) {
+            console.error('Error updating order:', err);
+            setError(err instanceof Error ? err.message : 'Failed to update order');
+        } finally {
+            setModalLoading(false);
+        }
+    };
+
+    const convertOrderToFormData = (order: Order): OrderFormData => {
+        return {
+            id: order.id,
+            status: order.status,
+            quantity: order.quantity,
+            subtotal: order.subtotal,
+            tax: order.tax,
+            shipping: order.shipping,
+            total: order.total
+        };
+    };
+
+    const orderFormFields = [
+        {
+            name: 'status',
+            label: 'Order Status',
+            type: 'select' as const,
+            required: true,
+            options: [
+                { value: 'pending', label: 'Pending' },
+                { value: 'processing', label: 'Processing' },
+                { value: 'shipped', label: 'Shipped' },
+                { value: 'delivered', label: 'Delivered' },
+                { value: 'cancelled', label: 'Cancelled' },
+            ],
+        },
+        {
+            name: 'quantity',
+            label: 'Quantity',
+            type: 'number' as const,
+            required: false,
+            placeholder: 'Enter quantity'
+        },
+        {
+            name: 'subtotal',
+            label: 'Subtotal',
+            type: 'number' as const,
+            required: false,
+            placeholder: '0.00'
+        },
+        {
+            name: 'tax',
+            label: 'Tax',
+            type: 'number' as const,
+            required: false,
+            placeholder: '0.00'
+        },
+        {
+            name: 'shipping',
+            label: 'Shipping',
+            type: 'number' as const,
+            required: false,
+            placeholder: '0.00'
+        },
+        {
+            name: 'total',
+            label: 'Total',
+            type: 'number' as const,
+            required: false,
+            placeholder: '0.00'
+        }
+    ];
 
     const updateOrderStatus = async (orderId: string, newStatus: string) => {
         try {
@@ -293,12 +418,14 @@ export default function AdminOrders() {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <div className="flex items-center justify-end space-x-2">
-                                                <button className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
+                                                <button 
+                                                    onClick={() => handleEditOrder(order)}
+                                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                                                >
                                                     <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                                     </svg>
-                                                    View
+                                                    Edit
                                                 </button>
                                                 <select
                                                     value={order.status}
@@ -356,6 +483,16 @@ export default function AdminOrders() {
                     </div>
                 )}
             </div>
+
+            <FormModal<OrderFormData>
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSubmit={handleSubmitOrder}
+                initialData={editingOrder ? convertOrderToFormData(editingOrder) : { status: 'pending' }}
+                fields={orderFormFields}
+                title="Edit Order"
+                isLoading={modalLoading}
+            />
         </div>
     );
 }

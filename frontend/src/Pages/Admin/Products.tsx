@@ -7,7 +7,7 @@ interface Product {
     description: string;
     price: number;
     categoryId: string;
-    images: string; // This is a JSON string from the backend
+    images: string;
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
@@ -21,12 +21,12 @@ interface ProductsResponse {
     limit: number;
 }
 
-interface ProductFormData {
+interface ProductFormData extends Record<string, unknown> {
     name: string;
     description: string;
     price: number;
     categoryId: string;
-    images?: string[]; // This remains an array for the form
+    images?: string[]; 
     isActive: boolean;
 }
 
@@ -137,7 +137,7 @@ const Products: React.FC = () => {
         setIsModalOpen(true);
     };
 
-    const handleSubmitProduct = async (formData: any) => {
+    const handleSubmitProduct = async (formData: ProductFormData) => {
         try {
             setModalLoading(true);
             const token = getAuthToken();
