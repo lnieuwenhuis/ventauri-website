@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 interface FormField<T = Record<string, unknown>> {
     name: keyof T;
     label: string;
-    type: 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'url' | 'array';
+    type: 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'url' | 'array' | 'date';
     required?: boolean;
     options?: { value: string; label: string }[];
     placeholder?: string;

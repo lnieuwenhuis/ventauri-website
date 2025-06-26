@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import FormModal from '../../Components/Admin/FormModal';
 
 interface Coupon {
     id: string;
@@ -26,6 +27,22 @@ interface CouponsResponse {
     limit: number;
 }
 
+interface CouponFormData extends Record<string, unknown> {
+    id: string;
+    code: string;
+    name: string;
+    description: string;
+    type: string;
+    value: number;
+    minOrderAmount: number;
+    maxDiscount?: number;
+    usageLimit?: number;
+    userUsageLimit?: number;
+    startDate: string;
+    endDate: string;
+    isActive: boolean;
+}
+
 const AdminCoupons: React.FC = () => {
     const [coupons, setCoupons] = useState<Coupon[]>([]);
     const [loading, setLoading] = useState(true);
@@ -33,6 +50,9 @@ const AdminCoupons: React.FC = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalCoupons, setTotalCoupons] = useState(0);
     const [error, setError] = useState<string | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
+    const [modalLoading, setModalLoading] = useState(false);
     const itemsPerPage = 10;
 
     const apiURL = import.meta.env.VITE_BACKEND_URL || "";
@@ -91,6 +111,168 @@ const AdminCoupons: React.FC = () => {
         setSearchTerm(e.target.value);
         setCurrentPage(1);
     };
+
+    const handleCreateCoupon = () => {
+        setEditingCoupon(null);
+        setIsModalOpen(true);
+    };
+
+    const handleEditCoupon = (coupon: Coupon) => {
+        setEditingCoupon(coupon);
+        setIsModalOpen(true);
+    };
+
+    const handleSubmitCoupon = async (formData: CouponFormData) => {
+        try {
+            setModalLoading(true);
+            const token = getAuthToken();
+            if (!token) {
+                setError('No authorization token found');
+                return;
+            }
+    
+            // Convert date strings to proper datetime format
+            const processedFormData = {
+                ...formData,
+                startDate: new Date(formData.startDate + 'T00:00:00Z').toISOString(),
+                endDate: new Date(formData.endDate + 'T23:59:59Z').toISOString()
+            };
+    
+            const url = editingCoupon 
+                ? `${apiURL}/api/admin/coupons/${editingCoupon.id}`
+                : `${apiURL}/api/admin/coupons/`;
+            
+            const method = editingCoupon ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method,
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(processedFormData) // Use processed data
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Failed to ${editingCoupon ? 'update' : 'create'} coupon`);
+            }
+            
+            fetchCoupons(currentPage, searchTerm);
+            setIsModalOpen(false);
+        } catch (err) {
+            console.error('Error submitting coupon:', err);
+            setError(err instanceof Error ? err.message : 'Failed to submit coupon');
+        } finally {
+            setModalLoading(false);
+        }
+    };
+
+    const convertCouponToFormData = (coupon: Coupon): CouponFormData => {
+        return {
+            id: coupon.id,
+            code: coupon.code,
+            name: coupon.name,
+            description: coupon.description,
+            type: coupon.type,
+            value: coupon.value,
+            minOrderAmount: coupon.minOrderAmount,
+            maxDiscount: coupon.maxDiscount,
+            usageLimit: coupon.usageLimit,
+            userUsageLimit: coupon.userUsageLimit,
+            startDate: coupon.startDate.split('T')[0], 
+            endDate: coupon.endDate.split('T')[0], 
+            isActive: coupon.isActive
+        };
+    };
+
+    const couponFields = [
+        {
+            name: 'code',
+            label: 'Coupon Code',
+            type: 'text' as const,
+            required: true,
+            placeholder: 'Enter coupon code (e.g., SAVE20)'
+        },
+        {
+            name: 'name',
+            label: 'Coupon Name',
+            type: 'text' as const,
+            required: true,
+            placeholder: 'Enter coupon name'
+        },
+        {
+            name: 'description',
+            label: 'Description',
+            type: 'textarea' as const,
+            required: true,
+            placeholder: 'Enter coupon description'
+        },
+        {
+            name: 'type',
+            label: 'Discount Type',
+            type: 'select' as const,
+            required: true,
+            options: [
+                { value: 'percentage', label: 'Percentage' },
+                { value: 'fixed', label: 'Fixed Amount' },
+                { value: 'free_shipping', label: 'Free Shipping' }
+            ]
+        },
+        {
+            name: 'value',
+            label: 'Discount Value',
+            type: 'number' as const,
+            required: true,
+            placeholder: 'Enter discount value'
+        },
+        {
+            name: 'minOrderAmount',
+            label: 'Minimum Order Amount',
+            type: 'number' as const,
+            required: true,
+            placeholder: '0.00'
+        },
+        {
+            name: 'maxDiscount',
+            label: 'Maximum Discount (Optional)',
+            type: 'number' as const,
+            required: false,
+            placeholder: 'Enter maximum discount amount'
+        },
+        {
+            name: 'usageLimit',
+            label: 'Usage Limit (Optional)',
+            type: 'number' as const,
+            required: false,
+            placeholder: 'Enter usage limit'
+        },
+        {
+            name: 'userUsageLimit',
+            label: 'Per User Usage Limit (Optional)',
+            type: 'number' as const,
+            required: false,
+            placeholder: 'Enter per user usage limit'
+        },
+        {
+            name: 'startDate',
+            label: 'Start Date',
+            type: 'date' as const,
+            required: true
+        },
+        {
+            name: 'endDate',
+            label: 'End Date',
+            type: 'date' as const,
+            required: true
+        },
+        {
+            name: 'isActive',
+            label: 'Active',
+            type: 'checkbox' as const,
+            required: false
+        }
+    ];
 
     const toggleCouponStatus = async (couponId: string) => {
         try {
@@ -194,7 +376,10 @@ const AdminCoupons: React.FC = () => {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold text-gray-900">Coupons Management</h1>
-                <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                <button 
+                    onClick={handleCreateCoupon}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                >
                     Add New Coupon
                 </button>
             </div>
@@ -225,11 +410,11 @@ const AdminCoupons: React.FC = () => {
                         <thead className="bg-gray-50">
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Discount</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usage</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valid Until</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
@@ -259,11 +444,6 @@ const AdminCoupons: React.FC = () => {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-gray-900 max-w-xs truncate">
-                                                {coupon.name}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm text-gray-900">
                                                 {formatDiscount(coupon)}
                                             </div>
@@ -286,11 +466,17 @@ const AdminCoupons: React.FC = () => {
                                             {formatDate(coupon.endDate)}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {formatDate(coupon.startDate)}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {formatDate(coupon.createdAt)}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <div className="flex items-center justify-end space-x-2">
-                                                <button className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
+                                                <button 
+                                                    onClick={() => handleEditCoupon(coupon)}
+                                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                                                >
                                                     <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                                     </svg>
@@ -365,6 +551,16 @@ const AdminCoupons: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            <FormModal<CouponFormData>
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSubmit={handleSubmitCoupon}
+                title={editingCoupon ? 'Edit Coupon' : 'Create New Coupon'}
+                fields={couponFields}
+                initialData={editingCoupon ? convertCouponToFormData(editingCoupon) : undefined}
+                isLoading={modalLoading}
+            />
         </div>
     );
 };
