@@ -71,6 +71,7 @@ func main() {
 	routes.SetupProductRoutes(r, db)
 	routes.SetupReviewRoutes(r, db)
 	routes.SetupStatsRoutes(r, db)
+	routes.SetupActivityRoutes(r, db)
 	routes.SetupUserRoutes(r, db)
 	routes.SetupWishlistRoutes(r, db)
 

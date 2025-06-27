@@ -148,7 +148,6 @@ func getProductReviews(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-// Admin handlers
 func createProduct(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var product models.Product
@@ -161,6 +160,10 @@ func createProduct(db *gorm.DB) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create product"})
 			return
 		}
+		
+		// Add activity tracking
+		currentUser, _ := utils.GetCurrentUser(c)
+		utils.CreateActivity(db, &currentUser.ID, models.ActivityProductCreated, "New product '"+product.Name+"' created", utils.StringPtr("product"), utils.StringPtr(product.ID.String()), nil)
 
 		c.JSON(http.StatusCreated, gin.H{"data": product})
 	}
@@ -281,7 +284,7 @@ func updateProduct(db *gorm.DB) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
 			return
 		}
-
+		
 		// Fetch the updated product with all relationships for the response
 		var responseProduct models.Product
 		if err := db.Preload("Category").Preload("Variants").First(&responseProduct, "id = ?", id).Error; err != nil {
@@ -296,10 +299,19 @@ func updateProduct(db *gorm.DB) gin.HandlerFunc {
 func deleteProduct(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
+		
+		// Get product name before deletion
+		var product models.Product
+		db.First(&product, "id = ?", id)
+		
 		if err := db.Delete(&models.Product{}, "id = ?", id).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete product"})
 			return
 		}
+		
+		// Add activity tracking
+		currentUser, _ := utils.GetCurrentUser(c)
+		utils.CreateActivity(db, &currentUser.ID, models.ActivityProductDeleted, "Product '"+product.Name+"' deleted", utils.StringPtr("product"), utils.StringPtr(id), nil)
 
 		c.JSON(http.StatusOK, gin.H{"message": "Product deleted successfully"})
 	}
@@ -424,6 +436,14 @@ func toggleProductStatus(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 		
-		c.JSON(http.StatusOK, gin.H{"message": "Product status updated successfully", "data": product})
+		// Add activity tracking
+		currentUser, _ := utils.GetCurrentUser(c)
+		status := "activated"
+		if !product.IsActive {
+			status = "deactivated"
+		}
+		utils.CreateActivity(db, &currentUser.ID, models.ActivityInventoryUpdated, "Product '"+product.Name+"' "+status, utils.StringPtr("product"), utils.StringPtr(product.ID.String()), nil)
+		
+		c.JSON(http.StatusOK, gin.H{"data": product})
 	}
 }

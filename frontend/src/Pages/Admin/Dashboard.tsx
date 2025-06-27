@@ -8,6 +8,18 @@ interface DashboardStats {
     totalProducts: number;
 }
 
+interface Activity {
+    id: string;
+    createdAt: string;
+    type: string;
+    description: string;
+    user?: {
+        firstName?: string;
+        lastName?: string;
+        displayName?: string;
+    }
+}
+
 export default function AdminDashboard() {
     const [stats, setStats] = useState<DashboardStats>({
         totalUsers: 0,
@@ -18,11 +30,38 @@ export default function AdminDashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
+    const [activitiesLoading, setActivitiesLoading] = useState(true);
+
     const apiURL = import.meta.env.VITE_BACKEND_URL || "";
 
     const getAuthToken = () => {
         return localStorage.getItem('authToken') || localStorage.getItem('token');
     };
+
+    const fetchRecentActivities = async () => {
+        try {
+            setActivitiesLoading(true);
+            const token = getAuthToken();
+
+            const response = await fetch(`${apiURL}/api/admin/activities/recent`, {
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setRecentActivities(data.data.activities);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setActivitiesLoading(false);
+        }
+    }
 
     const fetchDashboardStats = async () => {
         try {
@@ -60,6 +99,7 @@ export default function AdminDashboard() {
 
     useEffect(() => {
         fetchDashboardStats();
+        fetchRecentActivities();
     //eslint-disable-next-line
     }, []);
 
@@ -129,16 +169,16 @@ export default function AdminDashboard() {
                 </div>
                 <div className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left">
+                        <Link to="/admin/products" className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left block">
                             <div className="text-2xl mb-2">➕</div>
                             <h3 className="font-medium text-gray-900">Add New Product</h3>
                             <p className="text-sm text-gray-600">Create a new product listing</p>
-                        </button>
-                        <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left">
+                        </Link>
+                        <Link to="/admin/orders" className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left block">
                             <div className="text-2xl mb-2">📊</div>
                             <h3 className="font-medium text-gray-900">View Orders</h3>
-                            <p className="text-sm text-gray-600">Manage customer orders</p>
-                        </button>
+                            <p className="text-sm text-gray-600">View and manage customer orders</p>
+                        </Link>
                         <Link to="/admin/users" className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left block">
                             <div className="text-2xl mb-2">👤</div>
                             <h3 className="font-medium text-gray-900">Manage Users</h3>
@@ -154,23 +194,48 @@ export default function AdminDashboard() {
                     <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
                 </div>
                 <div className="p-6">
-                    <div className="space-y-4">
-                        <div className="flex items-center space-x-3">
-                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                            <p className="text-sm text-gray-600">New order #1234 received</p>
-                            <span className="text-xs text-gray-400">2 minutes ago</span>
+                    {activitiesLoading ? (
+                        <div className="text-center py-4">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                         </div>
-                        <div className="flex items-center space-x-3">
-                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                            <p className="text-sm text-gray-600">New user registered</p>
-                            <span className="text-xs text-gray-400">5 minutes ago</span>
+                    ) : recentActivities.length > 0 ? (
+                        <div className="space-y-4">
+                            {recentActivities.map((activity) => {
+                                const getActivityColor = (type: string) => {
+                                    if (type.includes('order')) return 'bg-green-500';
+                                    if (type.includes('user')) return 'bg-blue-500';
+                                    if (type.includes('product') || type.includes('inventory')) return 'bg-yellow-500';
+                                    return 'bg-gray-500';
+                                };
+                                
+                                const timeAgo = (date: string) => {
+                                    console.log(date)
+                                    const now = new Date();
+                                    const activityDate = new Date(date);
+                                    const diffInMinutes = Math.floor((now.getTime() - activityDate.getTime()) / (1000 * 60));
+                                    
+                                    if (diffInMinutes < 1) return 'Just now';
+                                    if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`;
+                                    
+                                    const diffInHours = Math.floor(diffInMinutes / 60);
+                                    if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+                                    
+                                    const diffInDays = Math.floor(diffInHours / 24);
+                                    return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+                                };
+                                
+                                return (
+                                    <div key={activity.id} className="flex items-center space-x-3">
+                                        <div className={`w-2 h-2 ${getActivityColor(activity.type)} rounded-full`}></div>
+                                        <p className="text-sm text-gray-600 flex-1">{activity.description}</p>
+                                        <span className="text-xs text-gray-400">{timeAgo(activity.createdAt)}</span>
+                                    </div>
+                                );
+                            })}
                         </div>
-                        <div className="flex items-center space-x-3">
-                            <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                            <p className="text-sm text-gray-600">Product inventory updated</p>
-                            <span className="text-xs text-gray-400">10 minutes ago</span>
-                        </div>
-                    </div>
+                    ) : (
+                        <p className="text-gray-500 text-center py-4">No recent activities</p>
+                    )}
                 </div>
             </div>
         </div>

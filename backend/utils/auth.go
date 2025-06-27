@@ -224,7 +224,7 @@ func (a *AuthService) createOrUpdateUser(googleUser GoogleUserInfo) (*models.Use
 			DisplayName: &googleUser.Name,
 			LastLoginAt: &now,
 			IsActive:    true,
-			Role:        models.UserRoleUser, // Default role
+			Role:        models.UserRoleUser,
 		}
 
 		// Check if this email should be admin
@@ -235,6 +235,13 @@ func (a *AuthService) createOrUpdateUser(googleUser GoogleUserInfo) (*models.Use
 
 		if err := a.db.Create(&newUser).Error; err != nil {
 			return nil, fmt.Errorf("failed to create user: %w", err)
+		}
+
+		// Add activity tracking for new user registration
+		if err := CreateActivity(a.db, &newUser.ID, models.ActivityUserRegistered, 
+			fmt.Sprintf("User registered via Google OAuth: %s", newUser.Email), 
+			StringPtr("user"), StringPtr(newUser.ID.String()), nil); err != nil {
+			return nil, fmt.Errorf("failed to create activity: %w", err)
 		}
 
 		return &newUser, nil

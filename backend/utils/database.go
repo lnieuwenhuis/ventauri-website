@@ -10,6 +10,7 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 	"github.com/joho/godotenv"
+	"github.com/google/uuid"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
@@ -28,6 +29,10 @@ func ParseInt(s string, defaultValue int) int {
 	}
 	
 	return value
+}
+
+func StringPtr(s string) *string {
+	return &s
 }
 
 func InitDatabase() *gorm.DB {
@@ -70,6 +75,7 @@ func MigrateDatabase(db *gorm.DB) error {
 		&models.Review{},
 		&models.Coupon{},     
 		&models.Wishlist{}, 
+		&models.Activity{},
 	)
 }
 
@@ -805,4 +811,18 @@ func seedWishlists(db *gorm.DB) {
 			}
 		}
 	}
+}
+
+// Helper function to create activity records
+func CreateActivity(db *gorm.DB, userID *uuid.UUID, activityType models.ActivityType, description string, entityType *string, entityID *string, metadata *string) error {
+	activity := models.Activity{
+		UserID:      userID,
+		Type:        activityType,
+		Description: description,
+		EntityType:  entityType,
+		EntityID:    entityID,
+		Metadata:    metadata,
+	}
+	
+	return db.Create(&activity).Error
 }

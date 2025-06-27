@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import FormModal from '../../Components/Admin/FormModal';
 
 interface User {
     id: string;
@@ -25,6 +26,17 @@ interface UsersResponse {
     limit: number;
 }
 
+interface UserFormData extends Record<string, unknown> {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    role: 'admin' | 'user';
+    isActive: boolean;
+    password?: string;
+}
+
 const Users: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
@@ -32,6 +44,10 @@ const Users: React.FC = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalUsers, setTotalUsers] = useState(0);
     const [error, setError] = useState<string | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const itemsPerPage = 10;
 
     const apiURL = import.meta.env.VITE_BACKEND_URL || "";
@@ -39,6 +55,64 @@ const Users: React.FC = () => {
     const getAuthToken = () => {
         return localStorage.getItem('authToken') || localStorage.getItem('token');
     };
+
+    const userFields = [
+        {
+            name: 'firstName' as keyof UserFormData,
+            label: 'First Name',
+            type: 'text' as const,
+            required: true,
+            placeholder: 'Enter first name'
+        },
+        {
+            name: 'lastName' as keyof UserFormData,
+            label: 'Last Name',
+            type: 'text' as const,
+            required: true,
+            placeholder: 'Enter last name'
+        },
+        {
+            name: 'email' as keyof UserFormData,
+            label: 'Email',
+            type: 'text' as const,
+            required: true,
+            placeholder: 'Enter email address'
+        },
+        {
+            name: 'phone' as keyof UserFormData,
+            label: 'Phone',
+            type: 'text' as const,
+            required: false,
+            placeholder: 'Enter phone number'
+        },
+        {
+            name: 'role' as keyof UserFormData,
+            label: 'Role',
+            type: 'select' as const,
+            required: true,
+            options: [
+                { value: 'user', label: 'User' },
+                { value: 'admin', label: 'Admin' }
+            ]
+        },
+        {
+            name: 'isActive' as keyof UserFormData,
+            label: 'Active',
+            type: 'checkbox' as const,
+            required: false
+        }
+    ];
+
+    const createUserFields = [
+        ...userFields,
+        {
+            name: 'password' as keyof UserFormData,
+            label: 'Password',
+            type: 'text' as const,
+            required: true,
+            placeholder: 'Enter password (min 8 characters)'
+        }
+    ];
 
     const fetchUsers = async (page: number = 1, search: string = '') => {
         try {
@@ -89,6 +163,71 @@ const Users: React.FC = () => {
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchTerm(e.target.value);
         setCurrentPage(1);
+    };
+
+    const handleCreateUser = () => {
+        setEditingUser(null);
+        setIsModalOpen(true);
+    };
+
+    const handleEditUser = (user: User) => {
+        setEditingUser(user);
+        setIsModalOpen(true);
+    };
+
+    const handleViewUser = (user: User) => {
+        setSelectedUser(user);
+        setIsViewModalOpen(true);
+    };
+
+    const handleSubmitUser = async (formData: UserFormData) => {
+        try {
+            const token = getAuthToken();
+            if (!token) {
+                setError('No authorization token found');
+                return;
+            }
+
+            const url = editingUser 
+                ? `${apiURL}/api/admin/users/${editingUser.id}`
+                : `${apiURL}/api/admin/users`;
+            
+            const method = editingUser ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method,
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `Failed to ${editingUser ? 'update' : 'create'} user`);
+            }
+
+            setIsModalOpen(false);
+            setEditingUser(null);
+            fetchUsers(currentPage, searchTerm);
+        } catch (err) {
+            console.error('Error submitting user:', err);
+            setError(err instanceof Error ? err.message : `Failed to ${editingUser ? 'update' : 'create'} user`);
+        }
+    };
+
+    const convertUserToFormData = (user: User): UserFormData => {
+        return {
+            id: user.id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            phone: user.phone || '',
+            role: user.role,
+            isActive: user.isActive
+        };
     };
 
     const toggleUserStatus = async (userId: string) => {
@@ -157,7 +296,10 @@ const Users: React.FC = () => {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold text-gray-900">Users Management</h1>
-                <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                <button 
+                    onClick={handleCreateUser}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                >
                     Add New User
                 </button>
             </div>
@@ -268,12 +410,24 @@ const Users: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <div className="flex items-center justify-end space-x-2">
-                                                <button className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
+                                                <button 
+                                                    onClick={() => handleViewUser(user)}
+                                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                                                >
                                                     <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                     </svg>
                                                     View
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleEditUser(user)}
+                                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
+                                                >
+                                                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                    </svg>
+                                                    Edit
                                                 </button>
                                                 <button
                                                     onClick={() => toggleUserStatus(user.id)}
@@ -333,6 +487,151 @@ const Users: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            {/* Create/Edit Modal */}
+            <FormModal<UserFormData>
+                isOpen={isModalOpen}
+                onClose={() => {
+                    setIsModalOpen(false);
+                    setEditingUser(null);
+                }}
+                onSubmit={handleSubmitUser}
+                title={editingUser ? 'Edit User' : 'Create New User'}
+                fields={editingUser ? userFields : createUserFields}
+                initialData={editingUser ? convertUserToFormData(editingUser) : {
+                    firstName: '',
+                    lastName: '',
+                    email: '',
+                    phone: '',
+                    role: 'user',
+                    isActive: true,
+                    password: ''
+                }}
+            />
+
+            {/* View Modal */}
+            {isViewModalOpen && selectedUser && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="p-6">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-xl font-semibold text-gray-900">User Details</h2>
+                                <button
+                                    onClick={() => setIsViewModalOpen(false)}
+                                    className="text-gray-400 hover:text-gray-600"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                <div className="flex items-center space-x-4">
+                                    <div className="flex-shrink-0">
+                                        {selectedUser.avatar ? (
+                                            <img
+                                                className="h-16 w-16 rounded-full"
+                                                src={selectedUser.avatar}
+                                                alt={`${selectedUser.firstName} ${selectedUser.lastName}`}
+                                            />
+                                        ) : (
+                                            <div className="h-16 w-16 rounded-full bg-gray-300 flex items-center justify-center">
+                                                <span className="text-xl font-medium text-gray-700">
+                                                    {selectedUser.firstName.charAt(0)}{selectedUser.lastName.charAt(0)}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-medium text-gray-900">
+                                            {selectedUser.displayName || `${selectedUser.firstName} ${selectedUser.lastName}`}
+                                        </h3>
+                                        <p className="text-sm text-gray-500">ID: {selectedUser.id}</p>
+                                    </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700">First Name</label>
+                                        <p className="mt-1 text-sm text-gray-900">{selectedUser.firstName}</p>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700">Last Name</label>
+                                        <p className="mt-1 text-sm text-gray-900">{selectedUser.lastName}</p>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700">Email</label>
+                                        <p className="mt-1 text-sm text-gray-900">{selectedUser.email}</p>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700">Phone</label>
+                                        <p className="mt-1 text-sm text-gray-900">{selectedUser.phone || 'Not provided'}</p>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700">Role</label>
+                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                            selectedUser.role === 'admin' 
+                                                ? 'bg-purple-100 text-purple-800' 
+                                                : 'bg-blue-100 text-blue-800'
+                                        }`}>
+                                            {selectedUser.role.charAt(0).toUpperCase() + selectedUser.role.slice(1)}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700">Status</label>
+                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                            selectedUser.isActive 
+                                                ? 'bg-green-100 text-green-800' 
+                                                : 'bg-red-100 text-red-800'
+                                        }`}>
+                                            {selectedUser.isActive ? 'Active' : 'Inactive'}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700">Created At</label>
+                                        <p className="mt-1 text-sm text-gray-900">{new Date(selectedUser.createdAt).toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700">Last Updated</label>
+                                        <p className="mt-1 text-sm text-gray-900">{new Date(selectedUser.updatedAt).toLocaleString()}</p>
+                                    </div>
+                                    {selectedUser.lastLoginAt && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">Last Login</label>
+                                            <p className="mt-1 text-sm text-gray-900">{new Date(selectedUser.lastLoginAt).toLocaleString()}</p>
+                                        </div>
+                                    )}
+                                    {selectedUser.googleId && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">Google Account</label>
+                                            <p className="mt-1 text-sm text-gray-900">Connected</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            <div className="mt-6 flex justify-end space-x-3">
+                                <button
+                                    onClick={() => {
+                                        setIsViewModalOpen(false);
+                                        handleEditUser(selectedUser);
+                                    }}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    Edit User
+                                </button>
+                                <button
+                                    onClick={() => setIsViewModalOpen(false)}
+                                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -181,7 +181,12 @@ func createOrder(db *gorm.DB) gin.HandlerFunc {
 
 		// Clear cart after successful order
 		tx.Where("user_id = ?", user.ID).Delete(&models.Cart{})
-
+		
+		// Add activity tracking for each order
+		for _, order := range orders {
+			utils.CreateActivity(db, &user.ID, models.ActivityOrderCreated, "New order #"+order.OrderNumber+" created", utils.StringPtr("order"), utils.StringPtr(order.ID.String()), nil)
+		}
+		
 		tx.Commit()
 		c.JSON(http.StatusCreated, gin.H{
 			"data": orders,
@@ -211,6 +216,9 @@ func cancelOrder(db *gorm.DB) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to cancel order"})
 			return
 		}
+
+		// Add activity tracking
+		utils.CreateActivity(db, &user.ID, models.ActivityOrderCancelled, "Order #"+order.OrderNumber+" cancelled by user", utils.StringPtr("order"), utils.StringPtr(order.ID.String()), nil)
 
 		c.JSON(http.StatusOK, gin.H{"data": order})
 	}
@@ -309,7 +317,11 @@ func updateOrderStatus(db *gorm.DB) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update order status"})
 			return
 		}
-
+		
+		// Add activity tracking
+		currentUser, _ := utils.GetCurrentUser(c)
+		utils.CreateActivity(db, &currentUser.ID, models.ActivityOrderUpdated, "Order #"+order.OrderNumber+" status updated to "+req.Status, utils.StringPtr("order"), utils.StringPtr(order.ID.String()), nil)
+		
 		c.JSON(http.StatusOK, gin.H{"data": order})
 	}
 }

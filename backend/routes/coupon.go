@@ -28,7 +28,7 @@ func SetupCouponRoutes(router *gin.Engine, db *gorm.DB) {
 		adminCoupons.GET("/", getAllCoupons(db))
 		adminCoupons.POST("/", createCoupon(db))
 		adminCoupons.PUT("/:id", updateCoupon(db))
-		adminCoupons.PUT("/:id/status", toggleCouponStatus(db)) // Add this line
+		adminCoupons.PUT("/:id/status", toggleCouponStatus(db))
 		adminCoupons.DELETE("/:id", deleteCoupon(db))
 		adminCoupons.GET("/:id/usage", getCouponUsage(db))
 	}
@@ -122,7 +122,7 @@ func validateCoupon(db *gorm.DB) gin.HandlerFunc {
 				discount = req.OrderTotal
 			}
 		case models.CouponTypeFreeShipping:
-			discount = 0 // Shipping discount handled separately
+			discount = 0
 		}
 
 		c.JSON(http.StatusOK, gin.H{
@@ -190,7 +190,10 @@ func createCoupon(db *gorm.DB) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create coupon"})
 			return
 		}
-
+		
+		// Add activity tracking
+		currentUser, _ := utils.GetCurrentUser(c)
+		utils.CreateActivity(db, &currentUser.ID, models.ActivityCouponCreated, "New coupon '"+coupon.Code+"' created", utils.StringPtr("coupon"), utils.StringPtr(coupon.ID.String()), nil)
 		c.JSON(http.StatusCreated, gin.H{"data": coupon})
 	}
 }
@@ -214,7 +217,10 @@ func updateCoupon(db *gorm.DB) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update coupon"})
 			return
 		}
-
+		
+		// Add activity tracking
+		currentUser, _ := utils.GetCurrentUser(c)
+		utils.CreateActivity(db, &currentUser.ID, models.ActivityCouponUpdated, "Coupon '"+coupon.Code+"' updated", utils.StringPtr("coupon"), utils.StringPtr(coupon.ID.String()), nil)
 		c.JSON(http.StatusOK, gin.H{"data": coupon})
 	}
 }
@@ -222,11 +228,19 @@ func updateCoupon(db *gorm.DB) gin.HandlerFunc {
 func deleteCoupon(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
+		
+		// Get coupon code before deletion
+		var coupon models.Coupon
+		db.First(&coupon, "id = ?", id)
+		
 		if err := db.Delete(&models.Coupon{}, "id = ?", id).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete coupon"})
 			return
 		}
-
+		
+		// Add activity tracking
+		currentUser, _ := utils.GetCurrentUser(c)
+		utils.CreateActivity(db, &currentUser.ID, models.ActivityCouponDeleted, "Coupon '"+coupon.Code+"' deleted", utils.StringPtr("coupon"), utils.StringPtr(id), nil)
 		c.JSON(http.StatusOK, gin.H{"message": "Coupon deleted successfully"})
 	}
 }

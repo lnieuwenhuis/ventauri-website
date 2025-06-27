@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import FormModal from '../../Components/Admin/FormModal';
 
 interface PaymentMethod {
     id: string;
@@ -27,6 +28,19 @@ interface PaymentMethodsResponse {
     limit: number;
 }
 
+interface PaymentMethodFormData extends Record<string, unknown> {
+    id: string;
+    userId: string;
+    type: string;
+    provider: string;
+    last4: string;
+    expiryMonth?: number;
+    expiryYear?: number;
+    holderName: string;
+    isDefault: boolean;
+    isActive: boolean;
+}
+
 export default function Payments() {
     const [payments, setPayments] = useState<PaymentMethod[]>([]);
     const [loading, setLoading] = useState(true);
@@ -34,12 +48,112 @@ export default function Payments() {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPayments, setTotalPayments] = useState(0);
     const [error, setError] = useState<string | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingPayment, setEditingPayment] = useState<PaymentMethod | null>(null);
+    const [users, setUsers] = useState<{id: string, firstName: string, lastName: string, email: string}[]>([]);
     const itemsPerPage = 10;
 
     const apiURL = import.meta.env.VITE_BACKEND_URL || "";
 
     const getAuthToken = () => {
         return localStorage.getItem('authToken') || localStorage.getItem('token');
+    };
+
+    // Payment method form fields
+    const paymentFields = [
+        {
+            name: 'userId' as keyof PaymentMethodFormData,
+            label: 'User',
+            type: 'select' as const,
+            required: true,
+            options: users.map(user => ({
+                value: user.id,
+                label: `${user.firstName} ${user.lastName} (${user.email})`
+            }))
+        },
+        {
+            name: 'type' as keyof PaymentMethodFormData,
+            label: 'Payment Type',
+            type: 'select' as const,
+            required: true,
+            options: [
+                { value: 'credit_card', label: 'Credit Card' },
+                { value: 'debit_card', label: 'Debit Card' },
+                { value: 'paypal', label: 'PayPal' },
+                { value: 'apple_pay', label: 'Apple Pay' },
+                { value: 'google_pay', label: 'Google Pay' },
+                { value: 'bank_transfer', label: 'Bank Transfer' }
+            ]
+        },
+        {
+            name: 'provider' as keyof PaymentMethodFormData,
+            label: 'Provider',
+            type: 'text' as const,
+            required: true,
+            placeholder: 'e.g., Visa, Mastercard, PayPal'
+        },
+        {
+            name: 'last4' as keyof PaymentMethodFormData,
+            label: 'Last 4 Digits',
+            type: 'text' as const,
+            required: true,
+            placeholder: 'Last 4 digits of card/account'
+        },
+        {
+            name: 'expiryMonth' as keyof PaymentMethodFormData,
+            label: 'Expiry Month',
+            type: 'number' as const,
+            required: false,
+            placeholder: 'MM (1-12)'
+        },
+        {
+            name: 'expiryYear' as keyof PaymentMethodFormData,
+            label: 'Expiry Year',
+            type: 'number' as const,
+            required: false,
+            placeholder: 'YYYY'
+        },
+        {
+            name: 'holderName' as keyof PaymentMethodFormData,
+            label: 'Holder Name',
+            type: 'text' as const,
+            required: true,
+            placeholder: 'Name on card/account'
+        },
+        {
+            name: 'isDefault' as keyof PaymentMethodFormData,
+            label: 'Set as Default',
+            type: 'checkbox' as const,
+            required: false
+        },
+        {
+            name: 'isActive' as keyof PaymentMethodFormData,
+            label: 'Active',
+            type: 'checkbox' as const,
+            required: false
+        }
+    ];
+
+    const fetchUsers = async () => {
+        try {
+            const token = getAuthToken();
+            if (!token) return;
+            
+            const response = await fetch(`${apiURL}/api/admin/users?limit=1000`, {
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                setUsers(result.data || []);
+            }
+        } catch (err) {
+            console.error('Error fetching users:', err);
+        }
     };
 
     const fetchPayments = async (page: number = 1, search: string = '') => {
@@ -84,6 +198,7 @@ export default function Payments() {
     };
 
     useEffect(() => {
+        fetchUsers();
         fetchPayments(currentPage, searchTerm);
     //eslint-disable-next-line
     }, [currentPage, searchTerm]);
@@ -91,6 +206,67 @@ export default function Payments() {
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchTerm(e.target.value);
         setCurrentPage(1);
+    };
+
+    const handleCreatePayment = () => {
+        setEditingPayment(null);
+        setIsModalOpen(true);
+    };
+
+    const handleEditPayment = (payment: PaymentMethod) => {
+        setEditingPayment(payment);
+        setIsModalOpen(true);
+    };
+
+    const convertPaymentToFormData = (payment: PaymentMethod): PaymentMethodFormData => {
+        return {
+            id: payment.id,
+            userId: payment.userId,
+            type: payment.type,
+            provider: payment.provider,
+            last4: payment.last4,
+            expiryMonth: payment.expiryMonth,
+            expiryYear: payment.expiryYear,
+            holderName: payment.holderName,
+            isDefault: payment.isDefault,
+            isActive: payment.isActive
+        };
+    };
+
+    const handleSubmit = async (formData: PaymentMethodFormData) => {
+        try {
+            const token = getAuthToken();
+            if (!token) {
+                setError('No authorization token found');
+                return;
+            }
+
+            const url = editingPayment 
+                ? `${apiURL}/api/admin/payment-methods/${editingPayment.id}`
+                : `${apiURL}/api/payment-methods`;
+            
+            const method = editingPayment ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method,
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Failed to ${editingPayment ? 'update' : 'create'} payment method`);
+            }
+            
+            fetchPayments(currentPage, searchTerm);
+            setIsModalOpen(false);
+        } catch (err) {
+            console.error(`Error ${editingPayment ? 'updating' : 'creating'} payment method:`, err);
+            setError(err instanceof Error ? err.message : `Failed to ${editingPayment ? 'update' : 'create'} payment method`);
+        }
     };
 
     const togglePaymentStatus = async (paymentId: string) => {
@@ -168,7 +344,10 @@ export default function Payments() {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold text-gray-900">Payment Methods</h1>
-                <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                <button 
+                    onClick={handleCreatePayment}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                >
                     Add Payment Method
                 </button>
             </div>
@@ -279,7 +458,10 @@ export default function Payments() {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <div className="flex items-center justify-end space-x-2">
-                                                <button className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
+                                                <button 
+                                                    onClick={() => handleEditPayment(payment)}
+                                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                                                >
                                                     <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                                     </svg>
@@ -354,6 +536,25 @@ export default function Payments() {
                     </div>
                 )}
             </div>
+
+            <FormModal<PaymentMethodFormData>
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSubmit={handleSubmit}
+                title={editingPayment ? 'Edit Payment Method' : 'Add New Payment Method'}
+                fields={paymentFields}
+                initialData={editingPayment ? convertPaymentToFormData(editingPayment) : {
+                    userId: '',
+                    type: 'credit_card',
+                    provider: '',
+                    last4: '',
+                    expiryMonth: undefined,
+                    expiryYear: undefined,
+                    holderName: '',
+                    isDefault: false,
+                    isActive: true
+                }}
+            />
         </div>
     );
 }

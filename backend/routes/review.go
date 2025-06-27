@@ -31,8 +31,8 @@ func SetupReviewRoutes(router *gin.Engine, db *gorm.DB) {
 		adminReviews.GET("/", getAllReviews(db))
 		adminReviews.PUT("/:id/approve", approveReview(db))
 		adminReviews.PUT("/:id/reject", rejectReview(db))
-		adminReviews.PUT("/:id/status", toggleReviewStatus(db)) // Add this line
-		adminReviews.DELETE("/:id", deleteReview(db)) // Add this line
+		adminReviews.PUT("/:id/status", toggleReviewStatus(db))
+		adminReviews.DELETE("/:id", deleteReviewAdmin(db))
 	}
 }
 
@@ -85,14 +85,17 @@ func createReview(db *gorm.DB) gin.HandlerFunc {
 			Rating:     req.Rating,
 			Title:      req.Title,
 			Comment:    req.Comment,
-			IsVerified: true, // Since it's linked to a completed order
-			IsApproved: true, // Auto-approve for now
+			IsVerified: true,
+			IsApproved: true,
 		}
 
 		if err := db.Create(&review).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create review"})
 			return
 		}
+		
+		// Add activity tracking
+		utils.CreateActivity(db, &user.ID, models.ActivityReviewCreated, "New review created for product", utils.StringPtr("review"), utils.StringPtr(review.ID.String()), nil)
 
 		c.JSON(http.StatusCreated, gin.H{"data": review})
 	}
@@ -139,7 +142,7 @@ func updateReview(db *gorm.DB) gin.HandlerFunc {
 		review.Rating = req.Rating
 		review.Title = req.Title
 		review.Comment = req.Comment
-		review.IsApproved = true // Reset approval status
+		review.IsApproved = true
 
 		if err := db.Save(&review).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update review"})
@@ -242,6 +245,10 @@ func approveReview(db *gorm.DB) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to approve review"})
 			return
 		}
+		
+		// Add activity tracking
+		currentUser, _ := utils.GetCurrentUser(c)
+		utils.CreateActivity(db, &currentUser.ID, models.ActivityReviewApproved, "Review approved by admin", utils.StringPtr("review"), utils.StringPtr(review.ID.String()), nil)
 
 		c.JSON(http.StatusOK, gin.H{"data": review})
 	}
