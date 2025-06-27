@@ -156,8 +156,20 @@ func createProduct(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
+		// Generate SKU if empty
+		if product.SKU == "" {
+			product.SKU = fmt.Sprintf("SKU-%s", uuid.New().String()[:8])
+		}
+
 		if err := db.Create(&product).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create product"})
+			return
+		}
+		
+		// Fetch the created product with relationships for clean response
+		var responseProduct models.Product
+		if err := db.Preload("Category").First(&responseProduct, "id = ?", product.ID).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch created product"})
 			return
 		}
 		
@@ -165,7 +177,7 @@ func createProduct(db *gorm.DB) gin.HandlerFunc {
 		currentUser, _ := utils.GetCurrentUser(c)
 		utils.CreateActivity(db, &currentUser.ID, models.ActivityProductCreated, "New product '"+product.Name+"' created", utils.StringPtr("product"), utils.StringPtr(product.ID.String()), nil)
 
-		c.JSON(http.StatusCreated, gin.H{"data": product})
+		c.JSON(http.StatusCreated, gin.H{"data": responseProduct})
 	}
 }
 
@@ -185,6 +197,12 @@ func updateProduct(db *gorm.DB) gin.HandlerFunc {
 		if err := c.ShouldBindJSON(&updatedProduct); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
+		}
+
+		// Generate SKU if empty
+		if updatedProduct.SKU == "" {
+			// Generate a unique SKU based on product name or ID
+			updatedProduct.SKU = fmt.Sprintf("SKU-%s", existingProduct.ID.String()[:8])
 		}
 
 		// Preserve the ID and timestamps
@@ -287,9 +305,18 @@ func updateProduct(db *gorm.DB) gin.HandlerFunc {
 		
 		// Fetch the updated product with all relationships for the response
 		var responseProduct models.Product
-		if err := db.Preload("Category").Preload("Variants").First(&responseProduct, "id = ?", id).Error; err != nil {
+		if err := db.Preload("Category").Preload("Variants", func(db *gorm.DB) *gorm.DB {
+			// Only preload variants that actually exist (not zero UUIDs)
+			return db.Where("id != ?", "00000000-0000-0000-0000-000000000000")
+		}).First(&responseProduct, "id = ?", id).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch updated product"})
 			return
+		}
+
+		// Clean up any nested objects with zero UUIDs
+		for i := range responseProduct.Variants {
+			// Clear the nested product reference to avoid circular references and zero UUIDs
+			responseProduct.Variants[i].Product = models.Product{}
 		}
 
 		c.JSON(http.StatusOK, gin.H{"data": responseProduct})
@@ -390,7 +417,7 @@ func getAllProductsAdmin(db *gorm.DB) gin.HandlerFunc {
 		query.Count(&total)
 		
 		offset := (utils.ParseInt(page, 1) - 1) * utils.ParseInt(limit, 10)
-		if err := query.Offset(offset).Limit(utils.ParseInt(limit, 10)).Find(&products).Error; err != nil {
+		if err := query.Order("created_at DESC").Offset(offset).Limit(utils.ParseInt(limit, 10)).Find(&products).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch products"})
 			return
 		}

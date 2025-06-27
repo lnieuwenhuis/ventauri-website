@@ -22,6 +22,7 @@ interface ProductsResponse {
 }
 
 interface ProductFormData extends Record<string, unknown> {
+    id: string;
     name: string;
     description: string;
     price: number;
@@ -81,7 +82,6 @@ const Products: React.FC = () => {
             
             const result: ProductsResponse = await response.json();
 
-            console.log(result)
             setProducts(result.data);
             setTotalProducts(result.total);
         } catch (err) {
@@ -173,8 +173,31 @@ const Products: React.FC = () => {
             if (!response.ok) {
                 throw new Error(`Failed to ${editingProduct ? 'update' : 'create'} product`);
             }
+    
+            const result = await response.json();
+            const updatedProduct = result.data;
+    
+            // Update the products array directly instead of refetching
+            if (editingProduct) {
+                // Update existing product in the array
+                setProducts(prevProducts => 
+                    prevProducts.map(product => 
+                        product.id === editingProduct.id ? updatedProduct : product
+                    )
+                );
+            } else {
+                // Add new product to the beginning and remove the last one to maintain page size
+                setProducts(prevProducts => {
+                    const newProducts = [updatedProduct, ...prevProducts];
+                    // If we have more than itemsPerPage products, remove the last one
+                    return newProducts.length > itemsPerPage 
+                        ? newProducts.slice(0, itemsPerPage)
+                        : newProducts;
+                });
+                // Update total count
+                setTotalProducts(prevTotal => prevTotal + 1);
+            }
             
-            fetchProducts(currentPage, searchTerm);
             setIsModalOpen(false);
         } catch (err) {
             console.error('Error submitting product:', err);
@@ -199,6 +222,7 @@ const Products: React.FC = () => {
         }
         
         return {
+            id: product.id,
             name: product.name,
             description: product.description,
             price: product.price,

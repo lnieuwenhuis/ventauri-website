@@ -140,14 +140,15 @@ func getAllCategoriesAdmin(db *gorm.DB) gin.HandlerFunc {
 		query := db.Model(&models.Category{}).Preload("Products")
 		
 		if search != "" {
-			query = query.Where("name ILIKE ? OR description ILIKE ?", "%"+search+"%", "%"+search+"%")
+			query = query.Where("name ILIKE ? OR description ILIKE ?", 
+				"%"+search+"%", "%"+search+"%")
 		}
 		
 		var total int64
 		query.Count(&total)
 		
 		offset := (utils.ParseInt(page, 1) - 1) * utils.ParseInt(limit, 10)
-		if err := query.Offset(offset).Limit(utils.ParseInt(limit, 10)).Find(&categories).Error; err != nil {
+		if err := query.Order("created_at DESC").Offset(offset).Limit(utils.ParseInt(limit, 10)).Find(&categories).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch categories"})
 			return
 		}

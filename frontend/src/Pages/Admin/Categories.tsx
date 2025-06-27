@@ -20,6 +20,7 @@ interface CategoriesResponse {
 }
 
 interface CategoryFormData extends Record<string, unknown> {
+    id: string;
     name: string;
     desc: string;
     parent_id?: string;
@@ -141,7 +142,21 @@ const AdminCategories: React.FC = () => {
                 throw new Error(`Failed to ${editingCategory ? 'update' : 'create'} category`);
             }
             
-            fetchCategories(currentPage, searchTerm);
+            const result = await response.json();
+
+            setCategories(prevCategories => {
+                if (editingCategory) {
+                    // Replace the edited category with the updated data
+                    return prevCategories.map(cat => 
+                        cat.id === editingCategory.id ? result.data : cat
+                    );
+                } else {
+                    // Add the new category to the list
+                    return [...prevCategories, result.data];
+                }
+            });
+            setTotalCategories(prevTotal => prevTotal + (editingCategory ? 0 : 1));
+            setParentCategories(prev => [...prev, { id: editingCategory?.id || '', name: formData.name as string }]);
             setIsModalOpen(false);
         } catch (err) {
             console.error('Error submitting category:', err);
@@ -153,6 +168,7 @@ const AdminCategories: React.FC = () => {
 
     const convertCategoryToFormData = (category: Category): CategoryFormData => {
         return {
+            id: category.id,
             name: category.name,
             desc: category.desc,
             parent_id: category.parent_id || '',

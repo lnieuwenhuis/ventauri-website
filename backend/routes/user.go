@@ -117,7 +117,7 @@ func getAllUsers(db *gorm.DB) gin.HandlerFunc {
 		query.Count(&total)
 		
 		offset := (utils.ParseInt(page, 1) - 1) * utils.ParseInt(limit, 10)
-		if err := query.Offset(offset).Limit(utils.ParseInt(limit, 10)).Find(&users).Error; err != nil {
+		if err := query.Order("created_at DESC").Offset(offset).Limit(utils.ParseInt(limit, 10)).Find(&users).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
 			return
 		}
