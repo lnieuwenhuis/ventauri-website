@@ -406,11 +406,17 @@ func getAllProductsAdmin(db *gorm.DB) gin.HandlerFunc {
 		page := c.DefaultQuery("page", "1")
 		limit := c.DefaultQuery("limit", "10")
 		search := c.Query("search")
+		categoryId := c.Query("categoryId")
 		
 		query := db.Model(&models.Product{}).Preload("Category").Preload("Variants")
 		
 		if search != "" {
 			query = query.Where("name ILIKE ? OR description ILIKE ?", "%"+search+"%", "%"+search+"%")
+		}
+		
+		// Add category filtering
+		if categoryId != "" {
+			query = query.Where("category_id = ?", categoryId)
 		}
 		
 		var total int64

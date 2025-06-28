@@ -4,7 +4,7 @@ This is in no way a priority list, just an itemized list of things needing to be
 ## Admin Panel 
 
 ### 1. Categories page
-- [ ] Show Products in Categories view modal
+- [X] Link to filtered products in Categories view modal
 - [ ] Remove Root/Parent Category functionality
 - [ ] Show amount of products in a category and allow sorting by that
 - [ ] Stop fetching after every Category update or create, only on delete

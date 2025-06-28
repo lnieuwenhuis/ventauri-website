@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import FormModal from '../../Components/Admin/FormModal';
+import ViewModal from '../../Components/Admin/ViewModal';
 
 interface Category {
     id: string;
@@ -27,6 +28,17 @@ interface CategoryFormData extends Record<string, unknown> {
     isActive: boolean;
 }
 
+interface CategoryViewData extends Record<string, unknown> {
+    id: string;
+    name: string;
+    desc: string;
+    parent_id?: string;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt?: string;
+    deletedAt?: string | null;
+}
+
 const AdminCategories: React.FC = () => {
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
@@ -38,6 +50,8 @@ const AdminCategories: React.FC = () => {
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
     const [modalLoading, setModalLoading] = useState(false);
     const [parentCategories, setParentCategories] = useState<{id: string, name: string}[]>([]);
+    const [viewingCategory, setViewingCategory] = useState<CategoryViewData | null>(null);
+    const [isViewingModalOpen, setIsViewingModalOpen] = useState(false);
     const itemsPerPage = 10;
 
     const apiURL = import.meta.env.VITE_BACKEND_URL || "";
@@ -112,6 +126,20 @@ const AdminCategories: React.FC = () => {
         setEditingCategory(category);
         setIsModalOpen(true);
     };
+
+    const handleViewCategory = (category: Category) => {
+        setViewingCategory({
+            id: category.id,
+            name: category.name,
+            desc: category.desc,
+            parent_id: category.parent_id || '',
+            isActive: category.isActive,
+            createdAt: category.createdAt,
+            updatedAt: category.updatedAt,
+            deletedAt: category.deletedAt
+        });
+        setIsViewingModalOpen(true);
+    }
 
     const handleSubmitCategory = async (formData: CategoryFormData) => {
         try {
@@ -208,6 +236,44 @@ const AdminCategories: React.FC = () => {
             required: false
         }
     ], [parentCategories]);
+
+    const categoryViewFields = useMemo(() => [
+        {
+            name: 'name',
+            label: 'Category Name'
+        },
+        {
+            name: 'desc',
+            label: 'Description'
+        },
+        {
+            name: 'parent_id',
+            label: 'Parent Category ID'
+        },
+        {
+            name: 'isActive',
+            label: 'Status'
+        },
+        {
+            name: 'createdAt',
+            label: 'Created At'
+        },
+        {
+            name: 'updatedAt',
+            label: 'Updated At'
+        },
+        {
+            name: 'deletedAt',
+            label: 'Deleted At'
+        },
+    ], [])
+
+    const getLinkedSubjects = (category: Category) => [
+        {
+            name: 'View Products in Category',
+            link: `/admin/products?categoryId=${category.id}`
+        }
+    ]
 
     const toggleCategoryStatus = async (categoryId: string) => {
         try {
@@ -369,6 +435,15 @@ const AdminCategories: React.FC = () => {
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                 <div className="flex items-center justify-end space-x-2">
                                                     <button 
+                                                        onClick={() => handleViewCategory(category)}
+                                                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                                                    >
+                                                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                        </svg>
+                                                        View
+                                                    </button>
+                                                    <button 
                                                         onClick={() => handleEditCategory(category)}
                                                         className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
                                                     >
@@ -457,6 +532,15 @@ const AdminCategories: React.FC = () => {
                 initialData={editingCategory ? convertCategoryToFormData(editingCategory) : undefined}
                 isLoading={modalLoading}
             />
+
+            <ViewModal<CategoryViewData>
+                fields={categoryViewFields}
+                data={viewingCategory || {}}
+                isOpen={isViewingModalOpen}
+                onClose={() => setIsViewingModalOpen(false)}
+                linkedSubjects={viewingCategory ? getLinkedSubjects(viewingCategory) : []}
+            />
+            
         </div>
     );
 };

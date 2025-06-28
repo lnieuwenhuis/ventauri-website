@@ -42,6 +42,7 @@ const Products: React.FC = () => {
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [modalLoading, setModalLoading] = useState(false);
     const [categories, setCategories] = useState<{id: string, name: string}[]>([]);
+    const [categoryFilter, setCategoryFilter] = useState<string>('');
     const itemsPerPage = 10;
 
     const apiURL = import.meta.env.VITE_BACKEND_URL || "";
@@ -50,7 +51,7 @@ const Products: React.FC = () => {
         return localStorage.getItem('authToken') || localStorage.getItem('token');
     };
 
-    const fetchProducts = async (page: number = 1, search: string = '') => {
+    const fetchProducts = async (page: number = 1, search: string = '', categoryId: string = '') => {
         try {
             setLoading(true);
             setError(null);
@@ -58,7 +59,8 @@ const Products: React.FC = () => {
             const params = new URLSearchParams({
                 page: page.toString(),
                 limit: itemsPerPage.toString(),
-                ...(search && { search })
+                ...(search && { search }),
+                ...(categoryId && { categoryId })
             });
             
             const token = getAuthToken();
@@ -117,14 +119,42 @@ const Products: React.FC = () => {
     };
 
     useEffect(() => {
-        fetchProducts(currentPage, searchTerm);
+        // Check for categoryId in URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const categoryIdFromUrl = urlParams.get('categoryId');
+        
+        if (categoryIdFromUrl && categoryIdFromUrl !== categoryFilter) {
+            setCategoryFilter(categoryIdFromUrl);
+            // Fetch products with the URL category filter immediately
+            fetchProducts(currentPage, searchTerm, categoryIdFromUrl);
+        } else {
+            // Fetch products with current filter state
+            fetchProducts(currentPage, searchTerm, categoryFilter);
+        }
+        
         fetchCategories();
     // eslint-disable-next-line
-    }, [currentPage, searchTerm]);
+    }, [currentPage, searchTerm, categoryFilter]);
 
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchTerm(e.target.value);
         setCurrentPage(1);
+    };
+
+    const handleCategoryFilter = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const selectedCategoryId = e.target.value;
+        setCategoryFilter(selectedCategoryId);
+        setCurrentPage(1);
+        
+        // Update URL parameters
+        const url = new URL(window.location.href);
+
+        if (selectedCategoryId) {
+            url.searchParams.set('categoryId', selectedCategoryId);
+        } else {
+            url.searchParams.delete('categoryId');
+        }
+        window.history.pushState({}, '', url.toString());
     };
 
     const handleCreateProduct = () => {
@@ -368,6 +398,20 @@ const Products: React.FC = () => {
                                 onChange={handleSearch}
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
+                        </div>
+                        <div className="sm:w-64">
+                            <select
+                                value={categoryFilter}
+                                onChange={handleCategoryFilter}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                                <option value="">All Categories</option>
+                                {categories.map(category => (
+                                    <option key={category.id} value={category.id}>
+                                        {category.name}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                     </div>
                 </div>
