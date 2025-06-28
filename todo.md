@@ -7,7 +7,7 @@ This is in no way a priority list, just an itemized list of things needing to be
 - [X] Link to filtered products in Categories view modal
 - [ ] Remove Root/Parent Category functionality
 - [ ] Show amount of products in a category and allow sorting by that
-- [ ] Stop fetching after every Category update or create, only on delete
+- [X] Stop fetching after every Category update or create, only on delete
 - [ ] Implement debounce on the searching to avoid spam requests
 - [ ] Implement sorting from old to new, and from new to old (db request (new request parameter))
 
@@ -29,8 +29,8 @@ This is in no way a priority list, just an itemized list of things needing to be
 - [ ] In view modal, have button to show associated wishlists, orders, adresses, payment methods, and products
 
 ### 4. Products Page
-- [ ] Allow for searching by category (filter, not typing search)
-- [ ] Stop fetching after every Product update or create, only on delete
+- [X] Allow for searching by category (filter, not typing search)
+- [X] Stop fetching after every Product update or create, only on delete
 - [ ] Implement debounce on the searching to avoid spam requests
 - [ ] Implement sorting from old to new, and from new to old (db request (new request parameter))
 - [ ] Implement sorting by price
