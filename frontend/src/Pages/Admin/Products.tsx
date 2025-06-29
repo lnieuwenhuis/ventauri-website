@@ -31,7 +31,7 @@ interface ProductFormData extends Record<string, unknown> {
     isActive: boolean;
 }
 
-const Products: React.FC = () => {
+const AdminProducts: React.FC = () => {
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -601,4 +601,4 @@ const Products: React.FC = () => {
     );
 };
 
-export default Products;
+export default AdminProducts;

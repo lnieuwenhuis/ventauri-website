@@ -37,7 +37,7 @@ interface UserFormData extends Record<string, unknown> {
     password?: string;
 }
 
-const Users: React.FC = () => {
+const AdminUsers: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -636,4 +636,4 @@ const Users: React.FC = () => {
     );
 };
 
-export default Users;
+export default AdminUsers;

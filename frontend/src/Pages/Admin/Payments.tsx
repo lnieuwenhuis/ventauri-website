@@ -41,7 +41,7 @@ interface PaymentMethodFormData extends Record<string, unknown> {
     isActive: boolean;
 }
 
-export default function Payments() {
+export default function AdminPayments() {
     const [payments, setPayments] = useState<PaymentMethod[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');

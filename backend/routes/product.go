@@ -51,15 +51,59 @@ func getProducts(db *gorm.DB) gin.HandlerFunc {
 		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 		limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 		offset := (page - 1) * limit
-
-		query := db.Where("is_active = ?", true).Preload("Category").Preload("Variants")
 		
-		if err := query.Offset(offset).Limit(limit).Find(&products).Error; err != nil {
+		// Get query parameters
+		search := c.Query("search")
+		categoryId := c.Query("categoryId")
+		sortBy := c.DefaultQuery("sort", "newest")
+
+		// Start with base query including active products and preload relationships
+		query := db.Model(&models.Product{}).Where("is_active = ?", true)
+		
+		// Apply search filter
+		if search != "" {
+			searchQuery := "%" + search + "%"
+			query = query.Where("(name LIKE ? OR description LIKE ?)", searchQuery, searchQuery)
+		}
+		
+		// Apply category filter
+		if categoryId != "" {
+			query = query.Where("category_id = ?", categoryId)
+		}
+		
+		// Get total count before pagination
+		var total int64
+		if err := query.Count(&total).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to count products"})
+			return
+		}
+		
+		// Apply sorting
+		switch sortBy {
+		case "price-low":
+			query = query.Order("price ASC")
+		case "price-high":
+			query = query.Order("price DESC")
+		case "name":
+			query = query.Order("name ASC")
+		case "oldest":
+			query = query.Order("created_at ASC")
+		default: // "newest"
+			query = query.Order("created_at DESC")
+		}
+		
+		// Apply pagination and preload relationships
+		if err := query.Preload("Category").Preload("Variants").Offset(offset).Limit(limit).Find(&products).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch products"})
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"data": products})
+		c.JSON(http.StatusOK, gin.H{
+			"data": products,
+			"total": total,
+			"page": page,
+			"limit": limit,
+		})
 	}
 }
 

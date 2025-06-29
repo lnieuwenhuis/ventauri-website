@@ -26,7 +26,7 @@ interface AddressesResponse {
     limit: number;
 }
 
-export default function Addresses() {
+export default function AdminAddresses() {
     const [addresses, setAddresses] = useState<Address[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');

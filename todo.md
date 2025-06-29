@@ -73,7 +73,7 @@ This is in no way a priority list, just an itemized list of things needing to be
 ## User facing
 
 ### 11. Home page
-- [ ] Allow for getting the card when logging in
+- [ ] Allow for getting the cart when logging in
 - [ ] Add featured products (latest 3 to be added to store)
 - [ ] Add carousel of products (all products)
 
@@ -82,13 +82,15 @@ This is in no way a priority list, just an itemized list of things needing to be
 - [ ] When clicked navigate to products page filtered by the category
 
 ### 13. Products page
-- [ ] Show all products in a grid or list (user choice)
-- [ ] Show product name, price, and image
-- [ ] Add sorting to the top of the grid
-- [ ] Add filters and searching to the left side of the grid
+- [X] Show all products in a grid or list (user choice)
+- [X] Show product name, price, and image
+- [X] Add sorting to the top of the grid
+- [X] Add filters and searching to the left side of the grid
+- [ ] Make searching have a debounce timer and a minumum of 3 letters input
 - [ ] Allow for adding products to cart
 - [ ] When filtered by a category, show category in small hero section
-- [ ] Add pagination and allow user to choose amount per page
+- [X] Add pagination 
+- [ ] Allow user to choose amount per page
 #### 13.1. Product page
 - [ ] Show product name, price, image, and description
 - [ ] Show amount of products in stock

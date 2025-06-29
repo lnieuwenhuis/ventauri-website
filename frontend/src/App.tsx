@@ -6,15 +6,17 @@ import Home from './Pages/Public/Home';
 import Login from './Pages/Public/Login';
 import AdminLayout from './Components/Admin/AdminLayout';
 import AdminDashboard from './Pages/Admin/Dashboard';
-import Products from './Pages/Admin/Products';
-import Categories from './Pages/Admin/Categories';
-import Orders from './Pages/Admin/Orders';
-import Users from './Pages/Admin/Users';
-import Coupons from './Pages/Admin/Coupons';
-import Reviews from './Pages/Admin/Reviews';
-import Payments from './Pages/Admin/Payments';
-import Addresses from './Pages/Admin/Addresses';
-import Wishlists from './Pages/Admin/Wishlists';
+import AdminProducts from './Pages/Admin/Products';
+import AdminCategories from './Pages/Admin/Categories';
+import AdminOrders from './Pages/Admin/Orders';
+import AdminUsers from './Pages/Admin/Users';
+import AdminCoupons from './Pages/Admin/Coupons';
+import AdminReviews from './Pages/Admin/Reviews';
+import AdminPayments from './Pages/Admin/Payments';
+import AdminAddresses from './Pages/Admin/Addresses';
+import AdminWishlists from './Pages/Admin/Wishlists';
+
+import Products from './Pages/Public/Products';
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -50,16 +52,18 @@ const AppRoutes = () => {
       }>
         <Route index element={<AdminDashboard />} />
         <Route path="dashboard" element={<AdminDashboard />} />
-        <Route path="products" element={<Products />} />
-        <Route path="categories" element={<Categories />} />
-        <Route path="orders" element={<Orders />} />
-        <Route path="users" element={<Users />} />
-        <Route path="coupons" element={<Coupons />} />
-        <Route path="reviews" element={<Reviews />} />
-        <Route path="payments" element={<Payments />} />
-        <Route path="addresses" element={<Addresses />} />
-        <Route path="wishlists" element={<Wishlists />} />
+        <Route path="products" element={<AdminProducts />} />
+        <Route path="categories" element={<AdminCategories />} />
+        <Route path="orders" element={<AdminOrders />} />
+        <Route path="users" element={<AdminUsers />} />
+        <Route path="coupons" element={<AdminCoupons />} />
+        <Route path="reviews" element={<AdminReviews />} />
+        <Route path="payments" element={<AdminPayments />} />
+        <Route path="addresses" element={<AdminAddresses />} />
+        <Route path="wishlists" element={<AdminWishlists />} />
       </Route>
+
+      <Route path="/products" element={<Products />} />
       
       {/* Legacy dashboard route - redirect to admin */}
       <Route path="/dashboard" element={<Navigate to="/admin" replace />} />
