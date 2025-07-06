@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Navbar from '../../Components/Navbar';
+import { Link } from 'react-router-dom';
+import { useCart } from '../../Contexts/CartContext';
 
 interface Product {
     id: string;
@@ -44,6 +46,11 @@ export default function Products() {
     
     const itemsPerPage = 12;
     const apiURL = import.meta.env.VITE_BACKEND_URL || "";
+
+    const { addToCart, loading: cartLoading } = useCart();
+    const handleAddToCart = async (productId: string) => {
+        await addToCart(productId, 1);
+    }
 
     // Initialize filters from URL parameters
     useEffect(() => {
@@ -263,15 +270,20 @@ export default function Products() {
                                 <p className="text-gray-500">Try adjusting your filters or search terms</p>
                             </div>
                         ) : (
+                            // In the Products Grid section, wrap the product card with Link:
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {filteredProducts.map((product) => {
                                     const productImages = parseImages(product.images);
                                     const mainImage = productImages.length > 0 
                                         ? productImages[0] 
                                         : 'https://picsum.photos/400/400';
-
+                                
                                     return (
-                                        <div key={product.id} className="bg-gray-800 rounded-lg overflow-hidden hover:bg-gray-750 transition-colors group">
+                                        <Link 
+                                            key={product.id} 
+                                            to={`/product/${product.id}`} 
+                                            className="bg-gray-800 rounded-lg overflow-hidden hover:bg-gray-750 transition-colors group"
+                                        >
                                             <div className="aspect-square overflow-hidden">
                                                 <img
                                                     src={mainImage}
@@ -301,12 +313,19 @@ export default function Products() {
                                                     <span className="text-xl font-bold text-yellow-400">
                                                         ${product.price.toFixed(2)}
                                                     </span>
-                                                    <button className="bg-yellow-400 text-black px-4 py-2 rounded-lg font-medium hover:bg-yellow-300 transition-colors">
-                                                        Add to Cart
+                                                    <button 
+                                                        className="bg-yellow-400 text-black px-4 py-2 rounded-lg font-medium hover:bg-yellow-300 transition-colors"
+                                                        onClick={(e) => {
+                                                            e.preventDefault(); 
+                                                            handleAddToCart(product.id)
+                                                        }}
+                                                        disabled={cartLoading}
+                                                    >
+                                                        {cartLoading ? 'Adding...' : 'Add to Cart'}
                                                     </button>
                                                 </div>
                                             </div>
-                                        </div>
+                                        </Link>
                                     );
                                 })}
                             </div>

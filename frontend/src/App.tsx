@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './Contexts/AuthContext';
+import { CartProvider } from './Contexts/CartContext';
 
 import Home from './Pages/Public/Home';
 import Login from './Pages/Public/Login';
@@ -17,6 +18,8 @@ import AdminAddresses from './Pages/Admin/Addresses';
 import AdminWishlists from './Pages/Admin/Wishlists';
 
 import Products from './Pages/Public/Products';
+import Product from './Pages/Public/Product';
+import Cart from './Pages/Public/Cart';
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -64,6 +67,8 @@ const AppRoutes = () => {
       </Route>
 
       <Route path="/products" element={<Products />} />
+      <Route path="/product/:id" element={<Product />} />
+      <Route path="/cart" element={<Cart />} />
       
       {/* Legacy dashboard route - redirect to admin */}
       <Route path="/dashboard" element={<Navigate to="/admin" replace />} />
@@ -74,9 +79,11 @@ const AppRoutes = () => {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <AppRoutes />
-      </Router>
+      <CartProvider>
+        <Router>
+          <AppRoutes />
+        </Router>
+      </CartProvider>
     </AuthProvider>
   );
 }

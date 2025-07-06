@@ -112,7 +112,7 @@ func getProduct(db *gorm.DB) gin.HandlerFunc {
 		id := c.Param("id")
 		var product models.Product
 
-		if err := db.Where("id = ? AND is_active = ?", id, true).Preload("Category").Preload("Variants").Preload("Reviews").First(&product).Error; err != nil {
+		if err := db.Where("id = ? AND is_active = ?", id, true).Preload("Category").Preload("Variants").Preload("Reviews.User").First(&product).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
 			return
 		}

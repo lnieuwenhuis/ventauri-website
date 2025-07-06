@@ -1,7 +1,80 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../Components/Navbar';
+import { useCart } from '../../Contexts/CartContext';
+
+interface Product {
+    id: string;
+    name: string;
+    description: string;
+    price: number;
+    categoryId: string;
+    images: string;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+    category?: {
+        id: string;
+        name: string;
+    };
+}
+
+interface ProductsResponse {
+    data: Product[];
+    total: number;
+    page: number;
+    limit: number;
+}
 
 export default function Home() {
+    const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+    const [loading, setLoading] = useState(true);
+    const apiURL = import.meta.env.VITE_BACKEND_URL || "";
+    const { addToCart, loading: cartLoading } = useCart();
+
+    const fetchFeaturedProducts = async () => {
+        try {
+            setLoading(true);
+            // Fetch latest 3 products sorted by creation date
+            const params = new URLSearchParams({
+                page: '1',
+                limit: '3',
+                sort: 'newest'
+            });
+
+            const response = await fetch(`${apiURL}/api/products/?${params}`);
+            if (response.ok) {
+                const result: ProductsResponse = await response.json();
+                setFeaturedProducts(result.data || []);
+            }
+        } catch (error) {
+            console.error('Error fetching featured products:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchFeaturedProducts();
+    //eslint-disable-next-line
+    }, []);
+
+    const parseImages = (images: string): string[] => {
+        try {
+            if (images && images.trim()) {
+                const parsed = JSON.parse(images);
+                return Array.isArray(parsed) ? parsed : [];
+            }
+        } catch (error) {
+            console.warn('Failed to parse product images:', error);
+        }
+        return [];
+    };
+
+    const handleAddToCart = async (productId: string) => {
+        await addToCart(productId, 1);
+    };
+
     return (
         <div className="min-h-screen bg-gray-900 text-white">
             <Navbar />
@@ -44,62 +117,66 @@ export default function Home() {
             <section className="py-20 bg-gray-800">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center mb-16">
-                        <h2 className="text-4xl font-bold text-white mb-4">Featured Collection</h2>
-                        <p className="text-xl text-gray-300">Gear up with official Ventauri Esports merchandise</p>
+                        <h2 className="text-4xl font-bold text-white mb-4">Latest Products</h2>
+                        <p className="text-xl text-gray-300">Check out our newest Ventauri Esports merchandise</p>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {/* Product Card 1 */}
-                        <div className="bg-gray-900 rounded-lg overflow-hidden hover:transform hover:scale-105 transition-transform duration-200">
-                            <div className="h-64 bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center">
-                                <div className="text-6xl text-yellow-400">👕</div>
-                            </div>
-                            <div className="p-6">
-                                <h3 className="text-xl font-semibold text-white mb-2">Team Jersey</h3>
-                                <p className="text-gray-400 mb-4">Official racing jersey with team colors</p>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-2xl font-bold text-yellow-400">€49.99</span>
-                                    <button className="bg-yellow-400 text-black px-4 py-2 rounded font-semibold hover:bg-yellow-300 transition-colors">
-                                        Add to Cart
-                                    </button>
-                                </div>
-                            </div>
+                    {loading ? (
+                        <div className="flex justify-center items-center py-20">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
                         </div>
-
-                        {/* Product Card 2 */}
-                        <div className="bg-gray-900 rounded-lg overflow-hidden hover:transform hover:scale-105 transition-transform duration-200">
-                            <div className="h-64 bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center">
-                                <div className="text-6xl text-yellow-400">🧢</div>
-                            </div>
-                            <div className="p-6">
-                                <h3 className="text-xl font-semibold text-white mb-2">Racing Cap</h3>
-                                <p className="text-gray-400 mb-4">Premium cap with embroidered logo</p>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-2xl font-bold text-yellow-400">€29.99</span>
-                                    <button className="bg-yellow-400 text-black px-4 py-2 rounded font-semibold hover:bg-yellow-300 transition-colors">
-                                        Add to Cart
-                                    </button>
-                                </div>
-                            </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            {featuredProducts.map((product) => {
+                                const productImages = parseImages(product.images);
+                                console.log(productImages)
+                                const firstImage = productImages.length > 0 ? productImages[0] : null;
+                                
+                                return (
+                                    <div key={product.id} className="bg-gray-900 rounded-lg overflow-hidden hover:transform hover:scale-105 transition-transform duration-200">
+                                        <Link to={`/products/${product.id}`}>
+                                            <div className="h-64 bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center overflow-hidden">
+                                                {firstImage ? (
+                                                    <img 
+                                                        src={firstImage} 
+                                                        alt={product.name}
+                                                        className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
+                                                        onError={(e) => {
+                                                            const target = e.target as HTMLImageElement;
+                                                            target.src = 'https://picsum.photos/400/400';
+                                                        }}
+                                                    />
+                                                ) : null}
+                                                <div className={`text-6xl text-yellow-400 ${firstImage ? 'hidden' : ''}`}>📦</div>
+                                            </div>
+                                        </Link>
+                                        <div className="p-6">
+                                            <Link to={`/products/${product.id}`}>
+                                                <h3 className="text-xl font-semibold text-white mb-2 hover:text-yellow-400 transition-colors">{product.name}</h3>
+                                            </Link>
+                                            <p className="text-gray-400 mb-4 line-clamp-2">{product.description}</p>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-2xl font-bold text-yellow-400">€{product.price.toFixed(2)}</span>
+                                                <button 
+                                                    onClick={() => handleAddToCart(product.id)}
+                                                    disabled={cartLoading}
+                                                    className="bg-yellow-400 text-black px-4 py-2 rounded font-semibold hover:bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    {cartLoading ? 'Adding...' : 'Add to Cart'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
-
-                        {/* Product Card 3 */}
-                        <div className="bg-gray-900 rounded-lg overflow-hidden hover:transform hover:scale-105 transition-transform duration-200">
-                            <div className="h-64 bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center">
-                                <div className="text-6xl text-yellow-400">🏎️</div>
-                            </div>
-                            <div className="p-6">
-                                <h3 className="text-xl font-semibold text-white mb-2">Model Car</h3>
-                                <p className="text-gray-400 mb-4">1:43 scale team livery model</p>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-2xl font-bold text-yellow-400">€79.99</span>
-                                    <button className="bg-yellow-400 text-black px-4 py-2 rounded font-semibold hover:bg-yellow-300 transition-colors">
-                                        Add to Cart
-                                    </button>
-                                </div>
-                            </div>
+                    )}
+                    
+                    {!loading && featuredProducts.length === 0 && (
+                        <div className="text-center py-20">
+                            <p className="text-gray-400 text-lg">No products available at the moment.</p>
                         </div>
-                    </div>
+                    )}
                 </div>
             </section>
 

@@ -64,17 +64,17 @@ This is in no way a priority list, just an itemized list of things needing to be
 - [ ] Implement sorting by name, allow for filtering by name
 
 ### 10. Cart (no page, just backend)
-- [ ] Allow carts to have multiple products
-- [ ] Allow carts to have multiple of the same product
-- [ ] Allow for removing products from cart
-- [ ] Allow for updating quantity of products in cart
+- [X] Allow carts to have multiple products
+- [X] Allow carts to have multiple of the same product
+- [X] Allow for removing products from cart
+- [X] Allow for updating quantity of products in cart
 - [ ] ALlow for adding coupon (single) to a cart and recalculating total
 
 ## User facing
 
 ### 11. Home page
-- [ ] Allow for getting the cart when logging in
-- [ ] Add featured products (latest 3 to be added to store)
+- [X] Allow for getting the cart when logging in
+- [X] Add featured products (latest 3 to be added to store)
 - [ ] Add carousel of products (all products)
 
 ### 12. Categories page
@@ -87,38 +87,38 @@ This is in no way a priority list, just an itemized list of things needing to be
 - [X] Add sorting to the top of the grid
 - [X] Add filters and searching to the left side of the grid
 - [ ] Make searching have a debounce timer and a minumum of 3 letters input
-- [ ] Allow for adding products to cart
+- [X] Allow for adding products to cart
 - [ ] When filtered by a category, show category in small hero section
 - [X] Add pagination 
 - [ ] Allow user to choose amount per page
 #### 13.1. Product page
-- [ ] Show product name, price, image, and description
-- [ ] Show amount of products in stock
-- [ ] Add to cart button
+- [X] Show product name, price, image, and description
+- [-] Show amount of products in stock
+- [X] Add to cart button
 - [ ] Add to wishlist button
 - [ ] Add to reviews button
 
 ### 14. Cart page
-- [ ] Show cart items
-- [ ] Show total price
+- [X] Show cart items
+- [X] Show total price
 - [ ] Show coupon (if any)
 - [ ] Show estimated total price after coupon (if any)
 - [ ] Allow for adding coupon to cart
 - [ ] Allow for removing coupon from cart
-- [ ] Allow for updating quantity of products in cart
-- [ ] Allow for removing products from cart
-- [ ] Allow for adding products to cart
+- [X] Allow for updating quantity of products in cart
+- [X] Allow for removing products from cart
+- [X] Allow for adding products to cart
 - [ ] Allow for checking out cart
-- [ ] Allow for emptying cart
-- [ ] Allow for updating cart
-- [ ] Allow for getting cart
+- [X] Allow for emptying cart
+- [X] Allow for updating cart
+- [X] Allow for getting cart
 
 ### 15. Our Team page
 - [ ] Add a navbar under regular navbar with entries for roster, schedule, results etc.
 - [ ] Add landing page with an about us section and a recent tweets section (can be changed later)
 #### 15.1. Roster page
 - [ ] Show all team members and their positions (engineer, driver, management etc)
-- [ ] Show team member image, name, position, and social media links
+- [ ] Show team member image, name, position, country, and social media links
 #### 15.2. Schedule page
 - [ ] Show all team races and their times
 - [ ] Show team name, competition, and time
