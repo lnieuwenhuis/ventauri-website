@@ -19,7 +19,7 @@ import AdminWishlists from './Pages/Admin/Wishlists';
 
 import Products from './Pages/Public/Products';
 import Product from './Pages/Public/Product';
-import Cart from './Pages/Public/Cart';
+import Cart from './Pages/Protected/Cart';
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
