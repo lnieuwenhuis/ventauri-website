@@ -143,17 +143,15 @@ This is in no way a priority list, just an itemized list of things needing to be
 - [ ] Add a button to remove a product from a wishlist
 
 ### 17. Profile page
-- [ ] Show user name, email, and role
+- [X] Show user name, email, and role
 - [ ] Show wishlists
-- [ ] Show orders
+- [X] Show orders
 - [ ] Show addresses
-- [ ] Show payment methods
-- [ ] Show products
 #### 17.1. Order page
-- [ ] Show all of the users orders and their status
-- [ ] Show order number, date, and status
-- [ ] Show products in order
-- [ ] Show total price
+- [X] Show all of the users orders and their status
+- [X] Show order number, date, and status
+- [X] Show products in order
+- [X] Show total price
 - [ ] Show coupon (if any)
 - [ ] Show estimated total price after coupon (if any)
 - [ ] Show payment method

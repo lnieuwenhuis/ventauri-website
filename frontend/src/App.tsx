@@ -20,6 +20,8 @@ import AdminWishlists from './Pages/Admin/Wishlists';
 import Products from './Pages/Public/Products';
 import Product from './Pages/Public/Product';
 import Cart from './Pages/Protected/Cart';
+import Profile from './Pages/Protected/Profile';
+import Orders from './Pages/Protected/Orders';
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -69,6 +71,8 @@ const AppRoutes = () => {
       <Route path="/products" element={<Products />} />
       <Route path="/product/:id" element={<Product />} />
       <Route path="/cart" element={<Cart />} />
+      <Route path="/profile" element={<Profile />} />
+      <Route path="/orders" element={<Orders />} />
       
       {/* Legacy dashboard route - redirect to admin */}
       <Route path="/dashboard" element={<Navigate to="/admin" replace />} />
