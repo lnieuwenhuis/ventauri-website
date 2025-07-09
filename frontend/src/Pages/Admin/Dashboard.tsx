@@ -209,7 +209,6 @@ export default function AdminDashboard() {
                                 };
                                 
                                 const timeAgo = (date: string) => {
-                                    console.log(date)
                                     const now = new Date();
                                     const activityDate = new Date(date);
                                     const diffInMinutes = Math.floor((now.getTime() - activityDate.getTime()) / (1000 * 60));

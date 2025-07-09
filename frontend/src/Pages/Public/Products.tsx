@@ -4,6 +4,17 @@ import Navbar from '../../Components/Navbar';
 import { Link } from 'react-router-dom';
 import { useCart } from '../../Contexts/CartContext';
 
+interface ProductVariant {
+    id: string;
+    sku: string;
+    size: string;
+    color: string;
+    stock: number;
+    weight: number;
+    isActive: boolean;
+    images: string[];
+}
+
 interface Product {
     id: string;
     name: string;
@@ -18,6 +29,7 @@ interface Product {
         id: string;
         name: string;
     };
+    variants?: ProductVariant[];
 }
 
 interface Category {
@@ -44,13 +56,101 @@ export default function Products() {
     const [priceRange, setPriceRange] = useState<{min: number, max: number}>({min: 0, max: 1000});
     const [searchParams, setSearchParams] = useSearchParams();
     
+    // Variant selection popup state
+    const [showVariantPopup, setShowVariantPopup] = useState(false);
+    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+    const [selectedSize, setSelectedSize] = useState<string | null>(null);
+    const [selectedColor, setSelectedColor] = useState<string | null>(null);
+    
     const itemsPerPage = 12;
     const apiURL = import.meta.env.VITE_BACKEND_URL || "";
 
     const { addToCart, loading: cartLoading } = useCart();
-    const handleAddToCart = async (productId: string) => {
-        await addToCart(productId, 1);
-    }
+
+    // Variant selection logic (same as Product.tsx)
+    const getSelectedVariant = (): ProductVariant | null => {
+        if (!selectedProduct?.variants || !selectedSize || !selectedColor) return null;
+        return selectedProduct.variants.find(v => v.size === selectedSize && v.color === selectedColor) || null;
+    };
+
+    const isSizeAvailable = (size: string): boolean => {
+        if (!selectedProduct?.variants) return false;
+        if (!selectedColor) {
+            return selectedProduct.variants.some(v => v.size === size && v.stock > 0);
+        }
+        return selectedProduct.variants.some(v => v.size === size && v.color === selectedColor && v.stock > 0);
+    };
+
+    const isColorAvailable = (color: string): boolean => {
+        if (!selectedProduct?.variants) return false;
+        if (!selectedSize) {
+            return selectedProduct.variants.some(v => v.color === color && v.stock > 0);
+        }
+        return selectedProduct.variants.some(v => v.color === color && v.size === selectedSize && v.stock > 0);
+    };
+
+    const handleSizeClick = (size: string) => {
+        if (selectedSize === size) {
+            setSelectedSize(null);
+        } else if (isSizeAvailable(size)) {
+            setSelectedSize(size);
+            if (selectedColor && !selectedProduct?.variants?.some(v => 
+                v.size === size && v.color === selectedColor && v.stock > 0
+            )) {
+                setSelectedColor(null);
+            }
+        }
+    };
+
+    const handleColorClick = (color: string) => {
+        if (selectedColor === color) {
+            setSelectedColor(null);
+        } else if (isColorAvailable(color)) {
+            setSelectedColor(color);
+            if (selectedSize && !selectedProduct?.variants?.some(v => 
+                v.color === color && v.size === selectedSize && v.stock > 0
+            )) {
+                setSelectedSize(null);
+            }
+        }
+    };
+
+    const clearSelections = () => {
+        setSelectedSize(null);
+        setSelectedColor(null);
+    };
+
+    const handleAddToCartClick = async (product: Product, e: React.MouseEvent) => {
+        e.preventDefault();
+        
+        // If product has variants, show popup
+        if (product.variants && product.variants.length > 0) {
+            setSelectedProduct(product);
+            setShowVariantPopup(true);
+            clearSelections();
+        } else {
+            // If no variants, add directly to cart
+            await addToCart(product.id, 1);
+        }
+    };
+
+    const handleConfirmAddToCart = async () => {
+        const selectedVariant = getSelectedVariant();
+        if (selectedProduct && selectedVariant && selectedVariant.stock > 0) {
+            await addToCart(selectedProduct.id, 1, selectedSize || '', selectedColor || '');
+            setShowVariantPopup(false);
+            setSelectedProduct(null);
+            clearSelections();
+        }
+    };
+
+    const closePopup = () => {
+        setShowVariantPopup(false);
+        setSelectedProduct(null);
+        clearSelections();
+    };
+
+    // ... existing code ...
 
     // Initialize filters from URL parameters
     useEffect(() => {
@@ -159,6 +259,7 @@ export default function Products() {
     });
 
     const totalPages = Math.ceil(totalProducts / itemsPerPage);
+    const selectedVariant = getSelectedVariant();
 
     return (
         <div className="min-h-screen bg-gray-900 text-white">
@@ -270,7 +371,6 @@ export default function Products() {
                                 <p className="text-gray-500">Try adjusting your filters or search terms</p>
                             </div>
                         ) : (
-                            // In the Products Grid section, wrap the product card with Link:
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {filteredProducts.map((product) => {
                                     const productImages = parseImages(product.images);
@@ -315,10 +415,7 @@ export default function Products() {
                                                     </span>
                                                     <button 
                                                         className="bg-yellow-400 text-black px-4 py-2 rounded-lg font-medium hover:bg-yellow-300 transition-colors"
-                                                        onClick={(e) => {
-                                                            e.preventDefault(); 
-                                                            handleAddToCart(product.id)
-                                                        }}
+                                                        onClick={(e) => handleAddToCartClick(product, e)}
                                                         disabled={cartLoading}
                                                     >
                                                         {cartLoading ? 'Adding...' : 'Add to Cart'}
@@ -373,6 +470,154 @@ export default function Products() {
                     </div>
                 </div>
             </div>
+
+            {/* Variant Selection Popup */}
+            {showVariantPopup && selectedProduct && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-gray-800 rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+                        <div className="p-6">
+                            {/* Header */}
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xl font-semibold text-white">Select Options</h3>
+                                <button
+                                    onClick={closePopup}
+                                    className="text-gray-400 hover:text-white transition-colors"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            {/* Product Info */}
+                            <div className="mb-6">
+                                <h4 className="text-lg font-medium text-white mb-2">{selectedProduct.name}</h4>
+                                <p className="text-yellow-400 text-xl font-bold">${selectedProduct.price.toFixed(2)}</p>
+                            </div>
+
+                            {/* Variants */}
+                            {selectedProduct.variants && selectedProduct.variants.length > 0 && (
+                                <div className="space-y-4 mb-6">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="text-lg font-semibold text-white">Available Options</h4>
+                                        {(selectedSize || selectedColor) && (
+                                            <button
+                                                onClick={clearSelections}
+                                                className="text-sm text-yellow-400 hover:text-yellow-300 underline"
+                                            >
+                                                Clear Selection
+                                            </button>
+                                        )}
+                                    </div>
+                                    
+                                    {/* Sizes */}
+                                    {Array.from(new Set(selectedProduct.variants.map(v => v.size))).length > 0 && (
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-medium text-gray-300">
+                                                Size {selectedSize && <span className="text-yellow-400">(Click to deselect)</span>}
+                                            </label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {Array.from(new Set(selectedProduct.variants.map(v => v.size))).map(size => {
+                                                    const isAvailable = isSizeAvailable(size);
+                                                    const isSelected = selectedSize === size;
+                                                    return (
+                                                        <button
+                                                            key={size}
+                                                            className={`px-4 py-2 rounded-lg border transition-all ${
+                                                                isSelected
+                                                                    ? 'border-yellow-400 bg-yellow-400 text-black hover:bg-yellow-300' 
+                                                                    : isAvailable
+                                                                        ? 'border-gray-600 hover:border-yellow-400 text-white'
+                                                                        : 'border-gray-700 bg-gray-800 text-gray-500 cursor-not-allowed'
+                                                            }`}
+                                                            disabled={!isAvailable && !isSelected}
+                                                            onClick={() => handleSizeClick(size)}
+                                                        >
+                                                            {size}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Colors */}
+                                    {Array.from(new Set(selectedProduct.variants.map(v => v.color))).length > 0 && (
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-medium text-gray-300">
+                                                Color {selectedColor && <span className="text-yellow-400">(Click to deselect)</span>}
+                                            </label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {Array.from(new Set(selectedProduct.variants.map(v => v.color))).map(color => {
+                                                    const isAvailable = isColorAvailable(color);
+                                                    const isSelected = selectedColor === color;
+                                                    return (
+                                                        <button
+                                                            key={color}
+                                                            className={`px-4 py-2 rounded-lg border transition-all ${
+                                                                isSelected
+                                                                    ? 'border-yellow-400 bg-yellow-400 text-black hover:bg-yellow-300' 
+                                                                    : isAvailable
+                                                                        ? 'border-gray-600 hover:border-yellow-400 text-white'
+                                                                        : 'border-gray-700 bg-gray-800 text-gray-500 cursor-not-allowed'
+                                                            }`}
+                                                            disabled={!isAvailable && !isSelected}
+                                                            onClick={() => handleColorClick(color)}
+                                                        >
+                                                            {color}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Selection Status */}
+                            {(selectedSize || selectedColor) && (
+                                <div className="bg-gray-700 rounded-lg p-4 mb-6">
+                                    <h5 className="font-medium mb-2 text-white">Current Selection:</h5>
+                                    <div className="text-sm text-gray-300">
+                                        {selectedSize && <span>Size: <span className="text-yellow-400">{selectedSize}</span></span>}
+                                        {selectedSize && selectedColor && <span className="mx-2">•</span>}
+                                        {selectedColor && <span>Color: <span className="text-yellow-400">{selectedColor}</span></span>}
+                                    </div>
+                                    {selectedVariant && (
+                                        <div className="text-sm text-gray-400 mt-1">
+                                            Stock: {selectedVariant.stock > 0 ? `${selectedVariant.stock} units` : 'Out of stock'}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={closePopup}
+                                    className="flex-1 bg-gray-700 text-white px-4 py-3 rounded-lg font-medium hover:bg-gray-600 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleConfirmAddToCart}
+                                    disabled={!selectedVariant || selectedVariant.stock <= 0 || cartLoading}
+                                    className="flex-1 bg-yellow-400 text-black px-4 py-3 rounded-lg font-medium hover:bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {cartLoading 
+                                        ? 'Adding...' 
+                                        : !selectedSize || !selectedColor 
+                                            ? 'Select Options' 
+                                            : selectedVariant && selectedVariant.stock <= 0 
+                                                ? 'Out of Stock' 
+                                                : 'Add to Cart'
+                                    }
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

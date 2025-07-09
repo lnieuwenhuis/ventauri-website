@@ -151,14 +151,24 @@ export default function Cart() {
 
                                         {/* Product Info */}
                                         <div className="flex-1">
-                                            <h3 className="text-lg font-semibold text-white mb-1">
-                                                <Link 
-                                                    to={`/product/${item.product.id}`}
-                                                    className="hover:text-yellow-400 transition-colors"
-                                                >
-                                                    {item.product.name}
-                                                </Link>
-                                            </h3>
+                                            <div className="flex items-center flex-wrap gap-2 mb-1">
+                                                <h3 className="text-lg font-semibold text-white">
+                                                    <Link 
+                                                        to={`/product/${item.product.id}`}
+                                                        className="hover:text-yellow-400 transition-colors"
+                                                    >
+                                                        {item.product.name}
+                                                    </Link>
+                                                </h3>
+                                                {item.size && item.color && (
+                                                    <>
+                                                        <span className="text-gray-500">-</span>
+                                                        <span className="text-sm text-gray-400">
+                                                            Size: {item.size}, Color: {item.color}
+                                                        </span>
+                                                    </>
+                                                )}
+                                            </div>
                                             {item.product.category && (
                                                 <p className="text-sm text-yellow-400 mb-2">
                                                     {item.product.category.name}

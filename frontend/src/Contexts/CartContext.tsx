@@ -5,6 +5,8 @@ interface CartItem {
     id: string;
     productId: string;
     quantity: number;
+    size: string;
+    color: string;
     product: {
         id: string;
         name: string;
@@ -22,7 +24,7 @@ interface CartContextType {
     total: number;
     itemCount: number;
     loading: boolean;
-    addToCart: (productId: string, quantity: number) => Promise<void>;
+    addToCart: (productId: string, quantity: number, size?: string, color?: string) => Promise<void>;
     updateQuantity: (itemId: string, quantity: number) => Promise<void>;
     removeFromCart: (itemId: string) => Promise<void>;
     clearCart: () => Promise<void>;
@@ -78,9 +80,8 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
-    const addToCart = async (productId: string, quantity: number) => {
+    const addToCart = async (productId: string, quantity: number, size?: string, color?: string) => {
         if (!isAuthenticated) {
-            // Optionally redirect to login or show message
             alert('Please log in to add items to cart');
             return;
         }
@@ -94,15 +95,20 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ productId, quantity })
+                body: JSON.stringify({ 
+                    productId, 
+                    quantity,
+                    size: size || '',
+                    color: color || ''
+                })
             });
-            
-            if (response.ok) {
-                await refreshCart(); // Refresh to get updated cart
-            } else {
-                const error = await response.json();
-                throw new Error(error.error || 'Failed to add to cart');
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to add to cart');
             }
+
+            await refreshCart();
         } catch (error) {
             console.error('Error adding to cart:', error);
             alert('Failed to add item to cart');

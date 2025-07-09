@@ -13,6 +13,8 @@ type Cart struct {
 	UserID    uuid.UUID      `gorm:"type:char(36);index:idx_cart_user_product,priority:1;index:idx_cart_user_created,priority:1" json:"userId"`
 	ProductID uuid.UUID      `gorm:"type:char(36);index:idx_cart_user_product,priority:2;index:idx_cart_product" json:"productId"`
 	Quantity  int            `json:"quantity"`
+	Size      string         `gorm:"index:idx_cart_variant" json:"size"`
+	Color     string         `gorm:"index:idx_cart_variant" json:"color"`
 	
 	User      User           `gorm:"foreignKey:UserID" json:"user"`
 	Product   Product        `gorm:"foreignKey:ProductID" json:"product"`

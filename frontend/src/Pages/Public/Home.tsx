@@ -129,7 +129,6 @@ export default function Home() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                             {featuredProducts.map((product) => {
                                 const productImages = parseImages(product.images);
-                                console.log(productImages)
                                 const firstImage = productImages.length > 0 ? productImages[0] : null;
                                 
                                 return (

@@ -61,7 +61,7 @@ export default function Product() {
 
     const handleAddToCart = async () => {
         if (product && selectedVariant && selectedVariant.stock > 0) {
-            await addToCart(product.id, 1);
+            await addToCart(product.id, 1, selectedSize || '', selectedColor || '');
         }
     }
 

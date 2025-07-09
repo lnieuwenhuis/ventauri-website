@@ -138,6 +138,8 @@ func addToCart(db *gorm.DB) gin.HandlerFunc {
 		var req struct {
 			ProductID string `json:"productId" binding:"required"`
 			Quantity  int    `json:"quantity" binding:"required,min=1"`
+			Size      string `json:"size"`
+			Color     string `json:"color"`
 		}
 
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -151,33 +153,35 @@ func addToCart(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Check if item already exists in cart
+		// Check if item with same product, size, and color already exists in cart
 		var existingItem models.Cart
-		err = db.Where("user_id = ? AND product_id = ?", user.ID, productID).First(&existingItem).Error
+		err = db.Where("user_id = ? AND product_id = ? AND size = ? AND color = ?", 
+			user.ID, productID, req.Size, req.Color).First(&existingItem).Error
+
 		if err == nil {
-			// Update quantity
+			// Item exists, update quantity
 			existingItem.Quantity += req.Quantity
 			if err := db.Save(&existingItem).Error; err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update cart"})
 				return
 			}
-			c.JSON(http.StatusOK, gin.H{"data": existingItem})
-			return
+		} else {
+			// Item doesn't exist, create new
+			cartItem := models.Cart{
+				UserID:    user.ID,
+				ProductID: productID,
+				Quantity:  req.Quantity,
+				Size:      req.Size,
+				Color:     req.Color,
+			}
+
+			if err := db.Create(&cartItem).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add to cart"})
+				return
+			}
 		}
 
-		// Create new cart item
-		cartItem := models.Cart{
-			UserID:    user.ID,
-			ProductID: productID,
-			Quantity:  req.Quantity,
-		}
-
-		if err := db.Create(&cartItem).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add to cart"})
-			return
-		}
-
-		c.JSON(http.StatusCreated, gin.H{"data": cartItem})
+		c.JSON(http.StatusOK, gin.H{"message": "Item added to cart successfully"})
 	}
 }
 
