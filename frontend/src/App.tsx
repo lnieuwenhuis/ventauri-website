@@ -1,5 +1,10 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import {
+	BrowserRouter as Router,
+	Routes,
+	Route,
+	Navigate,
+} from 'react-router-dom';
 import { AuthProvider, useAuth } from './Contexts/AuthContext';
 import { CartProvider } from './Contexts/CartContext';
 
@@ -25,71 +30,74 @@ import Orders from './Pages/Protected/Orders';
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, loading } = useAuth();
+	const { isAuthenticated, loading } = useAuth();
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+	if (loading) {
+		return (
+			<div className="min-h-screen flex items-center justify-center">
+				<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+			</div>
+		);
+	}
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
+	if (!isAuthenticated) {
+		return <Navigate to="/login" replace />;
+	}
 
-  return <>{children}</>;
+	return <>{children}</>;
 };
 
 // App routes component
 const AppRoutes = () => {
-  return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/login" element={<Login />} />
-      
-      {/* Protected Admin Routes */}
-      <Route path="/admin" element={
-        <ProtectedRoute>
-          <AdminLayout />
-        </ProtectedRoute>
-      }>
-        <Route index element={<AdminDashboard />} />
-        <Route path="dashboard" element={<AdminDashboard />} />
-        <Route path="products" element={<AdminProducts />} />
-        <Route path="categories" element={<AdminCategories />} />
-        <Route path="orders" element={<AdminOrders />} />
-        <Route path="users" element={<AdminUsers />} />
-        <Route path="coupons" element={<AdminCoupons />} />
-        <Route path="reviews" element={<AdminReviews />} />
-        <Route path="payments" element={<AdminPayments />} />
-        <Route path="addresses" element={<AdminAddresses />} />
-        <Route path="wishlists" element={<AdminWishlists />} />
-      </Route>
+	return (
+		<Routes>
+			<Route path="/" element={<Home />} />
+			<Route path="/login" element={<Login />} />
 
-      <Route path="/products" element={<Products />} />
-      <Route path="/product/:id" element={<Product />} />
-      <Route path="/cart" element={<Cart />} />
-      <Route path="/profile" element={<Profile />} />
-      <Route path="/orders" element={<Orders />} />
-      
-      {/* Legacy dashboard route - redirect to admin */}
-      <Route path="/dashboard" element={<Navigate to="/admin" replace />} />
-    </Routes>
-  );
+			{/* Protected Admin Routes */}
+			<Route
+				path="/admin"
+				element={
+					<ProtectedRoute>
+						<AdminLayout />
+					</ProtectedRoute>
+				}
+			>
+				<Route index element={<AdminDashboard />} />
+				<Route path="dashboard" element={<AdminDashboard />} />
+				<Route path="products" element={<AdminProducts />} />
+				<Route path="categories" element={<AdminCategories />} />
+				<Route path="orders" element={<AdminOrders />} />
+				<Route path="users" element={<AdminUsers />} />
+				<Route path="coupons" element={<AdminCoupons />} />
+				<Route path="reviews" element={<AdminReviews />} />
+				<Route path="payments" element={<AdminPayments />} />
+				<Route path="addresses" element={<AdminAddresses />} />
+				<Route path="wishlists" element={<AdminWishlists />} />
+			</Route>
+
+			<Route path="/products" element={<Products />} />
+			<Route path="/product/:id" element={<Product />} />
+			<Route path="/cart" element={<Cart />} />
+			<Route path="/profile" element={<Profile />} />
+			<Route path="/orders" element={<Orders />} />
+
+			{/* Legacy dashboard route - redirect to admin */}
+			<Route path="/dashboard" element={<Navigate to="/admin" replace />} />
+		</Routes>
+	);
 };
 
 function App() {
-  return (
-    <AuthProvider>
-      <CartProvider>
-        <Router>
-          <AppRoutes />
-        </Router>
-      </CartProvider>
-    </AuthProvider>
-  );
+	return (
+		<AuthProvider>
+			<CartProvider>
+				<Router>
+					<AppRoutes />
+				</Router>
+			</CartProvider>
+		</AuthProvider>
+	);
 }
 
 export default App;

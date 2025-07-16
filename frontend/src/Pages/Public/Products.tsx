@@ -5,619 +5,702 @@ import { Link } from 'react-router-dom';
 import { useCart } from '../../Contexts/CartContext';
 
 interface ProductVariant {
-    id: string;
-    sku: string;
-    size: string;
-    color: string;
-    stock: number;
-    weight: number;
-    isActive: boolean;
-    images: string[];
+	id: string;
+	sku: string;
+	size: string;
+	color: string;
+	stock: number;
+	weight: number;
+	isActive: boolean;
+	images: string[];
 }
 
 interface Product {
-    id: string;
-    name: string;
-    description: string;
-    price: number;
-    categoryId: string;
-    images: string;
-    isActive: boolean;
-    createdAt: string;
-    updatedAt: string;
-    category?: {
-        id: string;
-        name: string;
-    };
-    variants?: ProductVariant[];
+	id: string;
+	name: string;
+	description: string;
+	price: number;
+	categoryId: string;
+	images: string;
+	isActive: boolean;
+	createdAt: string;
+	updatedAt: string;
+	category?: {
+		id: string;
+		name: string;
+	};
+	variants?: ProductVariant[];
 }
 
 interface Category {
-    id: string;
-    name: string;
+	id: string;
+	name: string;
 }
 
 interface ProductsResponse {
-    data: Product[];
-    total: number;
-    page: number;
-    limit: number;
+	data: Product[];
+	total: number;
+	page: number;
+	limit: number;
 }
 
 export default function Products() {
-    const [products, setProducts] = useState<Product[]>([]);
-    const [categories, setCategories] = useState<Category[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState<string>('');
-    const [sortBy, setSortBy] = useState<string>('newest');
-    const [currentPage, setCurrentPage] = useState(1);
-    const [totalProducts, setTotalProducts] = useState(0);
-    const [priceRange, setPriceRange] = useState<{min: number, max: number}>({min: 0, max: 1000});
-    const [searchParams, setSearchParams] = useSearchParams();
-    
-    // Variant selection popup state
-    const [showVariantPopup, setShowVariantPopup] = useState(false);
-    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-    const [selectedSize, setSelectedSize] = useState<string | null>(null);
-    const [selectedColor, setSelectedColor] = useState<string | null>(null);
-    
-    const itemsPerPage = 12;
-    const apiURL = import.meta.env.VITE_BACKEND_URL || "";
+	const [products, setProducts] = useState<Product[]>([]);
+	const [categories, setCategories] = useState<Category[]>([]);
+	const [loading, setLoading] = useState(true);
+	const [searchTerm, setSearchTerm] = useState('');
+	const [selectedCategory, setSelectedCategory] = useState<string>('');
+	const [sortBy, setSortBy] = useState<string>('newest');
+	const [currentPage, setCurrentPage] = useState(1);
+	const [totalProducts, setTotalProducts] = useState(0);
+	const [priceRange, setPriceRange] = useState<{ min: number; max: number }>({
+		min: 0,
+		max: 1000,
+	});
+	const [searchParams, setSearchParams] = useSearchParams();
 
-    const { addToCart, loading: cartLoading } = useCart();
+	// Variant selection popup state
+	const [showVariantPopup, setShowVariantPopup] = useState(false);
+	const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+	const [selectedSize, setSelectedSize] = useState<string | null>(null);
+	const [selectedColor, setSelectedColor] = useState<string | null>(null);
 
-    // Variant selection logic (same as Product.tsx)
-    const getSelectedVariant = (): ProductVariant | null => {
-        if (!selectedProduct?.variants || !selectedSize || !selectedColor) return null;
-        return selectedProduct.variants.find(v => v.size === selectedSize && v.color === selectedColor) || null;
-    };
+	const itemsPerPage = 12;
+	const apiURL = import.meta.env.VITE_BACKEND_URL || '';
 
-    const isSizeAvailable = (size: string): boolean => {
-        if (!selectedProduct?.variants) return false;
-        if (!selectedColor) {
-            return selectedProduct.variants.some(v => v.size === size && v.stock > 0);
-        }
-        return selectedProduct.variants.some(v => v.size === size && v.color === selectedColor && v.stock > 0);
-    };
+	const { addToCart, loading: cartLoading } = useCart();
 
-    const isColorAvailable = (color: string): boolean => {
-        if (!selectedProduct?.variants) return false;
-        if (!selectedSize) {
-            return selectedProduct.variants.some(v => v.color === color && v.stock > 0);
-        }
-        return selectedProduct.variants.some(v => v.color === color && v.size === selectedSize && v.stock > 0);
-    };
+	// Variant selection logic (same as Product.tsx)
+	const getSelectedVariant = (): ProductVariant | null => {
+		if (!selectedProduct?.variants || !selectedSize || !selectedColor)
+			return null;
+		return (
+			selectedProduct.variants.find(
+				(v) => v.size === selectedSize && v.color === selectedColor
+			) || null
+		);
+	};
 
-    const handleSizeClick = (size: string) => {
-        if (selectedSize === size) {
-            setSelectedSize(null);
-        } else if (isSizeAvailable(size)) {
-            setSelectedSize(size);
-            if (selectedColor && !selectedProduct?.variants?.some(v => 
-                v.size === size && v.color === selectedColor && v.stock > 0
-            )) {
-                setSelectedColor(null);
-            }
-        }
-    };
+	const isSizeAvailable = (size: string): boolean => {
+		if (!selectedProduct?.variants) return false;
+		if (!selectedColor) {
+			return selectedProduct.variants.some((v) => v.size === size && v.stock > 0);
+		}
+		return selectedProduct.variants.some(
+			(v) => v.size === size && v.color === selectedColor && v.stock > 0
+		);
+	};
 
-    const handleColorClick = (color: string) => {
-        if (selectedColor === color) {
-            setSelectedColor(null);
-        } else if (isColorAvailable(color)) {
-            setSelectedColor(color);
-            if (selectedSize && !selectedProduct?.variants?.some(v => 
-                v.color === color && v.size === selectedSize && v.stock > 0
-            )) {
-                setSelectedSize(null);
-            }
-        }
-    };
+	const isColorAvailable = (color: string): boolean => {
+		if (!selectedProduct?.variants) return false;
+		if (!selectedSize) {
+			return selectedProduct.variants.some(
+				(v) => v.color === color && v.stock > 0
+			);
+		}
+		return selectedProduct.variants.some(
+			(v) => v.color === color && v.size === selectedSize && v.stock > 0
+		);
+	};
 
-    const clearSelections = () => {
-        setSelectedSize(null);
-        setSelectedColor(null);
-    };
+	const handleSizeClick = (size: string) => {
+		if (selectedSize === size) {
+			setSelectedSize(null);
+		} else if (isSizeAvailable(size)) {
+			setSelectedSize(size);
+			if (
+				selectedColor &&
+				!selectedProduct?.variants?.some(
+					(v) => v.size === size && v.color === selectedColor && v.stock > 0
+				)
+			) {
+				setSelectedColor(null);
+			}
+		}
+	};
 
-    const handleAddToCartClick = async (product: Product, e: React.MouseEvent) => {
-        e.preventDefault();
-        
-        // If product has variants, show popup
-        if (product.variants && product.variants.length > 0) {
-            setSelectedProduct(product);
-            setShowVariantPopup(true);
-            clearSelections();
-        } else {
-            // If no variants, add directly to cart
-            await addToCart(product.id, 1);
-        }
-    };
+	const handleColorClick = (color: string) => {
+		if (selectedColor === color) {
+			setSelectedColor(null);
+		} else if (isColorAvailable(color)) {
+			setSelectedColor(color);
+			if (
+				selectedSize &&
+				!selectedProduct?.variants?.some(
+					(v) => v.color === color && v.size === selectedSize && v.stock > 0
+				)
+			) {
+				setSelectedSize(null);
+			}
+		}
+	};
 
-    const handleConfirmAddToCart = async () => {
-        const selectedVariant = getSelectedVariant();
-        if (selectedProduct && selectedVariant && selectedVariant.stock > 0) {
-            await addToCart(selectedProduct.id, 1, selectedSize || '', selectedColor || '');
-            setShowVariantPopup(false);
-            setSelectedProduct(null);
-            clearSelections();
-        }
-    };
+	const clearSelections = () => {
+		setSelectedSize(null);
+		setSelectedColor(null);
+	};
 
-    const closePopup = () => {
-        setShowVariantPopup(false);
-        setSelectedProduct(null);
-        clearSelections();
-    };
+	const handleAddToCartClick = async (product: Product, e: React.MouseEvent) => {
+		e.preventDefault();
 
-    // ... existing code ...
+		// If product has variants, show popup
+		if (product.variants && product.variants.length > 0) {
+			setSelectedProduct(product);
+			setShowVariantPopup(true);
+			clearSelections();
+		} else {
+			// If no variants, add directly to cart
+			await addToCart(product.id, 1);
+		}
+	};
 
-    // Initialize filters from URL parameters
-    useEffect(() => {
-        const categoryFromUrl = searchParams.get('category');
-        const searchFromUrl = searchParams.get('search');
-        const sortFromUrl = searchParams.get('sort');
-        
-        if (categoryFromUrl) setSelectedCategory(categoryFromUrl);
-        if (searchFromUrl) setSearchTerm(searchFromUrl);
-        if (sortFromUrl) setSortBy(sortFromUrl);
-    }, [searchParams]);
+	const handleConfirmAddToCart = async () => {
+		const selectedVariant = getSelectedVariant();
+		if (selectedProduct && selectedVariant && selectedVariant.stock > 0) {
+			await addToCart(
+				selectedProduct.id,
+				1,
+				selectedSize || '',
+				selectedColor || ''
+			);
+			setShowVariantPopup(false);
+			setSelectedProduct(null);
+			clearSelections();
+		}
+	};
 
-    const fetchProducts = async () => {
-        try {
-            setLoading(true);
-            const params = new URLSearchParams({
-                page: currentPage.toString(),
-                limit: itemsPerPage.toString(),
-                ...(searchTerm && { search: searchTerm }),
-                ...(selectedCategory && { categoryId: selectedCategory }),
-                ...(sortBy && { sort: sortBy })
-            });
+	const closePopup = () => {
+		setShowVariantPopup(false);
+		setSelectedProduct(null);
+		clearSelections();
+	};
 
-            const response = await fetch(`${apiURL}/api/products/?${params}`);
-            if (response.ok) {
-                const result: ProductsResponse = await response.json();
-                setProducts(result.data || []);
-                setTotalProducts(result.total || 0);
-            }
-        } catch (error) {
-            console.error('Error fetching products:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
+	// ... existing code ...
 
-    const fetchCategories = async () => {
-        try {
-            const response = await fetch(`${apiURL}/api/categories/`);
-            if (response.ok) {
-                const result = await response.json();
-                setCategories(result.data || []);
-            }
-        } catch (error) {
-            console.error('Error fetching categories:', error);
-        }
-    };
+	// Initialize filters from URL parameters
+	useEffect(() => {
+		const categoryFromUrl = searchParams.get('category');
+		const searchFromUrl = searchParams.get('search');
+		const sortFromUrl = searchParams.get('sort');
 
-    useEffect(() => {
-        fetchProducts();
-    // eslint-disable-next-line
-    }, [currentPage, searchTerm, selectedCategory, sortBy]);
+		if (categoryFromUrl) setSelectedCategory(categoryFromUrl);
+		if (searchFromUrl) setSearchTerm(searchFromUrl);
+		if (sortFromUrl) setSortBy(sortFromUrl);
+	}, [searchParams]);
 
-    useEffect(() => {
-        fetchCategories();
-    // eslint-disable-next-line
-    }, []);
+	const fetchProducts = async () => {
+		try {
+			setLoading(true);
+			const params = new URLSearchParams({
+				page: currentPage.toString(),
+				limit: itemsPerPage.toString(),
+				...(searchTerm && { search: searchTerm }),
+				...(selectedCategory && { categoryId: selectedCategory }),
+				...(sortBy && { sort: sortBy }),
+			});
 
-    const handleCategoryFilter = (categoryId: string) => {
-        setSelectedCategory(categoryId);
-        setCurrentPage(1);
-        updateURL({ category: categoryId || undefined });
-    };
+			const response = await fetch(`${apiURL}/api/products/?${params}`);
+			if (response.ok) {
+				const result: ProductsResponse = await response.json();
+				setProducts(result.data || []);
+				setTotalProducts(result.total || 0);
+			}
+		} catch (error) {
+			console.error('Error fetching products:', error);
+		} finally {
+			setLoading(false);
+		}
+	};
 
-    const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setSearchTerm(e.target.value);
-        setCurrentPage(1);
-        updateURL({ search: e.target.value || undefined });
-    };
+	const fetchCategories = async () => {
+		try {
+			const response = await fetch(`${apiURL}/api/categories/`);
+			if (response.ok) {
+				const result = await response.json();
+				setCategories(result.data || []);
+			}
+		} catch (error) {
+			console.error('Error fetching categories:', error);
+		}
+	};
 
-    const handleSortChange = (sort: string) => {
-        setSortBy(sort);
-        setCurrentPage(1);
-        updateURL({ sort });
-    };
+	useEffect(() => {
+		fetchProducts();
+		// eslint-disable-next-line
+	}, [currentPage, searchTerm, selectedCategory, sortBy]);
 
-    const updateURL = (params: Record<string, string | undefined>) => {
-        const newSearchParams = new URLSearchParams(searchParams);
-        
-        Object.entries(params).forEach(([key, value]) => {
-            if (value) {
-                newSearchParams.set(key, value);
-            } else {
-                newSearchParams.delete(key);
-            }
-        });
-        
-        setSearchParams(newSearchParams);
-    };
+	useEffect(() => {
+		fetchCategories();
+		// eslint-disable-next-line
+	}, []);
 
-    const parseImages = (images: string): string[] => {
-        try {
-            if (images && images.trim()) {
-                const parsed = JSON.parse(images);
-                return Array.isArray(parsed) ? parsed : [];
-            }
-        } catch (error) {
-            console.warn('Failed to parse product images:', error);
-        }
-        return [];
-    };
+	const handleCategoryFilter = (categoryId: string) => {
+		setSelectedCategory(categoryId);
+		setCurrentPage(1);
+		updateURL({ category: categoryId || undefined });
+	};
 
-    const filteredProducts = products.filter(product => {
-        const matchesPrice = product.price >= priceRange.min && product.price <= priceRange.max;
-        return matchesPrice;
-    });
+	const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+		setSearchTerm(e.target.value);
+		setCurrentPage(1);
+		updateURL({ search: e.target.value || undefined });
+	};
 
-    const totalPages = Math.ceil(totalProducts / itemsPerPage);
-    const selectedVariant = getSelectedVariant();
+	const handleSortChange = (sort: string) => {
+		setSortBy(sort);
+		setCurrentPage(1);
+		updateURL({ sort });
+	};
 
-    return (
-        <div className="min-h-screen bg-gray-900 text-white">
-            <Navbar />
-            
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-4xl font-bold mb-4">
-                        <span className="text-white">SHOP</span>
-                        <span className="text-yellow-400 ml-2">COLLECTION</span>
-                    </h1>
-                    <p className="text-gray-300 text-lg">Discover our premium F1 Esports merchandise</p>
-                </div>
+	const updateURL = (params: Record<string, string | undefined>) => {
+		const newSearchParams = new URLSearchParams(searchParams);
 
-                <div className="flex flex-col lg:flex-row gap-8">
-                    {/* Filters Sidebar */}
-                    <div className="lg:w-1/4">
-                        <div className="bg-gray-800 rounded-lg p-6 sticky top-24">
-                            <h3 className="text-xl font-semibold mb-6 text-yellow-400">Filters</h3>
-                            
-                            {/* Search */}
-                            <div className="mb-6">
-                                <label className="block text-sm font-medium text-gray-300 mb-2">Search</label>
-                                <input
-                                    type="text"
-                                    value={searchTerm}
-                                    onChange={handleSearch}
-                                    placeholder="Search products..."
-                                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                                />
-                            </div>
+		Object.entries(params).forEach(([key, value]) => {
+			if (value) {
+				newSearchParams.set(key, value);
+			} else {
+				newSearchParams.delete(key);
+			}
+		});
 
-                            {/* Categories */}
-                            <div className="mb-6">
-                                <label className="block text-sm font-medium text-gray-300 mb-2">Categories</label>
-                                <select
-                                    value={selectedCategory}
-                                    onChange={(e) => handleCategoryFilter(e.target.value)}
-                                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                                >
-                                    <option value="">All Categories</option>
-                                    {categories.map(category => (
-                                        <option key={category.id} value={category.id}>
-                                            {category.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+		setSearchParams(newSearchParams);
+	};
 
-                            {/* Price Range */}
-                            <div className="mb-6">
-                                <label className="block text-sm font-medium text-gray-300 mb-2">Price Range</label>
-                                <div className="space-y-3">
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="number"
-                                            value={priceRange.min}
-                                            onChange={(e) => setPriceRange(prev => ({...prev, min: Number(e.target.value)}))}
-                                            placeholder="Min"
-                                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                                        />
-                                        <input
-                                            type="number"
-                                            value={priceRange.max}
-                                            onChange={(e) => setPriceRange(prev => ({...prev, max: Number(e.target.value)}))}
-                                            placeholder="Max"
-                                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+	const parseImages = (images: string): string[] => {
+		try {
+			if (images && images.trim()) {
+				const parsed = JSON.parse(images);
+				return Array.isArray(parsed) ? parsed : [];
+			}
+		} catch (error) {
+			console.warn('Failed to parse product images:', error);
+		}
+		return [];
+	};
 
-                    {/* Main Content */}
-                    <div className="lg:w-3/4">
-                        {/* Sort and Results Info */}
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                            <div className="text-gray-300">
-                                Showing {filteredProducts.length} of {totalProducts} products
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <label className="text-sm font-medium text-gray-300">Sort by:</label>
-                                <select
-                                    value={sortBy}
-                                    onChange={(e) => handleSortChange(e.target.value)}
-                                    className="px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                                >
-                                    <option value="newest">Newest First</option>
-                                    <option value="oldest">Oldest First</option>
-                                    <option value="price-low">Price: Low to High</option>
-                                    <option value="price-high">Price: High to Low</option>
-                                    <option value="name-asc">Name: A to Z</option>
-                                    <option value="name-desc">Name: Z to A</option>
-                                </select>
-                            </div>
-                        </div>
+	const filteredProducts = products.filter((product) => {
+		const matchesPrice =
+			product.price >= priceRange.min && product.price <= priceRange.max;
+		return matchesPrice;
+	});
 
-                        {/* Products Grid */}
-                        {loading ? (
-                            <div className="flex items-center justify-center py-12">
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
-                                <span className="ml-3 text-gray-300">Loading products...</span>
-                            </div>
-                        ) : filteredProducts.length === 0 ? (
-                            <div className="text-center py-12">
-                                <div className="text-gray-400 text-lg mb-4">No products found</div>
-                                <p className="text-gray-500">Try adjusting your filters or search terms</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {filteredProducts.map((product) => {
-                                    const productImages = parseImages(product.images);
-                                    const mainImage = productImages.length > 0 
-                                        ? productImages[0] 
-                                        : 'https://picsum.photos/400/400';
-                                
-                                    return (
-                                        <Link 
-                                            key={product.id} 
-                                            to={`/product/${product.id}`} 
-                                            className="bg-gray-800 rounded-lg overflow-hidden hover:bg-gray-750 transition-colors group"
-                                        >
-                                            <div className="aspect-square overflow-hidden">
-                                                <img
-                                                    src={mainImage}
-                                                    alt={product.name}
-                                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                                    onError={(e) => {
-                                                        const target = e.target as HTMLImageElement;
-                                                        target.src = 'https://picsum.photos/400/400';
-                                                    }}
-                                                />
-                                            </div>
-                                            <div className="p-4">
-                                                <div className="mb-2">
-                                                    {product.category && (
-                                                        <span className="text-xs text-yellow-400 font-medium uppercase tracking-wide">
-                                                            {product.category.name}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <h3 className="text-lg font-semibold text-white mb-2 line-clamp-2">
-                                                    {product.name}
-                                                </h3>
-                                                <p className="text-gray-400 text-sm mb-3 line-clamp-2">
-                                                    {product.description}
-                                                </p>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-xl font-bold text-yellow-400">
-                                                        ${product.price.toFixed(2)}
-                                                    </span>
-                                                    <button 
-                                                        className="bg-yellow-400 text-black px-4 py-2 rounded-lg font-medium hover:bg-yellow-300 transition-colors"
-                                                        onClick={(e) => handleAddToCartClick(product, e)}
-                                                        disabled={cartLoading}
-                                                    >
-                                                        {cartLoading ? 'Adding...' : 'Add to Cart'}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </Link>
-                                    );
-                                })}
-                            </div>
-                        )}
+	const totalPages = Math.ceil(totalProducts / itemsPerPage);
+	const selectedVariant = getSelectedVariant();
 
-                        {/* Pagination */}
-                        {totalPages > 1 && (
-                            <div className="flex justify-center items-center mt-8 gap-2">
-                                <button
-                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                                    disabled={currentPage === 1}
-                                    className="px-4 py-2 bg-gray-800 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700 transition-colors"
-                                >
-                                    Previous
-                                </button>
-                                
-                                <div className="flex gap-1">
-                                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                                        const pageNum = i + 1;
-                                        return (
-                                            <button
-                                                key={pageNum}
-                                                onClick={() => setCurrentPage(pageNum)}
-                                                className={`px-3 py-2 rounded-lg transition-colors ${
-                                                    currentPage === pageNum
-                                                        ? 'bg-yellow-400 text-black font-medium'
-                                                        : 'bg-gray-800 text-white hover:bg-gray-700'
-                                                }`}
-                                            >
-                                                {pageNum}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                                
-                                <button
-                                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                                    disabled={currentPage === totalPages}
-                                    className="px-4 py-2 bg-gray-800 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700 transition-colors"
-                                >
-                                    Next
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
+	return (
+		<div className="min-h-screen bg-gray-900 text-white">
+			<Navbar />
 
-            {/* Variant Selection Popup */}
-            {showVariantPopup && selectedProduct && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-gray-800 rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-                        <div className="p-6">
-                            {/* Header */}
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-xl font-semibold text-white">Select Options</h3>
-                                <button
-                                    onClick={closePopup}
-                                    className="text-gray-400 hover:text-white transition-colors"
-                                >
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
+			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+				{/* Header */}
+				<div className="mb-8">
+					<h1 className="text-4xl font-bold mb-4">
+						<span className="text-white">SHOP</span>
+						<span className="text-yellow-400 ml-2">COLLECTION</span>
+					</h1>
+					<p className="text-gray-300 text-lg">
+						Discover our premium F1 Esports merchandise
+					</p>
+				</div>
 
-                            {/* Product Info */}
-                            <div className="mb-6">
-                                <h4 className="text-lg font-medium text-white mb-2">{selectedProduct.name}</h4>
-                                <p className="text-yellow-400 text-xl font-bold">${selectedProduct.price.toFixed(2)}</p>
-                            </div>
+				<div className="flex flex-col lg:flex-row gap-8">
+					{/* Filters Sidebar */}
+					<div className="lg:w-1/4">
+						<div className="bg-gray-800 rounded-lg p-6 sticky top-24">
+							<h3 className="text-xl font-semibold mb-6 text-yellow-400">Filters</h3>
 
-                            {/* Variants */}
-                            {selectedProduct.variants && selectedProduct.variants.length > 0 && (
-                                <div className="space-y-4 mb-6">
-                                    <div className="flex items-center justify-between">
-                                        <h4 className="text-lg font-semibold text-white">Available Options</h4>
-                                        {(selectedSize || selectedColor) && (
-                                            <button
-                                                onClick={clearSelections}
-                                                className="text-sm text-yellow-400 hover:text-yellow-300 underline"
-                                            >
-                                                Clear Selection
-                                            </button>
-                                        )}
-                                    </div>
-                                    
-                                    {/* Sizes */}
-                                    {Array.from(new Set(selectedProduct.variants.map(v => v.size))).length > 0 && (
-                                        <div className="space-y-2">
-                                            <label className="block text-sm font-medium text-gray-300">
-                                                Size {selectedSize && <span className="text-yellow-400">(Click to deselect)</span>}
-                                            </label>
-                                            <div className="flex flex-wrap gap-2">
-                                                {Array.from(new Set(selectedProduct.variants.map(v => v.size))).map(size => {
-                                                    const isAvailable = isSizeAvailable(size);
-                                                    const isSelected = selectedSize === size;
-                                                    return (
-                                                        <button
-                                                            key={size}
-                                                            className={`px-4 py-2 rounded-lg border transition-all ${
-                                                                isSelected
-                                                                    ? 'border-yellow-400 bg-yellow-400 text-black hover:bg-yellow-300' 
-                                                                    : isAvailable
-                                                                        ? 'border-gray-600 hover:border-yellow-400 text-white'
-                                                                        : 'border-gray-700 bg-gray-800 text-gray-500 cursor-not-allowed'
-                                                            }`}
-                                                            disabled={!isAvailable && !isSelected}
-                                                            onClick={() => handleSizeClick(size)}
-                                                        >
-                                                            {size}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    )}
+							{/* Search */}
+							<div className="mb-6">
+								<label className="block text-sm font-medium text-gray-300 mb-2">
+									Search
+								</label>
+								<input
+									type="text"
+									value={searchTerm}
+									onChange={handleSearch}
+									placeholder="Search products..."
+									className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+								/>
+							</div>
 
-                                    {/* Colors */}
-                                    {Array.from(new Set(selectedProduct.variants.map(v => v.color))).length > 0 && (
-                                        <div className="space-y-2">
-                                            <label className="block text-sm font-medium text-gray-300">
-                                                Color {selectedColor && <span className="text-yellow-400">(Click to deselect)</span>}
-                                            </label>
-                                            <div className="flex flex-wrap gap-2">
-                                                {Array.from(new Set(selectedProduct.variants.map(v => v.color))).map(color => {
-                                                    const isAvailable = isColorAvailable(color);
-                                                    const isSelected = selectedColor === color;
-                                                    return (
-                                                        <button
-                                                            key={color}
-                                                            className={`px-4 py-2 rounded-lg border transition-all ${
-                                                                isSelected
-                                                                    ? 'border-yellow-400 bg-yellow-400 text-black hover:bg-yellow-300' 
-                                                                    : isAvailable
-                                                                        ? 'border-gray-600 hover:border-yellow-400 text-white'
-                                                                        : 'border-gray-700 bg-gray-800 text-gray-500 cursor-not-allowed'
-                                                            }`}
-                                                            disabled={!isAvailable && !isSelected}
-                                                            onClick={() => handleColorClick(color)}
-                                                        >
-                                                            {color}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+							{/* Categories */}
+							<div className="mb-6">
+								<label className="block text-sm font-medium text-gray-300 mb-2">
+									Categories
+								</label>
+								<select
+									value={selectedCategory}
+									onChange={(e) => handleCategoryFilter(e.target.value)}
+									className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+								>
+									<option value="">All Categories</option>
+									{categories.map((category) => (
+										<option key={category.id} value={category.id}>
+											{category.name}
+										</option>
+									))}
+								</select>
+							</div>
 
-                            {/* Selection Status */}
-                            {(selectedSize || selectedColor) && (
-                                <div className="bg-gray-700 rounded-lg p-4 mb-6">
-                                    <h5 className="font-medium mb-2 text-white">Current Selection:</h5>
-                                    <div className="text-sm text-gray-300">
-                                        {selectedSize && <span>Size: <span className="text-yellow-400">{selectedSize}</span></span>}
-                                        {selectedSize && selectedColor && <span className="mx-2">•</span>}
-                                        {selectedColor && <span>Color: <span className="text-yellow-400">{selectedColor}</span></span>}
-                                    </div>
-                                    {selectedVariant && (
-                                        <div className="text-sm text-gray-400 mt-1">
-                                            Stock: {selectedVariant.stock > 0 ? `${selectedVariant.stock} units` : 'Out of stock'}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+							{/* Price Range */}
+							<div className="mb-6">
+								<label className="block text-sm font-medium text-gray-300 mb-2">
+									Price Range
+								</label>
+								<div className="space-y-3">
+									<div className="flex gap-2">
+										<input
+											type="number"
+											value={priceRange.min}
+											onChange={(e) =>
+												setPriceRange((prev) => ({ ...prev, min: Number(e.target.value) }))
+											}
+											placeholder="Min"
+											className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+										/>
+										<input
+											type="number"
+											value={priceRange.max}
+											onChange={(e) =>
+												setPriceRange((prev) => ({ ...prev, max: Number(e.target.value) }))
+											}
+											placeholder="Max"
+											className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+										/>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
 
-                            {/* Action Buttons */}
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={closePopup}
-                                    className="flex-1 bg-gray-700 text-white px-4 py-3 rounded-lg font-medium hover:bg-gray-600 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleConfirmAddToCart}
-                                    disabled={!selectedVariant || selectedVariant.stock <= 0 || cartLoading}
-                                    className="flex-1 bg-yellow-400 text-black px-4 py-3 rounded-lg font-medium hover:bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {cartLoading 
-                                        ? 'Adding...' 
-                                        : !selectedSize || !selectedColor 
-                                            ? 'Select Options' 
-                                            : selectedVariant && selectedVariant.stock <= 0 
-                                                ? 'Out of Stock' 
-                                                : 'Add to Cart'
-                                    }
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
+					{/* Main Content */}
+					<div className="lg:w-3/4">
+						{/* Sort and Results Info */}
+						<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+							<div className="text-gray-300">
+								Showing {filteredProducts.length} of {totalProducts} products
+							</div>
+							<div className="flex items-center gap-2">
+								<label className="text-sm font-medium text-gray-300">Sort by:</label>
+								<select
+									value={sortBy}
+									onChange={(e) => handleSortChange(e.target.value)}
+									className="px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+								>
+									<option value="newest">Newest First</option>
+									<option value="oldest">Oldest First</option>
+									<option value="price-low">Price: Low to High</option>
+									<option value="price-high">Price: High to Low</option>
+									<option value="name-asc">Name: A to Z</option>
+									<option value="name-desc">Name: Z to A</option>
+								</select>
+							</div>
+						</div>
+
+						{/* Products Grid */}
+						{loading ? (
+							<div className="flex items-center justify-center py-12">
+								<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
+								<span className="ml-3 text-gray-300">Loading products...</span>
+							</div>
+						) : filteredProducts.length === 0 ? (
+							<div className="text-center py-12">
+								<div className="text-gray-400 text-lg mb-4">No products found</div>
+								<p className="text-gray-500">
+									Try adjusting your filters or search terms
+								</p>
+							</div>
+						) : (
+							<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+								{filteredProducts.map((product) => {
+									const productImages = parseImages(product.images);
+									const mainImage =
+										productImages.length > 0
+											? productImages[0]
+											: 'https://picsum.photos/400/400';
+
+									return (
+										<Link
+											key={product.id}
+											to={`/product/${product.id}`}
+											className="bg-gray-800 rounded-lg overflow-hidden hover:bg-gray-750 transition-colors group"
+										>
+											<div className="aspect-square overflow-hidden">
+												<img
+													src={mainImage}
+													alt={product.name}
+													className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+													onError={(e) => {
+														const target = e.target as HTMLImageElement;
+														target.src = 'https://picsum.photos/400/400';
+													}}
+												/>
+											</div>
+											<div className="p-4">
+												<div className="mb-2">
+													{product.category && (
+														<span className="text-xs text-yellow-400 font-medium uppercase tracking-wide">
+															{product.category.name}
+														</span>
+													)}
+												</div>
+												<h3 className="text-lg font-semibold text-white mb-2 line-clamp-2">
+													{product.name}
+												</h3>
+												<p className="text-gray-400 text-sm mb-3 line-clamp-2">
+													{product.description}
+												</p>
+												<div className="flex items-center justify-between">
+													<span className="text-xl font-bold text-yellow-400">
+														${product.price.toFixed(2)}
+													</span>
+													<button
+														className="bg-yellow-400 text-black px-4 py-2 rounded-lg font-medium hover:bg-yellow-300 transition-colors"
+														onClick={(e) => handleAddToCartClick(product, e)}
+														disabled={cartLoading}
+													>
+														{cartLoading ? 'Adding...' : 'Add to Cart'}
+													</button>
+												</div>
+											</div>
+										</Link>
+									);
+								})}
+							</div>
+						)}
+
+						{/* Pagination */}
+						{totalPages > 1 && (
+							<div className="flex justify-center items-center mt-8 gap-2">
+								<button
+									onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+									disabled={currentPage === 1}
+									className="px-4 py-2 bg-gray-800 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700 transition-colors"
+								>
+									Previous
+								</button>
+
+								<div className="flex gap-1">
+									{Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+										const pageNum = i + 1;
+										return (
+											<button
+												key={pageNum}
+												onClick={() => setCurrentPage(pageNum)}
+												className={`px-3 py-2 rounded-lg transition-colors ${
+													currentPage === pageNum
+														? 'bg-yellow-400 text-black font-medium'
+														: 'bg-gray-800 text-white hover:bg-gray-700'
+												}`}
+											>
+												{pageNum}
+											</button>
+										);
+									})}
+								</div>
+
+								<button
+									onClick={() =>
+										setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+									}
+									disabled={currentPage === totalPages}
+									className="px-4 py-2 bg-gray-800 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700 transition-colors"
+								>
+									Next
+								</button>
+							</div>
+						)}
+					</div>
+				</div>
+			</div>
+
+			{/* Variant Selection Popup */}
+			{showVariantPopup && selectedProduct && (
+				<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+					<div className="bg-gray-800 rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+						<div className="p-6">
+							{/* Header */}
+							<div className="flex items-center justify-between mb-6">
+								<h3 className="text-xl font-semibold text-white">Select Options</h3>
+								<button
+									onClick={closePopup}
+									className="text-gray-400 hover:text-white transition-colors"
+								>
+									<svg
+										className="w-6 h-6"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											strokeWidth={2}
+											d="M6 18L18 6M6 6l12 12"
+										/>
+									</svg>
+								</button>
+							</div>
+
+							{/* Product Info */}
+							<div className="mb-6">
+								<h4 className="text-lg font-medium text-white mb-2">
+									{selectedProduct.name}
+								</h4>
+								<p className="text-yellow-400 text-xl font-bold">
+									${selectedProduct.price.toFixed(2)}
+								</p>
+							</div>
+
+							{/* Variants */}
+							{selectedProduct.variants && selectedProduct.variants.length > 0 && (
+								<div className="space-y-4 mb-6">
+									<div className="flex items-center justify-between">
+										<h4 className="text-lg font-semibold text-white">
+											Available Options
+										</h4>
+										{(selectedSize || selectedColor) && (
+											<button
+												onClick={clearSelections}
+												className="text-sm text-yellow-400 hover:text-yellow-300 underline"
+											>
+												Clear Selection
+											</button>
+										)}
+									</div>
+
+									{/* Sizes */}
+									{Array.from(new Set(selectedProduct.variants.map((v) => v.size)))
+										.length > 0 && (
+										<div className="space-y-2">
+											<label className="block text-sm font-medium text-gray-300">
+												Size{' '}
+												{selectedSize && (
+													<span className="text-yellow-400">(Click to deselect)</span>
+												)}
+											</label>
+											<div className="flex flex-wrap gap-2">
+												{Array.from(
+													new Set(selectedProduct.variants.map((v) => v.size))
+												).map((size) => {
+													const isAvailable = isSizeAvailable(size);
+													const isSelected = selectedSize === size;
+													return (
+														<button
+															key={size}
+															className={`px-4 py-2 rounded-lg border transition-all ${
+																isSelected
+																	? 'border-yellow-400 bg-yellow-400 text-black hover:bg-yellow-300'
+																	: isAvailable
+																		? 'border-gray-600 hover:border-yellow-400 text-white'
+																		: 'border-gray-700 bg-gray-800 text-gray-500 cursor-not-allowed'
+															}`}
+															disabled={!isAvailable && !isSelected}
+															onClick={() => handleSizeClick(size)}
+														>
+															{size}
+														</button>
+													);
+												})}
+											</div>
+										</div>
+									)}
+
+									{/* Colors */}
+									{Array.from(new Set(selectedProduct.variants.map((v) => v.color)))
+										.length > 0 && (
+										<div className="space-y-2">
+											<label className="block text-sm font-medium text-gray-300">
+												Color{' '}
+												{selectedColor && (
+													<span className="text-yellow-400">(Click to deselect)</span>
+												)}
+											</label>
+											<div className="flex flex-wrap gap-2">
+												{Array.from(
+													new Set(selectedProduct.variants.map((v) => v.color))
+												).map((color) => {
+													const isAvailable = isColorAvailable(color);
+													const isSelected = selectedColor === color;
+													return (
+														<button
+															key={color}
+															className={`px-4 py-2 rounded-lg border transition-all ${
+																isSelected
+																	? 'border-yellow-400 bg-yellow-400 text-black hover:bg-yellow-300'
+																	: isAvailable
+																		? 'border-gray-600 hover:border-yellow-400 text-white'
+																		: 'border-gray-700 bg-gray-800 text-gray-500 cursor-not-allowed'
+															}`}
+															disabled={!isAvailable && !isSelected}
+															onClick={() => handleColorClick(color)}
+														>
+															{color}
+														</button>
+													);
+												})}
+											</div>
+										</div>
+									)}
+								</div>
+							)}
+
+							{/* Selection Status */}
+							{(selectedSize || selectedColor) && (
+								<div className="bg-gray-700 rounded-lg p-4 mb-6">
+									<h5 className="font-medium mb-2 text-white">Current Selection:</h5>
+									<div className="text-sm text-gray-300">
+										{selectedSize && (
+											<span>
+												Size: <span className="text-yellow-400">{selectedSize}</span>
+											</span>
+										)}
+										{selectedSize && selectedColor && <span className="mx-2">•</span>}
+										{selectedColor && (
+											<span>
+												Color: <span className="text-yellow-400">{selectedColor}</span>
+											</span>
+										)}
+									</div>
+									{selectedVariant && (
+										<div className="text-sm text-gray-400 mt-1">
+											Stock:{' '}
+											{selectedVariant.stock > 0
+												? `${selectedVariant.stock} units`
+												: 'Out of stock'}
+										</div>
+									)}
+								</div>
+							)}
+
+							{/* Action Buttons */}
+							<div className="flex gap-3">
+								<button
+									onClick={closePopup}
+									className="flex-1 bg-gray-700 text-white px-4 py-3 rounded-lg font-medium hover:bg-gray-600 transition-colors"
+								>
+									Cancel
+								</button>
+								<button
+									onClick={handleConfirmAddToCart}
+									disabled={
+										!selectedVariant || selectedVariant.stock <= 0 || cartLoading
+									}
+									className="flex-1 bg-yellow-400 text-black px-4 py-3 rounded-lg font-medium hover:bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+								>
+									{cartLoading
+										? 'Adding...'
+										: !selectedSize || !selectedColor
+											? 'Select Options'
+											: selectedVariant && selectedVariant.stock <= 0
+												? 'Out of Stock'
+												: 'Add to Cart'}
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			)}
+		</div>
+	);
 }
