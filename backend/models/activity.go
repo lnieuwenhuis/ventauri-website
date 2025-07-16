@@ -29,6 +29,12 @@ const (
 	ActivityUserDeleted       ActivityType = "user_deleted"
 	ActivityPaymentAdded      ActivityType = "payment_added"
 	ActivityInventoryUpdated  ActivityType = "inventory_updated"
+	ActivityTeamMemberCreated ActivityType = "team_member_created"
+	ActivityTeamMemberUpdated ActivityType = "team_member_updated"
+	ActivityTeamMemberDeleted ActivityType = "team_member_deleted"
+	ActivityTeamRoleCreated   ActivityType = "team_role_created"
+	ActivityTeamRoleUpdated   ActivityType = "team_role_updated"
+	ActivityTeamRoleDeleted   ActivityType = "team_role_deleted"
 )
 
 type Activity struct {

@@ -73,9 +73,11 @@ func MigrateDatabase(db *gorm.DB) error {
 		&models.Order{},
 		&models.Cart{},
 		&models.Review{},
-		&models.Coupon{},     
-		&models.Wishlist{}, 
+		&models.Coupon{},
+		&models.Wishlist{},
 		&models.Activity{},
+		&models.TeamRoles{},
+		&models.TeamMember{},
 	)
 }
 
@@ -92,6 +94,8 @@ func SeedDatabase(db *gorm.DB) {
 	seedReviews(db)
 	seedCoupons(db)
 	seedWishlists(db)
+	seedTeamRoles(db)
+	seedTeamMembers(db)
 	
 	log.Println("✅ Database seeding completed!")
 }
@@ -825,4 +829,162 @@ func CreateActivity(db *gorm.DB, userID *uuid.UUID, activityType models.Activity
 	}
 	
 	return db.Create(&activity).Error
+}
+
+func seedTeamRoles(db *gorm.DB) {
+	// Check if team roles already exist
+	var count int64
+	db.Model(&models.TeamRoles{}).Count(&count)
+	if count > 0 {
+		log.Println("Team roles already exist, skipping team roles seeding")
+		return
+	}
+
+	// Create 5 team roles
+	teamRoles := []models.TeamRoles{
+		{
+			Name:        "Driver",
+			Description: "Professional racing driver responsible for driving the car during races and practice sessions.",
+		},
+		{
+			Name:        "Engineer",
+			Description: "Technical engineer responsible for car setup, data analysis, and performance optimization.",
+		},
+		{
+			Name:        "Mechanic",
+			Description: "Skilled mechanic responsible for car maintenance, repairs, and pit stop operations.",
+		},
+		{
+			Name:        "Strategist",
+			Description: "Race strategist responsible for race planning, tire strategy, and tactical decisions.",
+		},
+		{
+			Name:        "Manager",
+			Description: "Team manager responsible for overall team coordination and operations management.",
+		},
+	}
+
+	for _, role := range teamRoles {
+		if err := db.Create(&role).Error; err != nil {
+			log.Printf("Failed to create seed team role %s: %v", role.Name, err)
+		} else {
+			log.Printf("✅ Created seed team role: %s", role.Name)
+		}
+	}
+}
+
+func seedTeamMembers(db *gorm.DB) {
+	// Check if team members already exist
+	var count int64
+	db.Model(&models.TeamMember{}).Count(&count)
+	if count > 0 {
+		log.Println("Team members already exist, skipping team member seeding")
+		return
+	}
+
+	// Get team roles from database
+	var teamRoles []models.TeamRoles
+	db.Find(&teamRoles)
+	if len(teamRoles) == 0 {
+		log.Println("No team roles found, cannot seed team members")
+		return
+	}
+
+	// Create a map for easy role lookup
+	roleMap := make(map[string]uuid.UUID)
+	for _, role := range teamRoles {
+		roleMap[strings.ToLower(role.Name)] = role.ID
+	}
+
+	// Create 10 placeholder team members
+	teamMembers := []models.TeamMember{
+		{
+			FirstName:   "John",
+			LastName:    "Smith",
+			Bio:         "This is placeholder data for demonstration purposes only. Replace with real team member information.",
+			RoleID:      roleMap["driver"],
+			Nationality: "American",
+			Picture:     "placeholder-avatar-1.jpg",
+		},
+		{
+			FirstName:   "Maria",
+			LastName:    "Garcia",
+			Bio:         "This is placeholder data for demonstration purposes only. Replace with real team member information.",
+			RoleID:      roleMap["engineer"],
+			Nationality: "Spanish",
+			Picture:     "placeholder-avatar-2.jpg",
+		},
+		{
+			FirstName:   "Alex",
+			LastName:    "Johnson",
+			Bio:         "This is placeholder data for demonstration purposes only. Replace with real team member information.",
+			RoleID:      roleMap["mechanic"],
+			Nationality: "British",
+			Picture:     "placeholder-avatar-3.jpg",
+		},
+		{
+			FirstName:   "Sophie",
+			LastName:    "Mueller",
+			Bio:         "This is placeholder data for demonstration purposes only. Replace with real team member information.",
+			RoleID:      roleMap["strategist"],
+			Nationality: "German",
+			Picture:     "placeholder-avatar-4.jpg",
+		},
+		{
+			FirstName:   "Luca",
+			LastName:    "Rossi",
+			Bio:         "This is placeholder data for demonstration purposes only. Replace with real team member information.",
+			RoleID:      roleMap["driver"],
+			Nationality: "Italian",
+			Picture:     "placeholder-avatar-5.jpg",
+		},
+		{
+			FirstName:   "Emma",
+			LastName:    "Anderson",
+			Bio:         "This is placeholder data for demonstration purposes only. Replace with real team member information.",
+			RoleID:      roleMap["engineer"],
+			Nationality: "Swedish",
+			Picture:     "placeholder-avatar-6.jpg",
+		},
+		{
+			FirstName:   "Carlos",
+			LastName:    "Rodriguez",
+			Bio:         "This is placeholder data for demonstration purposes only. Replace with real team member information.",
+			RoleID:      roleMap["engineer"],
+			Nationality: "Mexican",
+			Picture:     "placeholder-avatar-7.jpg",
+		},
+		{
+			FirstName:   "Yuki",
+			LastName:    "Tanaka",
+			Bio:         "This is placeholder data for demonstration purposes only. Replace with real team member information.",
+			RoleID:      roleMap["driver"],
+			Nationality: "Japanese",
+			Picture:     "placeholder-avatar-8.jpg",
+		},
+		{
+			FirstName:   "Pierre",
+			LastName:    "Dubois",
+			Bio:         "This is placeholder data for demonstration purposes only. Replace with real team member information.",
+			RoleID:      roleMap["mechanic"],
+			Nationality: "French",
+			Picture:     "placeholder-avatar-9.jpg",
+		},
+		{
+			FirstName:   "Sarah",
+			LastName:    "Williams",
+			Bio:         "This is placeholder data for demonstration purposes only. Replace with real team member information.",
+			RoleID:      roleMap["manager"],
+			Nationality: "Australian",
+			Picture:     "placeholder-avatar-10.jpg",
+		},
+	}
+
+	for _, member := range teamMembers {
+		if err := db.Create(&member).Error; err != nil {
+			log.Printf("Failed to create seed team member %s %s: %v", member.FirstName, member.LastName, err)
+		} else {
+			log.Printf("✅ Created seed team member: %s %s (Role ID: %s)", member.FirstName, member.LastName, member.RoleID)
+		}
+	}
 }

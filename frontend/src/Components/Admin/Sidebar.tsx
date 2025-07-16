@@ -12,6 +12,7 @@ const sidebarItems: SidebarItem[] = [
 	{ path: '/admin/categories', label: 'Categories', icon: '🏷️' },
 	{ path: '/admin/orders', label: 'Orders', icon: '🛒' },
 	{ path: '/admin/users', label: 'Users', icon: '👥' },
+	{ path: '/admin/team-members', label: 'Team Members', icon: '🏎️' },
 	{ path: '/admin/coupons', label: 'Coupons', icon: '🎫' },
 	{ path: '/admin/reviews', label: 'Reviews', icon: '⭐' },
 	{ path: '/admin/payments', label: 'Payment Methods', icon: '💳' },

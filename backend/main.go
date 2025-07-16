@@ -74,6 +74,8 @@ func main() {
 	routes.SetupActivityRoutes(r, db)
 	routes.SetupUserRoutes(r, db)
 	routes.SetupWishlistRoutes(r, db)
+	routes.SetupTeamMemberRoutes(r, db)
+	routes.SetupTeamRolesRoutes(r, db)
 
 	// Start server
 	port := os.Getenv("PORT")

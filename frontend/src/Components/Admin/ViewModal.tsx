@@ -31,7 +31,7 @@ const ViewModal = <
 				<div className="p-6">
 					<div className="flex justify-between items-center mb-6">
 						<h2 className="text-xl font-semibold text-gray-900">
-							Viewing {String(data.name || 'Item')}
+							Viewing {String(data.name ? data.name : data.firstName && data.lastName ? `${data.firstName} ${data.lastName}` : 'item')}
 						</h2>
 						<button onClick={onClose} className="text-gray-400 hover:text-gray-600">
 							<svg
@@ -64,6 +64,9 @@ const ViewModal = <
 										: 'N/A';
 								} else if (field.name === 'parent_id') {
 									displayValue = value ? String(value) : 'Root Category';
+								} else if (field.name === 'role' && value && typeof value === 'object') {
+									// Handle role object - display the role name
+									displayValue = (value as unknown as { name: string }).name || 'Unknown Role';
 								} else {
 									displayValue = value ? String(value) : 'Not provided';
 								}

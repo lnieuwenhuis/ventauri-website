@@ -21,12 +21,14 @@ import AdminReviews from './Pages/Admin/Reviews';
 import AdminPayments from './Pages/Admin/Payments';
 import AdminAddresses from './Pages/Admin/Addresses';
 import AdminWishlists from './Pages/Admin/Wishlists';
+import AdminTeamMembers from './Pages/Admin/TeamMembers';
 
 import Products from './Pages/Public/Products';
 import Product from './Pages/Public/Product';
 import Cart from './Pages/Protected/Cart';
 import Profile from './Pages/Protected/Profile';
 import Orders from './Pages/Protected/Orders';
+import About from './Pages/Public/About';
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -74,6 +76,7 @@ const AppRoutes = () => {
 				<Route path="payments" element={<AdminPayments />} />
 				<Route path="addresses" element={<AdminAddresses />} />
 				<Route path="wishlists" element={<AdminWishlists />} />
+				<Route path="team-members" element={<AdminTeamMembers />} />
 			</Route>
 
 			<Route path="/products" element={<Products />} />
@@ -81,6 +84,7 @@ const AppRoutes = () => {
 			<Route path="/cart" element={<Cart />} />
 			<Route path="/profile" element={<Profile />} />
 			<Route path="/orders" element={<Orders />} />
+			<Route path="/about" element={<About />} />
 
 			{/* Legacy dashboard route - redirect to admin */}
 			<Route path="/dashboard" element={<Navigate to="/admin" replace />} />
