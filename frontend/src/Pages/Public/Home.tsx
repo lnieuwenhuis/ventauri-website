@@ -138,7 +138,7 @@ export default function Home() {
 										key={product.id}
 										className="bg-gray-900 rounded-lg overflow-hidden hover:transform hover:scale-105 transition-transform duration-200"
 									>
-										<Link to={`/products/${product.id}`}>
+										<Link to={`/product/${product.id}`}>
 											<div className="h-64 bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center overflow-hidden">
 												{firstImage ? (
 													<img
@@ -159,7 +159,7 @@ export default function Home() {
 											</div>
 										</Link>
 										<div className="p-6">
-											<Link to={`/products/${product.id}`}>
+											<Link to={`/product/${product.id}`}>
 												<h3 className="text-xl font-semibold text-white mb-2 hover:text-yellow-400 transition-colors">
 													{product.name}
 												</h3>

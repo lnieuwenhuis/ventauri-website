@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet, Navigate } from 'react-router-dom';
+import { Outlet, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../../Contexts/AuthContext';
 import AdminSidebar from './Sidebar';
 
@@ -33,7 +33,12 @@ const AdminLayout: React.FC = () => {
 				{/* Header */}
 				<header className="bg-white shadow-sm border-b border-gray-200">
 					<div className="flex justify-between items-center px-6 py-4">
-						<h1 className="text-xl font-semibold text-gray-800">Admin Dashboard</h1>
+						<Link to="/" className="flex items-center text-xl font-semibold text-gray-800 hover:text-gray-600 transition-colors">
+							<svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+							</svg>
+							Back to Ventauri
+						</Link>
 						<div className="flex items-center space-x-4">
 							<span className="text-sm text-gray-600">
 								Welcome, {user?.displayName}
