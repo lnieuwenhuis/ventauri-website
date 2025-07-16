@@ -114,11 +114,11 @@ This is in no way a priority list, just an itemized list of things needing to be
 - [X] Allow for getting cart
 
 ### 15. Our Team page
-- [ ] Add a navbar under regular navbar with entries for roster, schedule, results etc.
+- [X] Add a navbar under regular navbar with entries for roster, schedule, results etc.
 - [ ] Add landing page with an about us section and a recent tweets section (can be changed later)
 #### 15.1. Roster page
-- [ ] Show all team members and their positions (engineer, driver, management etc)
-- [ ] Show team member image, name, position, country, and social media links
+- [X] Show all team members and their positions (engineer, driver, management etc)
+- [X] Show team member image, name, position, country, and social media links
 #### 15.2. Schedule page
 - [ ] Show all team races and their times
 - [ ] Show team name, competition, and time
