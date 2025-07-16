@@ -59,10 +59,6 @@ const AdminCategories: React.FC = () => {
 
 	const apiURL = import.meta.env.VITE_BACKEND_URL || '';
 
-	const getAuthToken = () => {
-		return localStorage.getItem('authToken') || localStorage.getItem('token');
-	};
-
 	const fetchCategories = async (page: number = 1, search: string = '') => {
 		try {
 			setLoading(true);
@@ -74,17 +70,9 @@ const AdminCategories: React.FC = () => {
 				...(search && { search }),
 			});
 
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				setLoading(false);
-				return;
-			}
-
 			const response = await fetch(`${apiURL}/api/admin/categories/?${params}`, {
 				credentials: 'include',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
 			});
@@ -149,12 +137,6 @@ const AdminCategories: React.FC = () => {
 	const handleSubmitCategory = async (formData: CategoryFormData) => {
 		try {
 			setModalLoading(true);
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				return;
-			}
-
 			const url = editingCategory
 				? `${apiURL}/api/admin/categories/${editingCategory.id}`
 				: `${apiURL}/api/admin/categories/`;
@@ -165,7 +147,6 @@ const AdminCategories: React.FC = () => {
 				method,
 				credentials: 'include',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
 				body: JSON.stringify(formData),
@@ -293,19 +274,12 @@ const AdminCategories: React.FC = () => {
 
 	const toggleCategoryStatus = async (categoryId: string) => {
 		try {
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				return;
-			}
-
 			const response = await fetch(
 				`${apiURL}/api/admin/categories/${categoryId}/status`,
 				{
 					method: 'PUT',
 					credentials: 'include',
 					headers: {
-						Authorization: `Bearer ${token}`,
 						'Content-Type': 'application/json',
 					},
 				}
@@ -330,19 +304,12 @@ const AdminCategories: React.FC = () => {
 		}
 
 		try {
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				return;
-			}
-
 			const response = await fetch(
 				`${apiURL}/api/admin/categories/${categoryId}`,
 				{
 					method: 'DELETE',
 					credentials: 'include',
 					headers: {
-						Authorization: `Bearer ${token}`,
 						'Content-Type': 'application/json',
 					},
 				}

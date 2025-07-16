@@ -34,12 +34,7 @@ export default function AdminAddresses() {
 	const [totalAddresses, setTotalAddresses] = useState(0);
 	const [error, setError] = useState<string | null>(null);
 	const itemsPerPage = 10;
-
 	const apiURL = import.meta.env.VITE_BACKEND_URL || '';
-
-	const getAuthToken = () => {
-		return localStorage.getItem('authToken') || localStorage.getItem('token');
-	};
 
 	const fetchAddresses = async (page: number = 1, search: string = '') => {
 		try {
@@ -52,17 +47,9 @@ export default function AdminAddresses() {
 				...(search && { search }),
 			});
 
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				setLoading(false);
-				return;
-			}
-
 			const response = await fetch(`${apiURL}/api/admin/addresses/?${params}`, {
 				credentials: 'include',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
 			});
@@ -94,19 +81,12 @@ export default function AdminAddresses() {
 
 	const toggleAddressStatus = async (addressId: string) => {
 		try {
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				return;
-			}
-
 			const response = await fetch(
 				`${apiURL}/api/admin/addresses/${addressId}/status`,
 				{
 					method: 'PUT',
 					credentials: 'include',
 					headers: {
-						Authorization: `Bearer ${token}`,
 						'Content-Type': 'application/json',
 					},
 				}
@@ -131,17 +111,10 @@ export default function AdminAddresses() {
 		}
 
 		try {
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				return;
-			}
-
 			const response = await fetch(`${apiURL}/api/admin/addresses/${addressId}`, {
 				method: 'DELETE',
 				credentials: 'include',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
 			});

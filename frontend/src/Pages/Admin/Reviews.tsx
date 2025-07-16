@@ -41,12 +41,7 @@ export default function AdminReviews() {
 	const [error, setError] = useState<string | null>(null);
 	const [approvalFilter, setApprovalFilter] = useState('all');
 	const itemsPerPage = 10;
-
 	const apiURL = import.meta.env.VITE_BACKEND_URL || '';
-
-	const getAuthToken = () => {
-		return localStorage.getItem('authToken') || localStorage.getItem('token');
-	};
 
 	const fetchReviews = async (
 		page: number = 1,
@@ -64,17 +59,9 @@ export default function AdminReviews() {
 				...(approved !== 'all' && { approved }),
 			});
 
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				setLoading(false);
-				return;
-			}
-
 			const response = await fetch(`${apiURL}/api/admin/reviews/?${params}`, {
 				credentials: 'include',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
 			});
@@ -111,19 +98,12 @@ export default function AdminReviews() {
 
 	const toggleReviewStatus = async (reviewId: string) => {
 		try {
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				return;
-			}
-
 			const response = await fetch(
 				`${apiURL}/api/admin/reviews/${reviewId}/status`,
 				{
 					method: 'PUT',
 					credentials: 'include',
 					headers: {
-						Authorization: `Bearer ${token}`,
 						'Content-Type': 'application/json',
 					},
 				}
@@ -148,17 +128,10 @@ export default function AdminReviews() {
 		}
 
 		try {
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				return;
-			}
-
 			const response = await fetch(`${apiURL}/api/admin/reviews/${reviewId}`, {
 				method: 'DELETE',
 				credentials: 'include',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
 			});

@@ -66,12 +66,7 @@ export default function AdminOrders() {
 	const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 	const [modalLoading, setModalLoading] = useState(false);
 	const itemsPerPage = 10;
-
 	const apiURL = import.meta.env.VITE_BACKEND_URL || '';
-
-	const getAuthToken = () => {
-		return localStorage.getItem('authToken') || localStorage.getItem('token');
-	};
 
 	const fetchOrders = async (
 		page: number = 1,
@@ -89,17 +84,9 @@ export default function AdminOrders() {
 				...(status !== 'all' && { status }),
 			});
 
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				setLoading(false);
-				return;
-			}
-
 			const response = await fetch(`${apiURL}/api/admin/orders/?${params}`, {
 				credentials: 'include',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
 			});
@@ -144,11 +131,6 @@ export default function AdminOrders() {
 
 		try {
 			setModalLoading(true);
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				return;
-			}
 
 			// For orders, we typically only allow status updates
 			const response = await fetch(
@@ -157,7 +139,6 @@ export default function AdminOrders() {
 					method: 'PUT',
 					credentials: 'include',
 					headers: {
-						Authorization: `Bearer ${token}`,
 						'Content-Type': 'application/json',
 					},
 					body: JSON.stringify({
@@ -250,19 +231,12 @@ export default function AdminOrders() {
 
 	const updateOrderStatus = async (orderId: string, newStatus: string) => {
 		try {
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				return;
-			}
-
 			const response = await fetch(
 				`${apiURL}/api/admin/orders/${orderId}/status`,
 				{
 					method: 'PUT',
 					credentials: 'include',
 					headers: {
-						Authorization: `Bearer ${token}`,
 						'Content-Type': 'application/json',
 					},
 					body: JSON.stringify({ status: newStatus }),
@@ -288,17 +262,10 @@ export default function AdminOrders() {
 		}
 
 		try {
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				return;
-			}
-
 			const response = await fetch(`${apiURL}/api/admin/orders/${orderId}`, {
 				method: 'DELETE',
 				credentials: 'include',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
 			});

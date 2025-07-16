@@ -29,25 +29,17 @@ export default function AdminDashboard() {
 	});
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-
 	const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
 	const [activitiesLoading, setActivitiesLoading] = useState(true);
-
 	const apiURL = import.meta.env.VITE_BACKEND_URL || '';
-
-	const getAuthToken = () => {
-		return localStorage.getItem('authToken') || localStorage.getItem('token');
-	};
 
 	const fetchRecentActivities = async () => {
 		try {
 			setActivitiesLoading(true);
-			const token = getAuthToken();
 
 			const response = await fetch(`${apiURL}/api/admin/activities/recent`, {
 				credentials: 'include',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
 			});
@@ -68,17 +60,9 @@ export default function AdminDashboard() {
 			setLoading(true);
 			setError(null);
 
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				setLoading(false);
-				return;
-			}
-
 			const response = await fetch(`${apiURL}/api/admin/stats/dashboard`, {
 				credentials: 'include',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
 			});

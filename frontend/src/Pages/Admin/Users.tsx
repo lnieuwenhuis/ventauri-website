@@ -13,7 +13,6 @@ interface User {
 	updatedAt: string;
 	deletedAt?: string | null;
 	lastLoginAt?: string;
-	// OAuth fields
 	googleId?: string;
 	avatar?: string;
 	displayName?: string;
@@ -49,12 +48,7 @@ const AdminUsers: React.FC = () => {
 	const [selectedUser, setSelectedUser] = useState<User | null>(null);
 	const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 	const itemsPerPage = 10;
-
 	const apiURL = import.meta.env.VITE_BACKEND_URL || '';
-
-	const getAuthToken = () => {
-		return localStorage.getItem('authToken') || localStorage.getItem('token');
-	};
 
 	const userFields = [
 		{
@@ -125,17 +119,9 @@ const AdminUsers: React.FC = () => {
 				...(search && { search }),
 			});
 
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				setLoading(false);
-				return;
-			}
-
 			const response = await fetch(`${apiURL}/api/admin/users/?${params}`, {
 				credentials: 'include',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
 			});
@@ -182,12 +168,6 @@ const AdminUsers: React.FC = () => {
 
 	const handleSubmitUser = async (formData: UserFormData) => {
 		try {
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				return;
-			}
-
 			const url = editingUser
 				? `${apiURL}/api/admin/users/${editingUser.id}`
 				: `${apiURL}/api/admin/users`;
@@ -198,7 +178,6 @@ const AdminUsers: React.FC = () => {
 				method,
 				credentials: 'include',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
 				body: JSON.stringify(formData),
@@ -238,17 +217,10 @@ const AdminUsers: React.FC = () => {
 
 	const toggleUserStatus = async (userId: string) => {
 		try {
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				return;
-			}
-
 			const response = await fetch(`${apiURL}/api/admin/users/${userId}/status`, {
 				method: 'PUT',
 				credentials: 'include',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
 			});
@@ -272,17 +244,10 @@ const AdminUsers: React.FC = () => {
 		}
 
 		try {
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				return;
-			}
-
 			const response = await fetch(`${apiURL}/api/admin/users/${userId}`, {
 				method: 'DELETE',
 				credentials: 'include',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
 			});

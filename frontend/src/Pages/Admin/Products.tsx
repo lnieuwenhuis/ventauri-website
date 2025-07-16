@@ -49,10 +49,6 @@ const AdminProducts: React.FC = () => {
 
 	const apiURL = import.meta.env.VITE_BACKEND_URL || '';
 
-	const getAuthToken = () => {
-		return localStorage.getItem('authToken') || localStorage.getItem('token');
-	};
-
 	const fetchProducts = async (
 		page: number = 1,
 		search: string = '',
@@ -69,17 +65,9 @@ const AdminProducts: React.FC = () => {
 				...(categoryId && { categoryId }),
 			});
 
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				setLoading(false);
-				return;
-			}
-
 			const response = await fetch(`${apiURL}/api/admin/products/?${params}`, {
 				credentials: 'include',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
 			});
@@ -102,13 +90,9 @@ const AdminProducts: React.FC = () => {
 
 	const fetchCategories = async () => {
 		try {
-			const token = getAuthToken();
-			if (!token) return;
-
 			const response = await fetch(`${apiURL}/api/admin/categories/`, {
 				credentials: 'include',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
 			});
@@ -176,11 +160,6 @@ const AdminProducts: React.FC = () => {
 	const handleSubmitProduct = async (formData: ProductFormData) => {
 		try {
 			setModalLoading(true);
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				return;
-			}
 
 			// Convert images array to JSON string for backend
 			const processedData = {
@@ -202,7 +181,6 @@ const AdminProducts: React.FC = () => {
 				method,
 				credentials: 'include',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
 				body: JSON.stringify(processedData),
@@ -322,19 +300,12 @@ const AdminProducts: React.FC = () => {
 
 	const toggleProductStatus = async (productId: string) => {
 		try {
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				return;
-			}
-
 			const response = await fetch(
 				`${apiURL}/api/admin/products/${productId}/status`,
 				{
 					method: 'PUT',
 					credentials: 'include',
 					headers: {
-						Authorization: `Bearer ${token}`,
 						'Content-Type': 'application/json',
 					},
 				}
@@ -359,17 +330,10 @@ const AdminProducts: React.FC = () => {
 		}
 
 		try {
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				return;
-			}
-
 			const response = await fetch(`${apiURL}/api/admin/products/${productId}`, {
 				method: 'DELETE',
 				credentials: 'include',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
 			});

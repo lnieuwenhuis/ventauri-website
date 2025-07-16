@@ -54,12 +54,7 @@ const AdminCoupons: React.FC = () => {
 	const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
 	const [modalLoading, setModalLoading] = useState(false);
 	const itemsPerPage = 10;
-
 	const apiURL = import.meta.env.VITE_BACKEND_URL || '';
-
-	const getAuthToken = () => {
-		return localStorage.getItem('authToken') || localStorage.getItem('token');
-	};
 
 	const fetchCoupons = async (page: number = 1, search: string = '') => {
 		try {
@@ -72,17 +67,9 @@ const AdminCoupons: React.FC = () => {
 				...(search && { search }),
 			});
 
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				setLoading(false);
-				return;
-			}
-
 			const response = await fetch(`${apiURL}/api/admin/coupons/?${params}`, {
 				credentials: 'include',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
 			});
@@ -125,12 +112,6 @@ const AdminCoupons: React.FC = () => {
 	const handleSubmitCoupon = async (formData: CouponFormData) => {
 		try {
 			setModalLoading(true);
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				return;
-			}
-
 			// Convert date strings to proper datetime format
 			const processedFormData = {
 				...formData,
@@ -148,7 +129,6 @@ const AdminCoupons: React.FC = () => {
 				method,
 				credentials: 'include',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
 				body: JSON.stringify(processedFormData), // Use processed data
@@ -276,19 +256,12 @@ const AdminCoupons: React.FC = () => {
 
 	const toggleCouponStatus = async (couponId: string) => {
 		try {
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				return;
-			}
-
 			const response = await fetch(
 				`${apiURL}/api/admin/coupons/${couponId}/status`,
 				{
 					method: 'PUT',
 					credentials: 'include',
 					headers: {
-						Authorization: `Bearer ${token}`,
 						'Content-Type': 'application/json',
 					},
 				}
@@ -313,17 +286,10 @@ const AdminCoupons: React.FC = () => {
 		}
 
 		try {
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				return;
-			}
-
 			const response = await fetch(`${apiURL}/api/admin/coupons/${couponId}`, {
 				method: 'DELETE',
 				credentials: 'include',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
 			});

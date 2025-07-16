@@ -56,12 +56,7 @@ export default function AdminPayments() {
 		{ id: string; firstName: string; lastName: string; email: string }[]
 	>([]);
 	const itemsPerPage = 10;
-
 	const apiURL = import.meta.env.VITE_BACKEND_URL || '';
-
-	const getAuthToken = () => {
-		return localStorage.getItem('authToken') || localStorage.getItem('token');
-	};
 
 	// Payment method form fields
 	const paymentFields = [
@@ -140,13 +135,9 @@ export default function AdminPayments() {
 
 	const fetchUsers = async () => {
 		try {
-			const token = getAuthToken();
-			if (!token) return;
-
 			const response = await fetch(`${apiURL}/api/admin/users?limit=1000`, {
 				credentials: 'include',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
 			});
@@ -171,19 +162,11 @@ export default function AdminPayments() {
 				...(search && { search }),
 			});
 
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				setLoading(false);
-				return;
-			}
-
 			const response = await fetch(
 				`${apiURL}/api/admin/payment-methods/?${params}`,
 				{
 					credentials: 'include',
 					headers: {
-						Authorization: `Bearer ${token}`,
 						'Content-Type': 'application/json',
 					},
 				}
@@ -244,12 +227,6 @@ export default function AdminPayments() {
 
 	const handleSubmit = async (formData: PaymentMethodFormData) => {
 		try {
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				return;
-			}
-
 			const url = editingPayment
 				? `${apiURL}/api/admin/payment-methods/${editingPayment.id}`
 				: `${apiURL}/api/payment-methods`;
@@ -260,7 +237,6 @@ export default function AdminPayments() {
 				method,
 				credentials: 'include',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
 				body: JSON.stringify(formData),
@@ -289,19 +265,12 @@ export default function AdminPayments() {
 
 	const togglePaymentStatus = async (paymentId: string) => {
 		try {
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				return;
-			}
-
 			const response = await fetch(
 				`${apiURL}/api/admin/payment-methods/${paymentId}/status`,
 				{
 					method: 'PUT',
 					credentials: 'include',
 					headers: {
-						Authorization: `Bearer ${token}`,
 						'Content-Type': 'application/json',
 					},
 				}
@@ -328,19 +297,12 @@ export default function AdminPayments() {
 		}
 
 		try {
-			const token = getAuthToken();
-			if (!token) {
-				setError('No authorization token found');
-				return;
-			}
-
 			const response = await fetch(
 				`${apiURL}/api/admin/payment-methods/${paymentId}`,
 				{
 					method: 'DELETE',
 					credentials: 'include',
 					headers: {
-						Authorization: `Bearer ${token}`,
 						'Content-Type': 'application/json',
 					},
 				}
