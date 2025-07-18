@@ -13,8 +13,8 @@ import (
 type Track struct {
 	ID       			uuid.UUID 		`json:"id"`
 	Name     			string    		`json:"name"`
-	DateTime 			time.Time 		`json:"datetime"`
-	IsActive 			bool      		`json:"isActive"`
+	DateTime 			time.Time 		`json:"dateTime"`
+	Status 				string      	`json:"status"`
 	Personnel 			[]uuid.UUID 	`json:"personnel"` 
 	PersonnelData 		[]TeamMember 	`json:"personnelData,omitempty"`
 	Results []struct {
@@ -63,6 +63,7 @@ type Competition struct {
 	Name      string         `gorm:"unique;index:idx_competition_name_search" json:"name"`
 	Desc      string         `gorm:"index:idx_competition_desc_search" json:"desc"`
 	Schedule  TrackSlice     `gorm:"type:json" json:"schedule"`
+	DateTime  time.Time      `gorm:"index:idx_competition_date" json:"dateTime"`
 	IsActive  bool           `gorm:"default:true;index:idx_competition_active_created,priority:1" json:"isActive"`
 }
 

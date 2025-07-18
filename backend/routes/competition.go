@@ -331,12 +331,22 @@ func toggleTrackStatus(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Find and toggle the track status
+		// Find and cycle the track status
 		trackFound := false
 		var updatedTrack models.Track
 		for i, track := range competition.Schedule {
 			if track.ID.String() == trackID {
-				competition.Schedule[i].IsActive = !track.IsActive
+				// Cycle through status: past -> next -> future -> past
+				switch track.Status {
+				case "past":
+					competition.Schedule[i].Status = "next"
+				case "next":
+					competition.Schedule[i].Status = "future"
+				case "future":
+					competition.Schedule[i].Status = "past"
+				default:
+					competition.Schedule[i].Status = "next"
+				}
 				updatedTrack = competition.Schedule[i]
 				trackFound = true
 				break
@@ -356,7 +366,7 @@ func toggleTrackStatus(db *gorm.DB) gin.HandlerFunc {
 
 		// Activity tracking
 		currentUser, _ := utils.GetCurrentUser(c)
-		utils.CreateActivity(db, &currentUser.ID, models.ActivityTrackUpdated, "Track '"+updatedTrack.Name+"' status updated", utils.StringPtr(updatedTrack.ID.String()), utils.StringPtr(competition.ID.String()), nil)
+		utils.CreateActivity(db, &currentUser.ID, models.ActivityTrackUpdated, "Track '"+updatedTrack.Name+"' status updated to "+updatedTrack.Status, utils.StringPtr(updatedTrack.ID.String()), utils.StringPtr(competition.ID.String()), nil)
 
 		c.JSON(http.StatusOK, updatedTrack)
 	}
@@ -415,7 +425,7 @@ func preloadPersonnelForCompetition(db *gorm.DB, competition *models.Competition
 		track := &competition.Schedule[i]
 		if len(track.Personnel) > 0 {
 			var TeamMembers []models.TeamMember
-			if err := db.Where("id IN ?", track.Personnel).Find(&TeamMembers).Error; err != nil {
+			if err := db.Preload("Role").Where("id IN ?", track.Personnel).Find(&TeamMembers).Error; err != nil {
 				return err
 			}
 			track.PersonnelData = TeamMembers

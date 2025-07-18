@@ -1000,6 +1000,22 @@ func seedCompetitions(db *gorm.DB) {
 		return
 	}
 
+	// Get team members for personnel assignment
+	var teamMembers []models.TeamMember
+	db.Find(&teamMembers)
+	
+	// Filter drivers and engineers
+	var drivers, engineers []uuid.UUID
+	for _, member := range teamMembers {
+		var role models.TeamRoles
+		db.First(&role, "id = ?", member.RoleID)
+		if role.Name == "Driver" {
+			drivers = append(drivers, member.ID)
+		} else if role.Name == "Engineer" {
+			engineers = append(engineers, member.ID)
+		}
+	}
+
 	// Create 5 sample competitions
 	competitions := []models.Competition{
 		{
@@ -1010,19 +1026,42 @@ func seedCompetitions(db *gorm.DB) {
 					ID:       uuid.New(),
 					Name:     "Monaco Grand Prix",
 					DateTime: time.Date(2024, 5, 26, 14, 0, 0, 0, time.UTC),
-					IsActive: false,
+					Status:   "past",
+					Personnel: func() []uuid.UUID {
+						if len(drivers) >= 2 && len(engineers) >= 2 {
+							return []uuid.UUID{drivers[0], drivers[1], engineers[0], engineers[1]}
+						}
+						return []uuid.UUID{}
+					}(),
+					Results: func() []struct {
+						Driver        uuid.UUID `json:"driver"`
+						QualiPosition int       `json:"quali_position"`
+						RacePosition  int       `json:"race_position"`
+					} {
+						if len(drivers) >= 2 {
+							return []struct {
+								Driver        uuid.UUID `json:"driver"`
+								QualiPosition int       `json:"quali_position"`
+								RacePosition  int       `json:"race_position"`
+							}{
+								{Driver: drivers[0], QualiPosition: 1, RacePosition: 1},
+								{Driver: drivers[1], QualiPosition: 2, RacePosition: 2},
+							}
+						}
+						return nil
+					}(),
 				},
 				{
 					ID:       uuid.New(),
 					Name:     "Silverstone Circuit",
 					DateTime: time.Date(2024, 7, 7, 15, 0, 0, 0, time.UTC),
-					IsActive: true,
+					Status:   "next",
 				},
 				{
 					ID:       uuid.New(),
 					Name:     "Spa-Francorchamps",
 					DateTime: time.Date(2024, 8, 25, 15, 0, 0, 0, time.UTC),
-					IsActive: false,
+					Status:   "future",
 				},
 			},
 			IsActive: true,
@@ -1035,13 +1074,36 @@ func seedCompetitions(db *gorm.DB) {
 					ID:       uuid.New(),
 					Name:     "Imola Circuit",
 					DateTime: time.Date(2024, 4, 21, 13, 30, 0, 0, time.UTC),
-					IsActive: false,
+					Status:   "past",
+					Personnel: func() []uuid.UUID {
+						if len(drivers) >= 2 && len(engineers) >= 2 {
+							return []uuid.UUID{drivers[0], drivers[1], engineers[0], engineers[1]}
+						}
+						return []uuid.UUID{}
+					}(),
+					Results: func() []struct {
+						Driver        uuid.UUID `json:"driver"`
+						QualiPosition int       `json:"quali_position"`
+						RacePosition  int       `json:"race_position"`
+					} {
+						if len(drivers) >= 2 {
+							return []struct {
+								Driver        uuid.UUID `json:"driver"`
+								QualiPosition int       `json:"quali_position"`
+								RacePosition  int       `json:"race_position"`
+							}{
+								{Driver: drivers[0], QualiPosition: 3, RacePosition: 1},
+								{Driver: drivers[1], QualiPosition: 1, RacePosition: 3},
+							}
+						}
+						return nil
+					}(),
 				},
 				{
 					ID:       uuid.New(),
 					Name:     "Red Bull Ring",
 					DateTime: time.Date(2024, 6, 30, 14, 0, 0, 0, time.UTC),
-					IsActive: true,
+					Status:   "next",
 				},
 			},
 			IsActive: true,
@@ -1054,19 +1116,42 @@ func seedCompetitions(db *gorm.DB) {
 					ID:       uuid.New(),
 					Name:     "Le Mans Circuit",
 					DateTime: time.Date(2024, 6, 15, 15, 0, 0, 0, time.UTC),
-					IsActive: true,
+					Status:   "next",
 				},
 				{
 					ID:       uuid.New(),
 					Name:     "Nürburgring",
 					DateTime: time.Date(2024, 9, 22, 14, 0, 0, 0, time.UTC),
-					IsActive: false,
+					Status:   "future",
 				},
 				{
 					ID:       uuid.New(),
 					Name:     "Sebring International",
 					DateTime: time.Date(2024, 3, 16, 12, 0, 0, 0, time.UTC),
-					IsActive: false,
+					Status:   "past",
+					Personnel: func() []uuid.UUID {
+						if len(drivers) >= 2 && len(engineers) >= 2 {
+							return []uuid.UUID{drivers[0], drivers[1], engineers[0], engineers[1]}
+						}
+						return []uuid.UUID{}
+					}(),
+					Results: func() []struct {
+						Driver        uuid.UUID `json:"driver"`
+						QualiPosition int       `json:"quali_position"`
+						RacePosition  int       `json:"race_position"`
+					} {
+						if len(drivers) >= 2 {
+							return []struct {
+								Driver        uuid.UUID `json:"driver"`
+								QualiPosition int       `json:"quali_position"`
+								RacePosition  int       `json:"race_position"`
+							}{
+								{Driver: drivers[0], QualiPosition: 2, RacePosition: 2},
+								{Driver: drivers[1], QualiPosition: 4, RacePosition: 1},
+							}
+						}
+						return nil
+					}(),
 				},
 			},
 			IsActive: true,
@@ -1079,13 +1164,36 @@ func seedCompetitions(db *gorm.DB) {
 					ID:       uuid.New(),
 					Name:     "Brands Hatch",
 					DateTime: time.Date(2024, 5, 12, 13, 0, 0, 0, time.UTC),
-					IsActive: false,
+					Status:   "past",
+					Personnel: func() []uuid.UUID {
+						if len(drivers) >= 2 && len(engineers) >= 2 {
+							return []uuid.UUID{drivers[0], drivers[1], engineers[0], engineers[1]}
+						}
+						return []uuid.UUID{}
+					}(),
+					Results: func() []struct {
+						Driver        uuid.UUID `json:"driver"`
+						QualiPosition int       `json:"quali_position"`
+						RacePosition  int       `json:"race_position"`
+					} {
+						if len(drivers) >= 2 {
+							return []struct {
+								Driver        uuid.UUID `json:"driver"`
+								QualiPosition int       `json:"quali_position"`
+								RacePosition  int       `json:"race_position"`
+							}{
+								{Driver: drivers[0], QualiPosition: 1, RacePosition: 3},
+								{Driver: drivers[1], QualiPosition: 3, RacePosition: 1},
+							}
+						}
+						return nil
+					}(),
 				},
 				{
 					ID:       uuid.New(),
 					Name:     "Donington Park",
 					DateTime: time.Date(2024, 8, 18, 14, 30, 0, 0, time.UTC),
-					IsActive: true,
+					Status:   "next",
 				},
 			},
 			IsActive: true,
@@ -1098,19 +1206,19 @@ func seedCompetitions(db *gorm.DB) {
 					ID:       uuid.New(),
 					Name:     "Goodwood Circuit",
 					DateTime: time.Date(2024, 9, 8, 15, 30, 0, 0, time.UTC),
-					IsActive: true,
+					Status:   "next",
 				},
 				{
 					ID:       uuid.New(),
 					Name:     "Laguna Seca",
 					DateTime: time.Date(2024, 10, 13, 16, 0, 0, 0, time.UTC),
-					IsActive: false,
+					Status:   "future",
 				},
 				{
 					ID:       uuid.New(),
 					Name:     "Watkins Glen",
 					DateTime: time.Date(2024, 11, 3, 14, 0, 0, 0, time.UTC),
-					IsActive: false,
+					Status:   "future",
 				},
 			},
 			IsActive: false,
