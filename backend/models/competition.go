@@ -16,7 +16,12 @@ type Track struct {
 	DateTime time.Time `json:"datetime"`
 	IsActive bool      `json:"isActive"`
 	Personnel []uuid.UUIDs `json:"personnel"`
-	// TODO: Add Seperate Personnel Fetching on Competition Load
+	Results []struct {
+		Driver        uuid.UUID `json:"driver"`
+		QualiPosition int      `json:"quali_position"`
+		RacePosition  int      `json:"race_position"`
+	} `json:"result"`
+	// TODO: Add Seperate Personnel Fetching on Competition Load or Figure out Preloading it
 }
 
 // TrackSlice is a custom type to handle JSON serialization
