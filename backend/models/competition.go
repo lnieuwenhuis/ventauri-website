@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"time"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -14,6 +15,8 @@ type Track struct {
 	Name     string    `json:"name"`
 	DateTime time.Time `json:"datetime"`
 	IsActive bool      `json:"isActive"`
+	Personnel []uuid.UUIDs `json:"personnel"`
+	// TODO: Add Seperate Personnel Fetching on Competition Load
 }
 
 // TrackSlice is a custom type to handle JSON serialization
