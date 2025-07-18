@@ -29,6 +29,7 @@ import Cart from './Pages/Protected/Cart';
 import Profile from './Pages/Protected/Profile';
 import Orders from './Pages/Protected/Orders';
 import About from './Pages/Public/About';
+import Competitions from './Pages/Public/Competitions';
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -85,6 +86,7 @@ const AppRoutes = () => {
 			<Route path="/profile" element={<Profile />} />
 			<Route path="/orders" element={<Orders />} />
 			<Route path="/about" element={<About />} />
+			<Route path="/competitions" element={<Competitions />} />
 
 			{/* Legacy dashboard route - redirect to admin */}
 			<Route path="/dashboard" element={<Navigate to="/admin" replace />} />

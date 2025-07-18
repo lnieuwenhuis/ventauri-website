@@ -35,6 +35,12 @@ const (
 	ActivityTeamRoleCreated   ActivityType = "team_role_created"
 	ActivityTeamRoleUpdated   ActivityType = "team_role_updated"
 	ActivityTeamRoleDeleted   ActivityType = "team_role_deleted"
+	ActivityCompetitionCreated ActivityType = "competition_created"
+	ActivityCompetitionUpdated ActivityType = "competition_updated"
+	ActivityCompetitionDeleted ActivityType = "competition_deleted"
+	ActivityTrackCreated      ActivityType = "track_created"
+	ActivityTrackUpdated      ActivityType = "track_updated"
+	ActivityTrackDeleted      ActivityType = "track_deleted"
 )
 
 type Activity struct {

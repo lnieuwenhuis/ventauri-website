@@ -11,17 +11,17 @@ import (
 )
 
 type Track struct {
-	ID       uuid.UUID `json:"id"`
-	Name     string    `json:"name"`
-	DateTime time.Time `json:"datetime"`
-	IsActive bool      `json:"isActive"`
-	Personnel []uuid.UUIDs `json:"personnel"`
+	ID       			uuid.UUID 		`json:"id"`
+	Name     			string    		`json:"name"`
+	DateTime 			time.Time 		`json:"datetime"`
+	IsActive 			bool      		`json:"isActive"`
+	Personnel 			[]uuid.UUID 	`json:"personnel"` 
+	PersonnelData 		[]TeamMember 	`json:"personnelData,omitempty"`
 	Results []struct {
-		Driver        uuid.UUID `json:"driver"`
-		QualiPosition int      `json:"quali_position"`
-		RacePosition  int      `json:"race_position"`
-	} `json:"result"`
-	// TODO: Add Seperate Personnel Fetching on Competition Load or Figure out Preloading it
+		Driver        	uuid.UUID 		`json:"driver"`
+		QualiPosition 	int      		`json:"quali_position"`
+		RacePosition  	int      		`json:"race_position"`
+	} 									`json:"results"`
 }
 
 // TrackSlice is a custom type to handle JSON serialization
