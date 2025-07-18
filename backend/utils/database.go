@@ -78,6 +78,7 @@ func MigrateDatabase(db *gorm.DB) error {
 		&models.Activity{},
 		&models.TeamRoles{},
 		&models.TeamMember{},
+		&models.Competition{},
 	)
 }
 
@@ -96,6 +97,7 @@ func SeedDatabase(db *gorm.DB) {
 	seedWishlists(db)
 	seedTeamRoles(db)
 	seedTeamMembers(db)
+	seedCompetitions(db)
 	
 	log.Println("✅ Database seeding completed!")
 }
@@ -985,6 +987,141 @@ func seedTeamMembers(db *gorm.DB) {
 			log.Printf("Failed to create seed team member %s %s: %v", member.FirstName, member.LastName, err)
 		} else {
 			log.Printf("✅ Created seed team member: %s %s (Role ID: %s)", member.FirstName, member.LastName, member.RoleID)
+		}
+	}
+}
+
+func seedCompetitions(db *gorm.DB) {
+	// Check if competitions already exist
+	var count int64
+	db.Model(&models.Competition{}).Count(&count)
+	if count > 0 {
+		log.Println("Competitions already exist, skipping competition seeding")
+		return
+	}
+
+	// Create 5 sample competitions
+	competitions := []models.Competition{
+		{
+			Name:     "Formula Ventauri Championship 2024",
+			Desc:     "The premier racing championship featuring the best drivers and teams from around the world.",
+			Schedule: models.TrackSlice{
+				{
+					ID:       uuid.New(),
+					Name:     "Monaco Grand Prix",
+					DateTime: time.Date(2024, 5, 26, 14, 0, 0, 0, time.UTC),
+					IsActive: false,
+				},
+				{
+					ID:       uuid.New(),
+					Name:     "Silverstone Circuit",
+					DateTime: time.Date(2024, 7, 7, 15, 0, 0, 0, time.UTC),
+					IsActive: true,
+				},
+				{
+					ID:       uuid.New(),
+					Name:     "Spa-Francorchamps",
+					DateTime: time.Date(2024, 8, 25, 15, 0, 0, 0, time.UTC),
+					IsActive: false,
+				},
+			},
+			IsActive: true,
+		},
+		{
+			Name:     "Ventauri Sprint Series",
+			Desc:     "Fast-paced sprint races featuring shorter distances and intense competition.",
+			Schedule: models.TrackSlice{
+				{
+					ID:       uuid.New(),
+					Name:     "Imola Circuit",
+					DateTime: time.Date(2024, 4, 21, 13, 30, 0, 0, time.UTC),
+					IsActive: false,
+				},
+				{
+					ID:       uuid.New(),
+					Name:     "Red Bull Ring",
+					DateTime: time.Date(2024, 6, 30, 14, 0, 0, 0, time.UTC),
+					IsActive: true,
+				},
+			},
+			IsActive: true,
+		},
+		{
+			Name:     "Ventauri Endurance Cup",
+			Desc:     "Long-distance endurance racing testing both driver skill and car reliability.",
+			Schedule: models.TrackSlice{
+				{
+					ID:       uuid.New(),
+					Name:     "Le Mans Circuit",
+					DateTime: time.Date(2024, 6, 15, 15, 0, 0, 0, time.UTC),
+					IsActive: true,
+				},
+				{
+					ID:       uuid.New(),
+					Name:     "Nürburgring",
+					DateTime: time.Date(2024, 9, 22, 14, 0, 0, 0, time.UTC),
+					IsActive: false,
+				},
+				{
+					ID:       uuid.New(),
+					Name:     "Sebring International",
+					DateTime: time.Date(2024, 3, 16, 12, 0, 0, 0, time.UTC),
+					IsActive: false,
+				},
+			},
+			IsActive: true,
+		},
+		{
+			Name:     "Rookie Championship",
+			Desc:     "Development series for upcoming drivers to showcase their talent.",
+			Schedule: models.TrackSlice{
+				{
+					ID:       uuid.New(),
+					Name:     "Brands Hatch",
+					DateTime: time.Date(2024, 5, 12, 13, 0, 0, 0, time.UTC),
+					IsActive: false,
+				},
+				{
+					ID:       uuid.New(),
+					Name:     "Donington Park",
+					DateTime: time.Date(2024, 8, 18, 14, 30, 0, 0, time.UTC),
+					IsActive: true,
+				},
+			},
+			IsActive: true,
+		},
+		{
+			Name:     "Historic Ventauri Series",
+			Desc:     "Classic car racing featuring vintage Ventauri vehicles from past decades.",
+			Schedule: models.TrackSlice{
+				{
+					ID:       uuid.New(),
+					Name:     "Goodwood Circuit",
+					DateTime: time.Date(2024, 9, 8, 15, 30, 0, 0, time.UTC),
+					IsActive: true,
+				},
+				{
+					ID:       uuid.New(),
+					Name:     "Laguna Seca",
+					DateTime: time.Date(2024, 10, 13, 16, 0, 0, 0, time.UTC),
+					IsActive: false,
+				},
+				{
+					ID:       uuid.New(),
+					Name:     "Watkins Glen",
+					DateTime: time.Date(2024, 11, 3, 14, 0, 0, 0, time.UTC),
+					IsActive: false,
+				},
+			},
+			IsActive: false,
+		},
+	}
+
+	for _, competition := range competitions {
+		if err := db.Create(&competition).Error; err != nil {
+			log.Printf("Failed to create seed competition %s: %v", competition.Name, err)
+		} else {
+			log.Printf("✅ Created seed competition: %s with %d tracks", competition.Name, len(competition.Schedule))
 		}
 	}
 }
