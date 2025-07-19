@@ -184,25 +184,8 @@ const Competitions: React.FC = () => {
 									<h2 className="text-xl font-bold text-white group-hover:text-yellow-400 transition-colors">
 										{competition.name}
 									</h2>
-									<span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-										competition.isActive 
-											? 'bg-green-100 text-green-800' 
-											: 'bg-gray-100 text-gray-800'
-									}`}>
-										{competition.isActive ? 'Active' : 'Completed'}
-									</span>
-								</div>
-								
-								{competition.desc && (
-									<p className="text-gray-300 mb-4 line-clamp-3">
-										{competition.desc}
-									</p>
-								)}
-								
-								<div className="flex items-center justify-between text-sm text-gray-400">
-									<span>Created: {formatDate(competition.createdAt)}</span>
 									<svg 
-										className="w-5 h-5 text-gray-400 group-hover:text-yellow-400 transition-colors" 
+										className="w-5 h-5 mt-1 text-gray-400 group-hover:text-yellow-400 transition-colors" 
 										fill="none" 
 										stroke="currentColor" 
 										viewBox="0 0 24 24"
@@ -210,6 +193,12 @@ const Competitions: React.FC = () => {
 										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
 									</svg>
 								</div>
+								
+								{competition.desc && (
+									<p className="text-gray-300 mb-4 line-clamp-3">
+										{competition.desc}
+									</p>
+								)}
 							</Link>
 						))}
 					</div>

@@ -174,7 +174,7 @@ const CompetitionDetail: React.FC = () => {
 						</div>
 					</div>
 				</div>
-				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 					<div className="text-center">
 						<div className="text-red-400 text-lg mb-4">{error}</div>
 						<div className="space-x-4">
@@ -234,7 +234,7 @@ const CompetitionDetail: React.FC = () => {
 			{/* Header */}
 			<div className="bg-gray-800 border-b border-gray-700">
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-					<div className="flex items-center space-x-4 mb-4">
+					<div className="flex items-center space-x-4 mb-2">
 						<button
 							onClick={() => navigate('/competitions')}
 							className="text-gray-400 hover:text-yellow-400 transition-colors"
@@ -244,29 +244,17 @@ const CompetitionDetail: React.FC = () => {
 							</svg>
 						</button>
 						<div>
-							<h1 className="text-3xl font-bold text-white mb-2">{competition.name}</h1>
-							<div className="flex items-center space-x-4">
-								<span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-									competition.isActive 
-										? 'bg-green-100 text-green-800' 
-										: 'bg-gray-100 text-gray-800'
-								}`}>
-									{competition.isActive ? 'Active' : 'Completed'}
-								</span>
-								<span className="text-gray-400 text-sm">
-									Created: {formatDate(competition.createdAt)}
-								</span>
-							</div>
+							<h1 className="text-3xl font-bold text-white">{competition.name}</h1>
 						</div>
 					</div>
 					{competition.desc && (
-						<p className="text-gray-300 text-lg">{competition.desc}</p>
+						<p className="text-gray-300">{competition.desc}</p>
 					)}
 				</div>
 			</div>
 
 			{/* Main Content */}
-			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 				{!competition.schedule || competition.schedule.length === 0 ? (
 					<div className="text-center py-12">
 						<div className="text-gray-400 text-lg mb-4">No race schedule available</div>
@@ -280,7 +268,7 @@ const CompetitionDetail: React.FC = () => {
 							<div key={track.id || index} className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
 								{/* Track Header */}
 								<div className="p-6 border-b border-gray-700">
-									<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3">
+									<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
 										<h3 className="text-xl font-bold text-white">{track.name}</h3>
 										<div className="flex items-center space-x-3">
 											<span className="text-gray-300">
@@ -300,7 +288,7 @@ const CompetitionDetail: React.FC = () => {
 
 									{/* Personnel */}
 									{track.personnelData && track.personnelData.length > 0 && (
-										<div className="mb-4">
+										<div>
 											<h4 className="text-sm font-medium text-gray-400 mb-2">Personnel</h4>
 											<div className="flex flex-wrap gap-2">
 												{track.personnelData.map((person, idx) => (
