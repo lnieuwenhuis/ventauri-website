@@ -48,14 +48,6 @@ const Competitions: React.FC = () => {
 		}
 	};
 
-	const formatDate = (dateString: string) => {
-		return new Date(dateString).toLocaleDateString('en-US', {
-			year: 'numeric',
-			month: 'long',
-			day: 'numeric',
-		});
-	};
-
 	if (loading) {
 		return (
 			<div className="min-h-screen bg-gray-900">
