@@ -7,6 +7,8 @@ interface Competition {
 	name: string;
 	desc: string;
 	isActive: boolean;
+	position?: number;
+	points?: number;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -46,6 +48,13 @@ const Competitions: React.FC = () => {
 		} finally {
 			setLoading(false);
 		}
+	};
+
+	const getPositionColor = (position: number) => {
+		if (position === 1) return 'text-yellow-400';
+		if (position === 2) return 'text-gray-300';
+		if (position === 3) return 'text-orange-400';
+		return 'text-gray-400';
 	};
 
 	if (loading) {
@@ -165,34 +174,93 @@ const Competitions: React.FC = () => {
 						<p className="text-gray-500">Check back later for upcoming competitions and events.</p>
 					</div>
 				) : (
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-						{competitions.map((competition) => (
-							<Link
-								key={competition.id}
-								to={`/competitions/${competition.id}`}
-								className="bg-gray-800 rounded-lg border border-gray-700 p-6 hover:border-yellow-400 hover:bg-gray-750 transition-all duration-200 group"
-							>
-								<div className="flex items-start justify-between mb-4">
-									<h2 className="text-xl font-bold text-white group-hover:text-yellow-400 transition-colors">
-										{competition.name}
-									</h2>
-									<svg 
-										className="w-5 h-5 mt-1 text-gray-400 group-hover:text-yellow-400 transition-colors" 
-										fill="none" 
-										stroke="currentColor" 
-										viewBox="0 0 24 24"
-									>
-										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-									</svg>
-								</div>
-								
-								{competition.desc && (
-									<p className="text-gray-300 mb-4 line-clamp-3">
-										{competition.desc}
-									</p>
-								)}
-							</Link>
-						))}
+					<div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden shadow-xl">
+						{/* Table Header */}
+						<div className="bg-gradient-to-r from-gray-700 to-gray-600 px-8 py-5 border-b border-gray-600">
+							<div className="grid grid-cols-12 gap-6 text-sm font-semibold text-gray-200 uppercase tracking-wide">
+								<div className="col-span-5">Competition</div>
+								<div className="col-span-4">Description</div>
+								<div className="col-span-1 text-center">Position</div>
+								<div className="col-span-2 text-right">Points</div>
+							</div>
+						</div>
+						
+						{/* Competition List */}
+						<div className="divide-y divide-gray-700">
+							{competitions.map((competition, index) => (
+								<Link
+									key={competition.id}
+									to={`/competitions/${competition.id}`}
+									className={`block px-8 py-6 hover:bg-gray-750 transition-all duration-200 group ${
+										index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-825'
+									}`}
+								>
+									<div className="grid grid-cols-12 gap-6 items-center">
+										{/* Competition Name */}
+										<div className="col-span-5">
+											<h3 className="text-lg font-semibold text-white group-hover:text-yellow-400 transition-colors mb-1">
+												{competition.name}
+											</h3>
+											<div className="flex items-center space-x-2">
+												<span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+													competition.isActive 
+														? 'bg-green-900 text-green-300 border border-green-700' 
+														: 'bg-gray-700 text-gray-400 border border-gray-600'
+												}`}>
+													<div className={`w-2 h-2 rounded-full mr-1.5 ${
+														competition.isActive ? 'bg-green-400' : 'bg-gray-500'
+													}`}></div>
+													{competition.isActive ? 'Running' : 'Finished'}
+												</span>
+											</div>
+										</div>
+										
+										{/* Description */}
+										<div className="col-span-4">
+											{competition.desc ? (
+												<p className="text-gray-300 text-sm leading-relaxed line-clamp-2">
+													{competition.desc}
+												</p>
+											) : (
+												<span className="text-gray-500 text-sm italic">No description available</span>
+											)}
+										</div>
+
+										{/* Position */}
+										<div className="col-span-1 text-center">
+											{competition.position ? (
+												<div className="inline-flex items-center justify-center">
+													<span className={`font-bold text-xl ${getPositionColor(competition.position)} bg-gray-900 px-3 py-1.5 rounded-lg border-2 ${
+														competition.position === 1 ? 'border-yellow-400' :
+														competition.position === 2 ? 'border-gray-300' :
+														competition.position === 3 ? 'border-orange-400' :
+														'border-gray-600'
+													}`}>
+														P{competition.position}
+													</span>
+												</div>
+											) : (
+												<span className="text-gray-500 text-lg">-</span>
+											)}
+										</div>
+										
+										{/* Points */}
+										<div className="col-span-2 text-right">
+											{competition.points !== undefined ? (
+												<div className="inline-flex flex-col items-end bg-gray-900 px-4 py-2 rounded-lg border border-gray-600">
+													<span className="text-2xl font-bold text-yellow-400">
+														{competition.points}
+													</span>
+													<span className="text-xs text-gray-400 uppercase tracking-wide">points</span>
+												</div>
+											) : (
+												<span className="text-gray-500 text-lg">-</span>
+											)}
+										</div>
+									</div>
+								</Link>
+							))}
+						</div>
 					</div>
 				)}
 			</div>

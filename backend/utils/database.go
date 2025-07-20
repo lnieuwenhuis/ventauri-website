@@ -1009,10 +1009,13 @@ func seedCompetitions(db *gorm.DB) {
 	for _, member := range teamMembers {
 		var role models.TeamRoles
 		db.First(&role, "id = ?", member.RoleID)
-		if role.Name == "Driver" {
-			drivers = append(drivers, member.ID)
-		} else if role.Name == "Engineer" {
-			engineers = append(engineers, member.ID)
+		switch role.Name {
+			case "Driver":
+				drivers = append(drivers, member.ID)
+			case "Engineer":
+				engineers = append(engineers, member.ID)
+			default:
+				continue
 		}
 	}
 
@@ -1065,6 +1068,8 @@ func seedCompetitions(db *gorm.DB) {
 				},
 			},
 			IsActive: true,
+			Position: 1,
+			Points:   0,
 		},
 		{
 			Name:     "Ventauri Sprint Series",
@@ -1107,6 +1112,8 @@ func seedCompetitions(db *gorm.DB) {
 				},
 			},
 			IsActive: true,
+			Position: 2,
+			Points:   0,
 		},
 		{
 			Name:     "Ventauri Endurance Cup",
@@ -1155,6 +1162,8 @@ func seedCompetitions(db *gorm.DB) {
 				},
 			},
 			IsActive: true,
+			Position: 3,
+			Points:   0,
 		},
 		{
 			Name:     "Rookie Championship",
@@ -1197,6 +1206,8 @@ func seedCompetitions(db *gorm.DB) {
 				},
 			},
 			IsActive: true,
+			Position: 4,
+			Points:   0,
 		},
 		{
 			Name:     "Historic Ventauri Series",
@@ -1222,6 +1233,8 @@ func seedCompetitions(db *gorm.DB) {
 				},
 			},
 			IsActive: false,
+			Position: 5,
+			Points:   0,
 		},
 	}
 
