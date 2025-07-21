@@ -78,6 +78,8 @@ func main() {
 	routes.SetupTeamRolesRoutes(r, db)
 	routes.SetupCompetitionRoutes(r, db)
 
+	log.Printf("Routes Successfully Loaded")
+
 	// Start server
 	port := os.Getenv("PORT")
 	if port == "" {
