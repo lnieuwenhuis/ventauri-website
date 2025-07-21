@@ -42,12 +42,6 @@ const Navbar: React.FC = () => {
 							Shop
 						</Link>
 						<Link
-							to="/categories"
-							className="text-gray-300 hover:text-yellow-400 px-3 py-2 text-sm font-medium transition-colors"
-						>
-							Categories
-						</Link>
-						<Link
 							to="/about"
 							className="text-gray-300 hover:text-yellow-400 px-3 py-2 text-sm font-medium transition-colors"
 						>

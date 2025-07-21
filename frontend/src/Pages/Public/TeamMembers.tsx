@@ -48,6 +48,21 @@ const TeamMembers: React.FC = () => {
 		}
 	};
 
+	// Group team members by role
+	const groupTeamMembersByRole = (members: TeamMember[]) => {
+		const grouped = members.reduce((acc, member) => {
+			const roleName = member.role.name;
+			if (!acc[roleName]) {
+				acc[roleName] = [];
+			}
+			acc[roleName].push(member);
+			return acc;
+		}, {} as Record<string, TeamMember[]>);
+
+		// Sort roles alphabetically and return as array of [roleName, members] pairs
+		return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
+	};
+
 	return (
 		<div className="space-y-8">
 			<div className="text-center">
@@ -62,23 +77,37 @@ const TeamMembers: React.FC = () => {
 					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
 				</div>
 			) : (
-				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-					{teamMembers.map((member) => (
-						<div key={member.id} className="bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
-							{member.picture && (
-								<img
-									src={member.picture}
-									alt={`${member.firstName} ${member.lastName}`}
-									className="w-full h-64 object-cover"
-								/>
-							)}
-							<div className="p-6">
-								<h3 className="text-xl font-semibold text-white mb-2">
-									{member.firstName} {member.lastName}
+				<div className="space-y-12">
+					{groupTeamMembersByRole(teamMembers).map(([roleName, members]) => (
+						<div key={roleName} className="space-y-6">
+							{/* Role Heading */}
+							<div className="text-center">
+								<h3 className="text-2xl font-bold text-yellow-400 mb-2 capitalize">
+									{roleName}
 								</h3>
-								<p className="text-yellow-400 font-medium mb-2 capitalize">{member.role.name}</p>
-								<p className="text-gray-400 text-sm mb-3">{member.nationality}</p>
-								<p className="text-gray-300 text-sm leading-relaxed">{member.bio}</p>
+								<div className="w-24 h-1 bg-yellow-400 mx-auto mb-6"></div>
+							</div>
+
+							{/* Team Members Grid for this role */}
+							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+								{members.map((member) => (
+									<div key={member.id} className="bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
+										{member.picture && (
+											<img
+												src={member.picture}
+												alt={`${member.firstName} ${member.lastName}`}
+												className="w-full h-64 object-cover"
+											/>
+										)}
+										<div className="p-6">
+											<h4 className="text-xl font-semibold text-white mb-2">
+												{member.firstName} {member.lastName}
+											</h4>
+											<p className="text-gray-400 text-sm mb-3">{member.nationality}</p>
+											<p className="text-gray-300 text-sm leading-relaxed">{member.bio}</p>
+										</div>
+									</div>
+								))}
 							</div>
 						</div>
 					))}
