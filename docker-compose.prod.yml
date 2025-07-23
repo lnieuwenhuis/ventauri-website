@@ -68,6 +68,42 @@ services:
       backend:
         condition: service_healthy
 
+  # SSL Certificate Management
+  certbot:
+    image: certbot/certbot:latest
+    container_name: ventauri-merch-certbot
+    volumes:
+      - ./ssl:/etc/letsencrypt
+      - ./ssl/www:/var/www/certbot
+    command: >
+      sh -c "certbot certonly --webroot 
+             --webroot-path=/var/www/certbot 
+             --email ${SSL_EMAIL} 
+             --agree-tos 
+             --no-eff-email 
+             --force-renewal 
+             -d ${DOMAIN} 
+             -d www.${DOMAIN}"
+    depends_on:
+      - nginx
+
+  # Auto-renewal service
+  certbot-renew:
+    image: certbot/certbot:latest
+    container_name: ventauri-merch-certbot-renew
+    volumes:
+      - ./ssl:/etc/letsencrypt
+      - ./ssl/www:/var/www/certbot
+    command: >
+      sh -c "while :; do 
+               sleep 12h & wait $${!}; 
+               certbot renew --webroot --webroot-path=/var/www/certbot; 
+               nginx -s reload; 
+             done"
+    depends_on:
+      - nginx
+      - certbot
+
   nginx:
     image: nginx:alpine
     container_name: ventauri-merch-nginx-prod
@@ -78,7 +114,8 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./ssl:/etc/nginx/ssl:ro  # For SSL certificates
+      - ./ssl:/etc/nginx/ssl:ro
+      - ./ssl/www:/var/www/certbot:ro
     networks:
       - ventauri-prod-network
     depends_on:

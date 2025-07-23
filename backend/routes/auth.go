@@ -16,7 +16,7 @@ func SetupAuthRoutes(router *gin.Engine, db *gorm.DB) {
 		auth.POST("/signin/social", authService.SignInSocial)
 		auth.GET("/callback/google", authService.GoogleCallback)
 		auth.GET("/session", authService.GetSession)
-		auth.POST("/signout", authService.SignOut)
+		auth.POST("/logout", authService.SignOut)
 	}
 
 	// Protected routes (authenticated users)

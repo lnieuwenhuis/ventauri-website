@@ -60,7 +60,7 @@ type Competition struct {
 	CreatedAt time.Time      `gorm:"default:current_timestamp;index:idx_competition_active_created,priority:2" json:"createdAt"`
 	UpdatedAt time.Time      `gorm:"default:current_timestamp" json:"updatedAt"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt"`
-	Name      string         `gorm:"unique;index:idx_competition_name_search" json:"name"`
+	Name      string         `gorm:"index:idx_competition_name_search" json:"name"`
 	Desc      string         `gorm:"index:idx_competition_desc_search" json:"desc"`
 	Schedule  TrackSlice     `gorm:"type:json" json:"schedule"`
 	Position  int            `gorm:"index:idx_competition_position" json:"position"`

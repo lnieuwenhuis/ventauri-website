@@ -130,7 +130,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
 			if (response.ok) {
 				setUser(null);
-				window.location.href = '/login';
+				window.location.href = '/';
 			}
 		} catch (error) {
 			console.error('Sign out failed:', error);

@@ -11,7 +11,8 @@ interface FormField<T = Record<string, unknown>> {
 		| 'checkbox'
 		| 'url'
 		| 'array'
-		| 'date';
+		| 'date'
+		| 'datetime-local';
 	required?: boolean;
 	options?: { value: string; label: string }[];
 	placeholder?: string;

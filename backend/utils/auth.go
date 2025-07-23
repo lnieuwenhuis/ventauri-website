@@ -286,7 +286,8 @@ func (a *AuthService) createOrUpdateUser(googleUser GoogleUserInfo) (*models.Use
 func (a *AuthService) createSession(userID uuid.UUID) (*models.Session, error) {
 	session := models.Session{
 		UserID:    userID,
-		ExpiresAt: time.Now().Add(time.Hour * 24 * 7), // 7 days
+		Token:     uuid.New().String(),
+		ExpiresAt: time.Now().Add(time.Hour * 24 * 7),
 		IsActive:  true,
 	}
 
