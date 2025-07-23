@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../Components/Navbar';
 import { useCart } from '../../Contexts/CartContext';
+import usePageTitle from '../../hooks/usePageTitle';
 
 interface Product {
 	id: string;
@@ -26,11 +27,52 @@ interface ProductsResponse {
 	limit: number;
 }
 
+// Updated interfaces
+interface ChampionshipStats {
+	raceWins: number;
+	podiumFinishes: number;
+	championshipPosition: number;
+	competitionName: string;
+}
+
+// Updated fetch function
+const fetchChampionshipStats = async (): Promise<ChampionshipStats> => {
+	const apiURL = import.meta.env.VITE_BACKEND_URL || '';
+	const response = await fetch(`${apiURL}/api/competitions/championship-stats`);
+	if (!response.ok) {
+		throw new Error('Failed to fetch championship stats');
+	}
+	return response.json();
+};
+
 export default function Home() {
+	usePageTitle('Home');
 	const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
 	const [loading, setLoading] = useState(true);
 	const apiURL = import.meta.env.VITE_BACKEND_URL || '';
 	const { addToCart, loading: cartLoading } = useCart();
+	const [championshipStats, setChampionshipStats] = useState<ChampionshipStats>({
+		raceWins: 0,
+		podiumFinishes: 0,
+		championshipPosition: 3,
+		competitionName: 'Loading...',
+	});
+
+	useEffect(() => {
+		fetchChampionshipStats()
+			.then((stats) => {
+				setChampionshipStats(stats);
+			})
+			.catch(console.error);
+	}, [apiURL]);
+
+	// Helper function for ordinal numbers
+	const getOrdinal = (num: number): string => {
+		if (num === 1) return '1st';
+		if (num === 2) return '2nd';
+		if (num === 3) return '3rd';
+		return `${num}th`;
+	};
 
 	const fetchFeaturedProducts = async () => {
 		try {
@@ -81,12 +123,12 @@ export default function Home() {
 
 			{/* Hero Section */}
 			<section className="relative overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-black">
-				<div className="absolute inset-0 bg-gradient-to-r from-yellow-400/10 to-transparent"></div>
+				<div className="absolute inset-0 bg-gradient-to-r from-ventauri/10 to-transparent"></div>
 				<div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
 					<div className="text-center">
 						<h1 className="text-5xl lg:text-7xl font-bold mb-6">
-							<span className="text-white">VENTAURI</span>
-							<span className="text-yellow-400 ml-4">ESPORTS</span>
+							<span className="text-ventauri">VENTAURI</span>
+							<span className="text-white ml-4">ESPORTS</span>
 						</h1>
 						<p className="text-xl lg:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
 							Official merchandise for the fastest F1 Esports team on the grid
@@ -94,13 +136,13 @@ export default function Home() {
 						<div className="flex flex-col sm:flex-row gap-4 justify-center">
 							<Link
 								to="/products"
-								className="bg-yellow-400 text-black px-8 py-4 rounded-lg font-semibold text-lg hover:bg-yellow-300 transition-colors duration-200"
+								className="bg-ventauri text-black px-8 py-4 rounded-lg font-semibold text-lg hover:bg-ventauri transition-colors duration-200"
 							>
 								Shop Now
 							</Link>
 							<Link
 								to="/about"
-								className="border-2 border-yellow-400 text-yellow-400 px-8 py-4 rounded-lg font-semibold text-lg hover:bg-yellow-400 hover:text-black transition-colors duration-200"
+								className="border-2 border-ventauri text-ventauri px-8 py-4 rounded-lg font-semibold text-lg hover:bg-ventauri hover:text-black transition-colors duration-200"
 							>
 								Learn More
 							</Link>
@@ -109,8 +151,8 @@ export default function Home() {
 				</div>
 
 				{/* Decorative elements */}
-				<div className="absolute top-0 right-0 w-96 h-96 bg-yellow-400/5 rounded-full blur-3xl"></div>
-				<div className="absolute bottom-0 left-0 w-96 h-96 bg-yellow-400/5 rounded-full blur-3xl"></div>
+				<div className="absolute top-0 right-0 w-96 h-96 bg-ventauri/5 rounded-full blur-3xl"></div>
+				<div className="absolute bottom-0 left-0 w-96 h-96 bg-ventauri/5 rounded-full blur-3xl"></div>
 			</section>
 
 			{/* Featured Products */}
@@ -125,7 +167,7 @@ export default function Home() {
 
 					{loading ? (
 						<div className="flex justify-center items-center py-20">
-							<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
+							<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ventauri"></div>
 						</div>
 					) : (
 						<div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -152,7 +194,7 @@ export default function Home() {
 													/>
 												) : null}
 												<div
-													className={`text-6xl text-yellow-400 ${firstImage ? 'hidden' : ''}`}
+													className={`text-6xl text-ventauri ${firstImage ? 'hidden' : ''}`}
 												>
 													📦
 												</div>
@@ -160,7 +202,7 @@ export default function Home() {
 										</Link>
 										<div className="p-6">
 											<Link to={`/product/${product.id}`}>
-												<h3 className="text-xl font-semibold text-white mb-2 hover:text-yellow-400 transition-colors">
+												<h3 className="text-xl font-semibold text-white mb-2 hover:text-ventauri transition-colors">
 													{product.name}
 												</h3>
 											</Link>
@@ -168,13 +210,13 @@ export default function Home() {
 												{product.description}
 											</p>
 											<div className="flex justify-between items-center">
-												<span className="text-2xl font-bold text-yellow-400">
+												<span className="text-2xl font-bold text-ventauri">
 													€{product.price.toFixed(2)}
 												</span>
 												<button
 													onClick={() => handleAddToCart(product.id)}
 													disabled={cartLoading}
-													className="bg-yellow-400 text-black px-4 py-2 rounded font-semibold hover:bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+													className="bg-ventauri text-black px-4 py-2 rounded font-semibold hover:bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 												>
 													{cartLoading ? 'Adding...' : 'Add to Cart'}
 												</button>
@@ -204,33 +246,35 @@ export default function Home() {
 							Championship Performance
 						</h2>
 						<p className="text-xl text-gray-300">
-							Racing at the highest level of F1 Esports
+							{championshipStats.competitionName} - Racing at the highest level
 						</p>
 					</div>
 
-					<div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+					<div className="grid grid-cols-1 md:grid-cols-3 gap-8">
 						<div className="text-center">
-							<div className="text-5xl font-bold text-yellow-400 mb-2">12</div>
+							<div className="text-5xl font-bold text-ventauri mb-2">
+								{championshipStats.raceWins}
+							</div>
 							<div className="text-gray-300 text-lg">Race Wins</div>
 						</div>
 						<div className="text-center">
-							<div className="text-5xl font-bold text-yellow-400 mb-2">28</div>
+							<div className="text-5xl font-bold text-ventauri mb-2">
+								{championshipStats.podiumFinishes}
+							</div>
 							<div className="text-gray-300 text-lg">Podium Finishes</div>
 						</div>
 						<div className="text-center">
-							<div className="text-5xl font-bold text-yellow-400 mb-2">3rd</div>
+							<div className="text-5xl font-bold text-ventauri mb-2">
+								{getOrdinal(championshipStats.championshipPosition)}
+							</div>
 							<div className="text-gray-300 text-lg">Championship Position</div>
-						</div>
-						<div className="text-center">
-							<div className="text-5xl font-bold text-yellow-400 mb-2">2024</div>
-							<div className="text-gray-300 text-lg">Season</div>
 						</div>
 					</div>
 				</div>
 			</section>
 
 			{/* Newsletter Signup */}
-			<section className="py-20 bg-gradient-to-r from-yellow-400 to-yellow-500">
+			<section className="py-20 bg-ventauri">
 				<div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
 					<h2 className="text-4xl font-bold text-black mb-4">
 						Stay in the Fast Lane
@@ -245,7 +289,7 @@ export default function Home() {
 							placeholder="Enter your email"
 							className="flex-1 px-4 py-3 rounded-lg text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-black"
 						/>
-						<button className="bg-black text-yellow-400 px-8 py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors">
+						<button className="bg-black text-ventauri px-8 py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors">
 							Subscribe
 						</button>
 					</div>

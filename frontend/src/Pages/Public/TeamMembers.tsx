@@ -30,13 +30,15 @@ const TeamMembers: React.FC = () => {
 
 	useEffect(() => {
 		fetchTeamMembers();
-	// eslint-disable-next-line react-hooks/exhaustive-deps
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
 	const fetchTeamMembers = async () => {
 		try {
 			setLoading(true);
-			const response = await fetch(`${apiURL}/api/team-members/?limit=50&sort=latest_updated`);
+			const response = await fetch(
+				`${apiURL}/api/team-members/?limit=50&sort=latest_updated`
+			);
 			if (response.ok) {
 				const result: TeamMembersResponse = await response.json();
 				setTeamMembers(result.data);
@@ -50,14 +52,17 @@ const TeamMembers: React.FC = () => {
 
 	// Group team members by role
 	const groupTeamMembersByRole = (members: TeamMember[]) => {
-		const grouped = members.reduce((acc, member) => {
-			const roleName = member.role.name;
-			if (!acc[roleName]) {
-				acc[roleName] = [];
-			}
-			acc[roleName].push(member);
-			return acc;
-		}, {} as Record<string, TeamMember[]>);
+		const grouped = members.reduce(
+			(acc, member) => {
+				const roleName = member.role.name;
+				if (!acc[roleName]) {
+					acc[roleName] = [];
+				}
+				acc[roleName].push(member);
+				return acc;
+			},
+			{} as Record<string, TeamMember[]>
+		);
 
 		// Sort roles alphabetically and return as array of [roleName, members] pairs
 		return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
@@ -68,13 +73,14 @@ const TeamMembers: React.FC = () => {
 			<div className="text-center">
 				<h2 className="text-3xl font-bold text-white mb-4">Meet Our Team</h2>
 				<p className="text-gray-300 max-w-2xl mx-auto">
-					Our dedicated team of professionals working together to achieve excellence in Formula 1 Esports.
+					Our dedicated team of professionals working together to achieve excellence
+					in Formula 1 Esports.
 				</p>
 			</div>
 
 			{loading ? (
 				<div className="flex justify-center py-12">
-					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
+					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ventauri"></div>
 				</div>
 			) : (
 				<div className="space-y-12">
@@ -82,16 +88,19 @@ const TeamMembers: React.FC = () => {
 						<div key={roleName} className="space-y-6">
 							{/* Role Heading */}
 							<div className="text-center">
-								<h3 className="text-2xl font-bold text-yellow-400 mb-2 capitalize">
+								<h3 className="text-2xl font-bold text-ventauri mb-2 capitalize">
 									{roleName}
 								</h3>
-								<div className="w-24 h-1 bg-yellow-400 mx-auto mb-6"></div>
+								<div className="w-24 h-1 bg-ventauri mx-auto mb-6"></div>
 							</div>
 
 							{/* Team Members Grid for this role */}
 							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
 								{members.map((member) => (
-									<div key={member.id} className="bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
+									<div
+										key={member.id}
+										className="bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow"
+									>
 										{member.picture && (
 											<img
 												src={member.picture}

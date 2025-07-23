@@ -2,9 +2,12 @@ import React from 'react';
 import { Outlet, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../../Contexts/AuthContext';
 import AdminSidebar from './Sidebar';
+import usePageTitle from '../../hooks/usePageTitle';
+
 
 const AdminLayout: React.FC = () => {
 	const { user, signOut, loading } = useAuth();
+	usePageTitle('Admin Panel');
 
 	if (loading) {
 		return <div>Loading...</div>;

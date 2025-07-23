@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../Contexts/AuthContext';
 import Navbar from '../../Components/Navbar';
 import { Link } from 'react-router-dom';
+import usePageTitle from '../../hooks/usePageTitle';
 
 interface Product {
 	id: string;
@@ -33,6 +34,7 @@ const Orders: React.FC = () => {
 	const [error, setError] = useState<string | null>(null);
 	const [currentPage, setCurrentPage] = useState(1);
 	const [totalPages, setTotalPages] = useState(1);
+	usePageTitle('Orders');
 
 	const API_BASE_URL =
 		import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
@@ -83,7 +85,7 @@ const Orders: React.FC = () => {
 	const getStatusColor = (status: string) => {
 		switch (status.toLowerCase()) {
 			case 'pending':
-				return 'bg-yellow-900 text-yellow-300';
+				return 'bg-yellow-900 text-ventauri';
 			case 'processing':
 				return 'bg-blue-900 text-blue-300';
 			case 'shipped':
@@ -120,14 +122,14 @@ const Orders: React.FC = () => {
 				<div className="mb-8">
 					<h1 className="text-4xl font-bold mb-4">
 						<span className="text-white">ORDER</span>
-						<span className="text-yellow-400 ml-2">HISTORY</span>
+						<span className="text-ventauri ml-2">HISTORY</span>
 					</h1>
 					<p className="text-gray-300 text-lg">Track and manage your orders</p>
 				</div>
 
 				{loading ? (
 					<div className="flex justify-center items-center py-20">
-						<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
+						<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ventauri"></div>
 					</div>
 				) : error ? (
 					<div className="bg-red-900/20 border border-red-800 rounded-lg p-6">
@@ -178,7 +180,7 @@ const Orders: React.FC = () => {
 							</p>
 							<Link
 								to="/products"
-								className="inline-flex items-center bg-yellow-400 text-black px-6 py-3 rounded-lg font-semibold hover:bg-yellow-300 transition-colors duration-200"
+								className="inline-flex items-center bg-ventauri text-black px-6 py-3 rounded-lg font-semibold hover:bg-yellow-300 transition-colors duration-200"
 							>
 								Start Shopping
 							</Link>
@@ -234,7 +236,7 @@ const Orders: React.FC = () => {
 														/>
 													) : (
 														<div className="h-20 w-20 rounded-lg bg-gray-700 flex items-center justify-center border border-gray-600">
-															<span className="text-3xl text-yellow-400">📦</span>
+															<span className="text-3xl text-ventauri">📦</span>
 														</div>
 													)}
 												</div>
@@ -249,7 +251,7 @@ const Orders: React.FC = () => {
 													</div>
 												</div>
 												<div className="text-right">
-													<p className="text-2xl font-bold text-yellow-400">
+													<p className="text-2xl font-bold text-ventauri">
 														€{(order.price * order.quantity).toFixed(2)}
 													</p>
 													<p className="text-gray-400 text-sm">Total</p>
@@ -279,7 +281,7 @@ const Orders: React.FC = () => {
 											onClick={() => setCurrentPage(page)}
 											className={`px-4 py-2 rounded-lg font-medium transition-colors duration-200 ${
 												page === currentPage
-													? 'bg-yellow-400 text-black'
+													? 'bg-ventauri text-black'
 													: 'bg-gray-800 text-gray-300 hover:bg-gray-700'
 											}`}
 										>

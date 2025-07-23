@@ -22,6 +22,7 @@ import AdminPayments from './Pages/Admin/Payments';
 import AdminAddresses from './Pages/Admin/Addresses';
 import AdminWishlists from './Pages/Admin/Wishlists';
 import AdminTeamMembers from './Pages/Admin/TeamMembers';
+import AdminCompetitions from './Pages/Admin/Competitions';
 
 import Products from './Pages/Public/Products';
 import Product from './Pages/Public/Product';
@@ -80,6 +81,7 @@ const AppRoutes = () => {
 				<Route path="addresses" element={<AdminAddresses />} />
 				<Route path="wishlists" element={<AdminWishlists />} />
 				<Route path="team-members" element={<AdminTeamMembers />} />
+				<Route path="competitions" element={<AdminCompetitions />} />
 			</Route>
 
 			<Route path="/products" element={<Products />} />

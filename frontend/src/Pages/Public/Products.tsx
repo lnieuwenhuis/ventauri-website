@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import Navbar from '../../Components/Navbar';
 import { Link } from 'react-router-dom';
 import { useCart } from '../../Contexts/CartContext';
+import usePageTitle from '../../hooks/usePageTitle';
 
 interface ProductVariant {
 	id: string;
@@ -44,7 +45,9 @@ interface ProductsResponse {
 	limit: number;
 }
 
+// In the component
 export default function Products() {
+	usePageTitle('Shop');
 	const [products, setProducts] = useState<Product[]>([]);
 	const [categories, setCategories] = useState<Category[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -296,7 +299,7 @@ export default function Products() {
 				<div className="mb-8">
 					<h1 className="text-4xl font-bold mb-4">
 						<span className="text-white">SHOP</span>
-						<span className="text-yellow-400 ml-2">COLLECTION</span>
+						<span className="text-ventauri ml-2">COLLECTION</span>
 					</h1>
 					<p className="text-gray-300 text-lg">
 						Discover our premium F1 Esports merchandise
@@ -307,7 +310,7 @@ export default function Products() {
 					{/* Filters Sidebar */}
 					<div className="lg:w-1/4">
 						<div className="bg-gray-800 rounded-lg p-6 sticky top-24">
-							<h3 className="text-xl font-semibold mb-6 text-yellow-400">Filters</h3>
+							<h3 className="text-xl font-semibold mb-6 text-ventauri">Filters</h3>
 
 							{/* Search */}
 							<div className="mb-6">
@@ -319,7 +322,7 @@ export default function Products() {
 									value={searchTerm}
 									onChange={handleSearch}
 									placeholder="Search products..."
-									className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+									className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-ventauri focus:border-transparent"
 								/>
 							</div>
 
@@ -331,7 +334,7 @@ export default function Products() {
 								<select
 									value={selectedCategory}
 									onChange={(e) => handleCategoryFilter(e.target.value)}
-									className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+									className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-ventauri focus:border-transparent"
 								>
 									<option value="">All Categories</option>
 									{categories.map((category) => (
@@ -356,7 +359,7 @@ export default function Products() {
 												setPriceRange((prev) => ({ ...prev, min: Number(e.target.value) }))
 											}
 											placeholder="Min"
-											className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+											className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-ventauri focus:border-transparent"
 										/>
 										<input
 											type="number"
@@ -365,7 +368,7 @@ export default function Products() {
 												setPriceRange((prev) => ({ ...prev, max: Number(e.target.value) }))
 											}
 											placeholder="Max"
-											className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+											className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-ventauri focus:border-transparent"
 										/>
 									</div>
 								</div>
@@ -385,7 +388,7 @@ export default function Products() {
 								<select
 									value={sortBy}
 									onChange={(e) => handleSortChange(e.target.value)}
-									className="px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+									className="px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-ventauri focus:border-transparent"
 								>
 									<option value="newest">Newest First</option>
 									<option value="oldest">Oldest First</option>
@@ -400,7 +403,7 @@ export default function Products() {
 						{/* Products Grid */}
 						{loading ? (
 							<div className="flex items-center justify-center py-12">
-								<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
+								<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ventauri"></div>
 								<span className="ml-3 text-gray-300">Loading products...</span>
 							</div>
 						) : filteredProducts.length === 0 ? (
@@ -439,7 +442,7 @@ export default function Products() {
 											<div className="p-4">
 												<div className="mb-2">
 													{product.category && (
-														<span className="text-xs text-yellow-400 font-medium uppercase tracking-wide">
+														<span className="text-xs text-ventauri font-medium uppercase tracking-wide">
 															{product.category.name}
 														</span>
 													)}
@@ -451,11 +454,11 @@ export default function Products() {
 													{product.description}
 												</p>
 												<div className="flex items-center justify-between">
-													<span className="text-xl font-bold text-yellow-400">
+													<span className="text-xl font-bold text-ventauri">
 														${product.price.toFixed(2)}
 													</span>
 													<button
-														className="bg-yellow-400 text-black px-4 py-2 rounded-lg font-medium hover:bg-yellow-300 transition-colors"
+														className="bg-ventauri text-black px-4 py-2 rounded-lg font-medium hover:bg-yellow-300 transition-colors"
 														onClick={(e) => handleAddToCartClick(product, e)}
 														disabled={cartLoading}
 													>
@@ -489,7 +492,7 @@ export default function Products() {
 												onClick={() => setCurrentPage(pageNum)}
 												className={`px-3 py-2 rounded-lg transition-colors ${
 													currentPage === pageNum
-														? 'bg-yellow-400 text-black font-medium'
+														? 'bg-ventauri text-black font-medium'
 														: 'bg-gray-800 text-white hover:bg-gray-700'
 												}`}
 											>
@@ -547,7 +550,7 @@ export default function Products() {
 								<h4 className="text-lg font-medium text-white mb-2">
 									{selectedProduct.name}
 								</h4>
-								<p className="text-yellow-400 text-xl font-bold">
+								<p className="text-ventauri text-xl font-bold">
 									${selectedProduct.price.toFixed(2)}
 								</p>
 							</div>
@@ -562,7 +565,7 @@ export default function Products() {
 										{(selectedSize || selectedColor) && (
 											<button
 												onClick={clearSelections}
-												className="text-sm text-yellow-400 hover:text-yellow-300 underline"
+												className="text-sm text-ventauri hover:text-ventauri underline"
 											>
 												Clear Selection
 											</button>
@@ -576,7 +579,7 @@ export default function Products() {
 											<label className="block text-sm font-medium text-gray-300">
 												Size{' '}
 												{selectedSize && (
-													<span className="text-yellow-400">(Click to deselect)</span>
+													<span className="text-ventauri">(Click to deselect)</span>
 												)}
 											</label>
 											<div className="flex flex-wrap gap-2">
@@ -590,9 +593,9 @@ export default function Products() {
 															key={size}
 															className={`px-4 py-2 rounded-lg border transition-all ${
 																isSelected
-																	? 'border-yellow-400 bg-yellow-400 text-black hover:bg-yellow-300'
+																	? 'border-ventauri bg-ventauri text-black hover:bg-yellow-300'
 																	: isAvailable
-																		? 'border-gray-600 hover:border-yellow-400 text-white'
+																		? 'border-gray-600 hover:border-yellow-300 text-white'
 																		: 'border-gray-700 bg-gray-800 text-gray-500 cursor-not-allowed'
 															}`}
 															disabled={!isAvailable && !isSelected}
@@ -613,7 +616,7 @@ export default function Products() {
 											<label className="block text-sm font-medium text-gray-300">
 												Color{' '}
 												{selectedColor && (
-													<span className="text-yellow-400">(Click to deselect)</span>
+													<span className="text-ventauri">(Click to deselect)</span>
 												)}
 											</label>
 											<div className="flex flex-wrap gap-2">
@@ -627,9 +630,9 @@ export default function Products() {
 															key={color}
 															className={`px-4 py-2 rounded-lg border transition-all ${
 																isSelected
-																	? 'border-yellow-400 bg-yellow-400 text-black hover:bg-yellow-300'
+																	? 'border-ventauri bg-ventauri text-black hover:bg-yellow-300'
 																	: isAvailable
-																		? 'border-gray-600 hover:border-yellow-400 text-white'
+																		? 'border-gray-600 hover:border-yellow-300 text-white'
 																		: 'border-gray-700 bg-gray-800 text-gray-500 cursor-not-allowed'
 															}`}
 															disabled={!isAvailable && !isSelected}
@@ -652,13 +655,13 @@ export default function Products() {
 									<div className="text-sm text-gray-300">
 										{selectedSize && (
 											<span>
-												Size: <span className="text-yellow-400">{selectedSize}</span>
+												Size: <span className="text-ventauri">{selectedSize}</span>
 											</span>
 										)}
 										{selectedSize && selectedColor && <span className="mx-2">•</span>}
 										{selectedColor && (
 											<span>
-												Color: <span className="text-yellow-400">{selectedColor}</span>
+												Color: <span className="text-ventauri">{selectedColor}</span>
 											</span>
 										)}
 									</div>
@@ -686,7 +689,7 @@ export default function Products() {
 									disabled={
 										!selectedVariant || selectedVariant.stock <= 0 || cartLoading
 									}
-									className="flex-1 bg-yellow-400 text-black px-4 py-3 rounded-lg font-medium hover:bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+									className="flex-1 bg-ventauri text-black px-4 py-3 rounded-lg font-medium hover:bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 								>
 									{cartLoading
 										? 'Adding...'

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import Navbar from '../../Components/Navbar';
 import { useCart } from '../../Contexts/CartContext';
+import usePageTitle from '../../hooks/usePageTitle';
 
 interface ProductVariant {
 	id: string;
@@ -57,6 +58,7 @@ export default function Product() {
 	const [error, setError] = useState<string | null>(null);
 	const apiURL = import.meta.env.VITE_BACKEND_URL || '';
 	const { addToCart, loading: cartLoading } = useCart();
+	usePageTitle(product?.name || 'Product');
 
 	const handleAddToCart = async () => {
 		if (product && selectedVariant && selectedVariant.stock > 0) {
@@ -195,7 +197,7 @@ export default function Product() {
 				<Navbar />
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 					<div className="flex items-center justify-center py-12">
-						<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
+						<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ventauri"></div>
 						<span className="ml-3 text-gray-300">Loading product...</span>
 					</div>
 				</div>
@@ -231,18 +233,18 @@ export default function Product() {
 				<nav className="mb-8">
 					<ol className="flex space-x-2 text-sm text-gray-400">
 						<li>
-							<a href="/" className="hover:text-yellow-400">
+							<a href="/" className="hover:text-ventauri">
 								Home
 							</a>
 						</li>
 						<li>/</li>
 						<li>
-							<a href="/products" className="hover:text-yellow-400">
+							<a href="/products" className="hover:text-ventauri">
 								Products
 							</a>
 						</li>
 						<li>/</li>
-						<li className="text-yellow-400">{product.name}</li>
+						<li className="text-ventauri">{product.name}</li>
 					</ol>
 				</nav>
 
@@ -265,7 +267,7 @@ export default function Product() {
 							{productImages.map((img, index) => (
 								<button
 									key={index}
-									className="aspect-square rounded-lg overflow-hidden bg-gray-800 hover:ring-2 hover:ring-yellow-400"
+									className="aspect-square rounded-lg overflow-hidden bg-gray-800 hover:ring-2 hover:ring-ventauri"
 									onClick={clearSelections}
 								>
 									<img
@@ -285,7 +287,7 @@ export default function Product() {
 					{/* Info */}
 					<div className="space-y-6">
 						{product.category && (
-							<div className="text-sm text-yellow-400 font-medium uppercase tracking-wide">
+							<div className="text-sm text-ventauri font-medium uppercase tracking-wide">
 								{product.category.name}
 							</div>
 						)}
@@ -295,7 +297,7 @@ export default function Product() {
 						</p>
 
 						{/* Price */}
-						<div className="text-3xl font-bold text-yellow-400">
+						<div className="text-3xl font-bold text-ventauri">
 							${(product.price || 0).toFixed(2)}
 						</div>
 
@@ -307,7 +309,7 @@ export default function Product() {
 									{(selectedSize || selectedColor) && (
 										<button
 											onClick={clearSelections}
-											className="text-sm text-yellow-400 hover:text-yellow-300 underline"
+											className="text-sm text-ventauri hover:text-ventauri underline"
 										>
 											Clear Selection
 										</button>
@@ -321,7 +323,7 @@ export default function Product() {
 										<label className="block text-sm font-medium text-gray-300">
 											Size{' '}
 											{selectedSize && (
-												<span className="text-yellow-400">(Click to deselect)</span>
+												<span className="text-ventauri">(Click to deselect)</span>
 											)}
 										</label>
 										<div className="flex flex-wrap gap-2">
@@ -334,9 +336,9 @@ export default function Product() {
 															key={size}
 															className={`px-4 py-2 rounded-lg border transition-all ${
 																isSelected
-																	? 'border-yellow-400 bg-yellow-400 text-black hover:bg-yellow-300'
+																	? 'border-ventauri bg-ventauri text-black hover:bg-yellow-300'
 																	: isAvailable
-																		? 'border-gray-600 hover:border-yellow-400 text-white'
+																		? 'border-gray-600 hover:bg-yellow-300 text-white'
 																		: 'border-gray-700 bg-gray-800 text-gray-500 cursor-not-allowed'
 															}`}
 															disabled={!isAvailable && !isSelected}
@@ -358,7 +360,7 @@ export default function Product() {
 										<label className="block text-sm font-medium text-gray-300">
 											Color{' '}
 											{selectedColor && (
-												<span className="text-yellow-400">(Click to deselect)</span>
+												<span className="text-ventauri">(Click to deselect)</span>
 											)}
 										</label>
 										<div className="flex flex-wrap gap-2">
@@ -371,9 +373,9 @@ export default function Product() {
 															key={color}
 															className={`px-4 py-2 rounded-lg border transition-all ${
 																isSelected
-																	? 'border-yellow-400 bg-yellow-400 text-black hover:bg-yellow-300'
+																	? 'border-ventauri bg-ventauri text-black hover:bg-yellow-300'
 																	: isAvailable
-																		? 'border-gray-600 hover:border-yellow-400 text-white'
+																		? 'border-gray-600 hover:border-yellow-300 text-white'
 																		: 'border-gray-700 bg-gray-800 text-gray-500 cursor-not-allowed'
 															}`}
 															disabled={!isAvailable && !isSelected}
@@ -397,13 +399,13 @@ export default function Product() {
 								<div className="text-sm text-gray-300">
 									{selectedSize && (
 										<span>
-											Size: <span className="text-yellow-400">{selectedSize}</span>
+											Size: <span className="text-ventauri">{selectedSize}</span>
 										</span>
 									)}
 									{selectedSize && selectedColor && <span className="mx-2">•</span>}
 									{selectedColor && (
 										<span>
-											Color: <span className="text-yellow-400">{selectedColor}</span>
+											Color: <span className="text-ventauri">{selectedColor}</span>
 										</span>
 									)}
 								</div>
@@ -420,7 +422,7 @@ export default function Product() {
 
 						{/* Add to Cart */}
 						<button
-							className="w-full md:w-auto bg-yellow-400 text-black px-8 py-3 rounded-lg font-medium hover:bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+							className="w-full md:w-auto bg-ventauri text-black px-8 py-3 rounded-lg font-medium hover:bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 							disabled={!selectedVariant || selectedVariant.stock <= 0 || cartLoading}
 							onClick={handleAddToCart}
 						>
@@ -450,7 +452,7 @@ export default function Product() {
 									<div key={review.id} className="bg-gray-800 rounded-lg p-6">
 										<div className="flex items-center justify-between mb-4">
 											<div>
-												<div className="text-yellow-400 text-lg mb-1">
+												<div className="text-ventauri text-lg mb-1">
 													{getStarRating(review.rating)}
 												</div>
 												<h3 className="font-semibold text-lg">{review.title}</h3>

@@ -16,13 +16,15 @@ const Navbar: React.FC = () => {
 					{/* Logo Section */}
 					<div className="flex items-center">
 						<Link to="/" className="flex items-center space-x-3">
-							{/* Placeholder for team logo */}
-							<div className="w-10 h-10 bg-yellow-400 rounded-lg flex items-center justify-center">
-								<span className="text-black font-bold text-lg">V</span>
-							</div>
+							{/* Ventauri Logo */}
+							<img 
+								src="/Ventauri.png" 
+								alt="Ventauri Logo" 
+								className="w-10 h-10 rounded-lg"
+							/>
 							<div className="text-white">
-								<span className="text-xl font-bold">VENTAURI</span>
-								<span className="text-yellow-400 ml-1">ESPORTS</span>
+								<span className="text-xl font-bold text-ventauri">VENTAURI</span>
+								<span className="ml-1">ESPORTS</span>
 							</div>
 						</Link>
 					</div>
@@ -31,25 +33,25 @@ const Navbar: React.FC = () => {
 					<div className="hidden md:flex items-center space-x-8">
 						<Link
 							to="/"
-							className="text-gray-300 hover:text-yellow-400 px-3 py-2 text-sm font-medium transition-colors"
+							className="text-gray-300 hover:text-ventauri px-3 py-2 text-sm font-medium transition-colors"
 						>
 							Home
 						</Link>
 						<Link
 							to="/products"
-							className="text-gray-300 hover:text-yellow-400 px-3 py-2 text-sm font-medium transition-colors"
+							className="text-gray-300 hover:text-ventauri px-3 py-2 text-sm font-medium transition-colors"
 						>
 							Shop
 						</Link>
 						<Link
 							to="/about"
-							className="text-gray-300 hover:text-yellow-400 px-3 py-2 text-sm font-medium transition-colors"
+							className="text-gray-300 hover:text-ventauri px-3 py-2 text-sm font-medium transition-colors"
 						>
 							Our Team
 						</Link>
 						<Link
 							to="/contact"
-							className="text-gray-300 hover:text-yellow-400 px-3 py-2 text-sm font-medium transition-colors"
+							className="text-gray-300 hover:text-ventauri px-3 py-2 text-sm font-medium transition-colors"
 						>
 							Contact
 						</Link>
@@ -62,7 +64,7 @@ const Navbar: React.FC = () => {
 							<input
 								type="text"
 								placeholder="Search products..."
-								className="bg-gray-800 text-white placeholder-gray-400 px-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 w-64"
+								className="bg-gray-800 text-white placeholder-gray-400 px-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ventauri w-64"
 							/>
 							<svg
 								className="absolute right-3 top-2.5 h-4 w-4 text-gray-400"
@@ -82,7 +84,7 @@ const Navbar: React.FC = () => {
 						{/* Cart */}
 						<Link
 							to="/cart"
-							className="relative text-gray-300 hover:text-yellow-400 p-2 transition-colors"
+							className="relative text-gray-300 hover:text-ventauri p-2 transition-colors"
 						>
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
@@ -101,7 +103,7 @@ const Navbar: React.FC = () => {
 
 							{/* Cart badge */}
 							{itemCount > 0 && (
-								<span className="absolute -top-1 -right-1 bg-yellow-400 text-black text-xs rounded-full h-5 w-5 flex items-center justify-center font-semibold">
+								<span className="absolute -top-1 -right-1 bg-ventauri text-black text-xs rounded-full h-5 w-5 flex items-center justify-center font-semibold">
 									{itemCount > 99 ? '99+' : itemCount}
 								</span>
 							)}
@@ -111,7 +113,7 @@ const Navbar: React.FC = () => {
 						<div className="relative">
 							<button
 								onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-								className="text-gray-300 hover:text-yellow-400 p-2 transition-colors"
+								className="text-gray-300 hover:text-ventauri p-2 transition-colors"
 							>
 								<svg
 									className="w-6 h-6"
@@ -137,14 +139,14 @@ const Navbar: React.FC = () => {
 											</div>
 											<Link
 												to="/profile"
-												className="block px-4 py-2 text-sm text-gray-300 hover:text-yellow-400 hover:bg-gray-700"
+												className="block px-4 py-2 text-sm text-gray-300 hover:text-ventauri hover:bg-gray-700"
 												onClick={() => setIsUserMenuOpen(false)}
 											>
 												My Account
 											</Link>
 											<Link
 												to="/orders"
-												className="block px-4 py-2 text-sm text-gray-300 hover:text-yellow-400 hover:bg-gray-700"
+												className="block px-4 py-2 text-sm text-gray-300 hover:text-ventauri hover:bg-gray-700"
 												onClick={() => setIsUserMenuOpen(false)}
 											>
 												Order History
@@ -152,7 +154,7 @@ const Navbar: React.FC = () => {
 											{user.role === 'admin' && (
 												<Link
 													to="/admin"
-													className="block px-4 py-2 text-sm text-gray-300 hover:text-yellow-400 hover:bg-gray-700"
+													className="block px-4 py-2 text-sm text-gray-300 hover:text-ventauri hover:bg-gray-700"
 													onClick={() => setIsUserMenuOpen(false)}
 												>
 													Admin Panel
@@ -163,7 +165,7 @@ const Navbar: React.FC = () => {
 													signOut();
 													setIsUserMenuOpen(false);
 												}}
-												className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:text-yellow-400 hover:bg-gray-700 rounded-b-lg"
+												className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:text-ventauri hover:bg-gray-700 rounded-b-lg"
 											>
 												Sign Out
 											</button>
@@ -172,14 +174,14 @@ const Navbar: React.FC = () => {
 										<>
 											<Link
 												to="/login"
-												className="block px-4 py-2 text-sm text-gray-300 hover:text-yellow-400 hover:bg-gray-700 rounded-t-lg"
+												className="block px-4 py-2 text-sm text-gray-300 hover:text-ventauri hover:bg-gray-700 rounded-t-lg"
 												onClick={() => setIsUserMenuOpen(false)}
 											>
 												Sign In
 											</Link>
 											<Link
 												to="/register"
-												className="block px-4 py-2 text-sm text-gray-300 hover:text-yellow-400 hover:bg-gray-700 rounded-b-lg"
+												className="block px-4 py-2 text-sm text-gray-300 hover:text-ventauri hover:bg-gray-700 rounded-b-lg"
 												onClick={() => setIsUserMenuOpen(false)}
 											>
 												Sign Up
@@ -195,7 +197,7 @@ const Navbar: React.FC = () => {
 					<div className="md:hidden">
 						<button
 							onClick={() => setIsMenuOpen(!isMenuOpen)}
-							className="text-gray-300 hover:text-yellow-400 p-2"
+							className="text-gray-300 hover:text-ventauri p-2"
 						>
 							<svg
 								className="w-6 h-6"
@@ -229,35 +231,35 @@ const Navbar: React.FC = () => {
 						<div className="px-2 pt-2 pb-3 space-y-1">
 							<Link
 								to="/"
-								className="block text-gray-300 hover:text-yellow-400 px-3 py-2 text-base font-medium"
+								className="block text-gray-300 hover:text-ventauri px-3 py-2 text-base font-medium"
 								onClick={() => setIsMenuOpen(false)}
 							>
 								Home
 							</Link>
 							<Link
 								to="/products"
-								className="block text-gray-300 hover:text-yellow-400 px-3 py-2 text-base font-medium"
+								className="block text-gray-300 hover:text-ventauri px-3 py-2 text-base font-medium"
 								onClick={() => setIsMenuOpen(false)}
 							>
 								Shop
 							</Link>
 							<Link
 								to="/categories"
-								className="block text-gray-300 hover:text-yellow-400 px-3 py-2 text-base font-medium"
+								className="block text-gray-300 hover:text-ventauri px-3 py-2 text-base font-medium"
 								onClick={() => setIsMenuOpen(false)}
 							>
 								Categories
 							</Link>
 							<Link
 								to="/about"
-								className="block text-gray-300 hover:text-yellow-400 px-3 py-2 text-base font-medium"
+								className="block text-gray-300 hover:text-ventauri px-3 py-2 text-base font-medium"
 								onClick={() => setIsMenuOpen(false)}
 							>
 								About Team
 							</Link>
 							<Link
 								to="/contact"
-								className="block text-gray-300 hover:text-yellow-400 px-3 py-2 text-base font-medium"
+								className="block text-gray-300 hover:text-ventauri px-3 py-2 text-base font-medium"
 								onClick={() => setIsMenuOpen(false)}
 							>
 								Contact
@@ -265,7 +267,7 @@ const Navbar: React.FC = () => {
 							<div className="border-t border-gray-700 pt-2">
 								<Link
 									to="/cart"
-									className="block text-gray-300 hover:text-yellow-400 px-3 py-2 text-base font-medium"
+									className="block text-gray-300 hover:text-ventauri px-3 py-2 text-base font-medium"
 									onClick={() => setIsMenuOpen(false)}
 								>
 									Cart ({itemCount})
@@ -274,7 +276,7 @@ const Navbar: React.FC = () => {
 									<>
 										<Link
 											to="/profile"
-											className="block text-gray-300 hover:text-yellow-400 px-3 py-2 text-base font-medium"
+											className="block text-gray-300 hover:text-ventauri px-3 py-2 text-base font-medium"
 											onClick={() => setIsMenuOpen(false)}
 										>
 											My Account
@@ -284,7 +286,7 @@ const Navbar: React.FC = () => {
 												signOut();
 												setIsMenuOpen(false);
 											}}
-											className="block w-full text-left text-gray-300 hover:text-yellow-400 px-3 py-2 text-base font-medium"
+											className="block w-full text-left text-gray-300 hover:text-ventauri px-3 py-2 text-base font-medium"
 										>
 											Sign Out
 										</button>
@@ -293,14 +295,14 @@ const Navbar: React.FC = () => {
 									<>
 										<Link
 											to="/login"
-											className="block text-gray-300 hover:text-yellow-400 px-3 py-2 text-base font-medium"
+											className="block text-gray-300 hover:text-ventauri px-3 py-2 text-base font-medium"
 											onClick={() => setIsMenuOpen(false)}
 										>
 											Sign In
 										</Link>
 										<Link
 											to="/register"
-											className="block text-gray-300 hover:text-yellow-400 px-3 py-2 text-base font-medium"
+											className="block text-gray-300 hover:text-ventauri px-3 py-2 text-base font-medium"
 											onClick={() => setIsMenuOpen(false)}
 										>
 											Sign Up

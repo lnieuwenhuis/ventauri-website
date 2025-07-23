@@ -1,7 +1,9 @@
 import { useAuth } from '../../Contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
+import usePageTitle from '../../hooks/usePageTitle';
 
 export default function Login() {
+	usePageTitle('Login');
 	const { user, signIn, loading } = useAuth();
 
 	if (loading)

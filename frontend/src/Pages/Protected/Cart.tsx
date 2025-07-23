@@ -3,6 +3,7 @@ import Navbar from '../../Components/Navbar';
 import { useCart } from '../../Contexts/CartContext';
 import { useAuth } from '../../Contexts/AuthContext';
 import { useState } from 'react';
+import usePageTitle from '../../hooks/usePageTitle';
 
 export default function Cart() {
 	const { items, total, loading, updateQuantity, removeFromCart, clearCart } =
@@ -10,6 +11,7 @@ export default function Cart() {
 	const { isAuthenticated } = useAuth();
 	const [updatingItems, setUpdatingItems] = useState<Set<string>>(new Set());
 	const [isOperationLoading, setIsOperationLoading] = useState(false);
+	usePageTitle('Cart');
 
 	const parseImages = (images: string): string[] => {
 		try {
@@ -67,7 +69,7 @@ export default function Cart() {
 						</h2>
 						<Link
 							to="/login"
-							className="bg-yellow-400 text-black px-6 py-3 rounded-lg font-medium hover:bg-yellow-300 transition-colors"
+							className="bg-ventauri text-black px-6 py-3 rounded-lg font-medium hover:bg-yellow-300 transition-colors"
 						>
 							Sign In
 						</Link>
@@ -84,7 +86,7 @@ export default function Cart() {
 				<Navbar />
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 					<div className="flex items-center justify-center py-12">
-						<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
+						<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ventauri"></div>
 						<span className="ml-3 text-gray-300">Loading cart...</span>
 					</div>
 				</div>
@@ -102,7 +104,7 @@ export default function Cart() {
 						<p className="text-gray-400 mb-6">Add some items to get started!</p>
 						<Link
 							to="/products"
-							className="bg-yellow-400 text-black px-6 py-3 rounded-lg font-medium hover:bg-yellow-300 transition-colors"
+							className="bg-ventauri text-black px-6 py-3 rounded-lg font-medium hover:bg-yellow-300 transition-colors"
 						>
 							Continue Shopping
 						</Link>
@@ -119,7 +121,7 @@ export default function Cart() {
 				<div className="mb-8">
 					<h1 className="text-4xl font-bold mb-4">
 						<span className="text-white">SHOPPING</span>
-						<span className="text-yellow-400 ml-2">CART</span>
+						<span className="text-ventauri ml-2">CART</span>
 					</h1>
 					<p className="text-gray-300 text-lg">Review your items before checkout</p>
 				</div>
@@ -162,7 +164,7 @@ export default function Cart() {
 												<h3 className="text-lg font-semibold text-white">
 													<Link
 														to={`/product/${item.product.id}`}
-														className="hover:text-yellow-400 transition-colors"
+														className="hover:text-ventauri transition-colors"
 													>
 														{item.product.name}
 													</Link>
@@ -177,11 +179,11 @@ export default function Cart() {
 												)}
 											</div>
 											{item.product.category && (
-												<p className="text-sm text-yellow-400 mb-2">
+												<p className="text-sm text-ventauri mb-2">
 													{item.product.category.name}
 												</p>
 											)}
-											<p className="text-xl font-bold text-yellow-400">
+											<p className="text-xl font-bold text-ventauri">
 												${item.product.price.toFixed(2)}
 											</p>
 										</div>
@@ -251,7 +253,7 @@ export default function Cart() {
 					{/* Order Summary */}
 					<div className="lg:col-span-1">
 						<div className="bg-gray-800 rounded-lg p-6 sticky top-24">
-							<h3 className="text-xl font-semibold mb-6 text-yellow-400">
+							<h3 className="text-xl font-semibold mb-6 text-ventauri">
 								Order Summary
 							</h3>
 
@@ -267,7 +269,7 @@ export default function Cart() {
 								<div className="border-t border-gray-700 pt-4">
 									<div className="flex justify-between text-lg font-bold text-white">
 										<span>Total</span>
-										<span className="text-yellow-400">${total.toFixed(2)}</span>
+										<span className="text-ventauri">${total.toFixed(2)}</span>
 									</div>
 								</div>
 							</div>
@@ -275,7 +277,7 @@ export default function Cart() {
 							<div className="space-y-3">
 								<button
 									disabled={isOperationLoading}
-									className="w-full bg-yellow-400 text-black py-3 rounded-lg font-medium hover:bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-600 disabled:text-gray-400"
+									className="w-full bg-ventauri text-black py-3 rounded-lg font-medium hover:bg-bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-600 disabled:text-gray-400"
 								>
 									{isOperationLoading ? (
 										<div className="flex items-center justify-center">

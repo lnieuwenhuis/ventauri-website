@@ -14,6 +14,7 @@ func SetupCompetitionRoutes(router *gin.Engine, db *gorm.DB) {
 	{
 		// Public routes
 		competitions.GET("/", getCompetitions(db))
+		competitions.GET("/championship-stats", getChampionshipStats(db))
 		competitions.GET("/:id", getCompetition(db))
 	}
 
@@ -204,10 +205,10 @@ func toggleCompetitionStatus(db *gorm.DB) gin.HandlerFunc {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Competition not found"})
 			return
 		}
-		if competition.IsActive == true  {
+		if competition.IsActive  {
 			competition.IsActive = false
 		}
-		if competition.IsActive == false {
+		if !competition.IsActive {
 			competition.IsActive = true
 		}
 
@@ -432,4 +433,60 @@ func preloadPersonnelForCompetition(db *gorm.DB, competition *models.Competition
 		}
 	}
 	return nil
+}
+
+type ChampionshipStats struct {
+	RaceWins          int    `json:"raceWins"`
+	PodiumFinishes    int    `json:"podiumFinishes"`
+	ChampionshipPos   int    `json:"championshipPosition"`
+	CompetitionName   string `json:"competitionName"`
+}
+
+func getChampionshipStats(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var competition models.Competition
+		
+		// Get the most recently updated active competition
+		if err := db.Where("is_active = ?", true).Order("updated_at desc").First(&competition).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				c.JSON(http.StatusNotFound, gin.H{"error": "No active competitions found"})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch competition"})
+			return
+		}
+		
+		// Calculate championship statistics
+		raceWins := 0
+		podiumFinishes := 0
+		
+		// Count wins and podiums from completed races
+		for _, track := range competition.Schedule {
+			if track.Status == "past" {
+				for _, result := range track.Results {
+					if result.RacePosition == 1 {
+						raceWins++
+					}
+					if result.RacePosition <= 3 && result.RacePosition > 0 {
+						podiumFinishes++
+					}
+				}
+			}
+		}
+		
+		// Create championship stats response
+		stats := ChampionshipStats{
+			RaceWins:          raceWins,
+			PodiumFinishes:    podiumFinishes,
+			ChampionshipPos:   competition.Position,
+			CompetitionName:   competition.Name,
+		}
+		
+		// Default championship position to 3 if not set
+		if stats.ChampionshipPos == 0 {
+			stats.ChampionshipPos = 3
+		}
+		
+		c.JSON(http.StatusOK, stats)
+	}
 }

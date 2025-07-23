@@ -2,9 +2,11 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../Contexts/AuthContext';
 import Navbar from '../../Components/Navbar';
+import usePageTitle from '../../hooks/usePageTitle';
 
 const Profile: React.FC = () => {
 	const { user } = useAuth();
+	usePageTitle('Profile');
 
 	if (!user) {
 		return (
@@ -29,7 +31,7 @@ const Profile: React.FC = () => {
 				<div className="mb-8">
 					<h1 className="text-4xl font-bold mb-4">
 						<span className="text-white">MY</span>
-						<span className="text-yellow-400 ml-2">PROFILE</span>
+						<span className="text-ventauri ml-2">PROFILE</span>
 					</h1>
 					<p className="text-gray-300 text-lg">
 						Manage your account and preferences
@@ -42,12 +44,12 @@ const Profile: React.FC = () => {
 						<div className="flex-shrink-0">
 							{user.avatar ? (
 								<img
-									className="h-24 w-24 rounded-full border-2 border-yellow-400"
+									className="h-24 w-24 rounded-full border-2 border-ventauri"
 									src={user.avatar}
 									alt={`${user.firstName} ${user.lastName}`}
 								/>
 							) : (
-								<div className="h-24 w-24 rounded-full bg-yellow-400 flex items-center justify-center border-2 border-yellow-400">
+								<div className="h-24 w-24 rounded-full bg-ventauri flex items-center justify-center border-2 border-ventauri">
 									<span className="text-3xl font-bold text-black">
 										{user.firstName.charAt(0)}
 										{user.lastName.charAt(0)}
@@ -61,7 +63,7 @@ const Profile: React.FC = () => {
 							</h2>
 							<p className="text-gray-300 text-lg mb-1">{user.email}</p>
 							<div className="flex items-center space-x-4">
-								<span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-400 text-black capitalize">
+								<span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-ventauri text-black capitalize">
 									{user.role}
 								</span>
 								<span
@@ -81,7 +83,7 @@ const Profile: React.FC = () => {
 				<div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 					{/* Personal Information */}
 					<div className="bg-gray-800 rounded-lg p-6">
-						<h3 className="text-xl font-semibold text-yellow-400 mb-6">
+						<h3 className="text-xl font-semibold text-ventauri mb-6">
 							Personal Information
 						</h3>
 						<div className="space-y-4">
@@ -128,13 +130,13 @@ const Profile: React.FC = () => {
 
 					{/* Quick Actions */}
 					<div className="bg-gray-800 rounded-lg p-6">
-						<h3 className="text-xl font-semibold text-yellow-400 mb-6">
+						<h3 className="text-xl font-semibold text-ventauri mb-6">
 							Quick Actions
 						</h3>
 						<div className="space-y-4">
 							<Link
 								to="/orders"
-								className="block w-full bg-yellow-400 text-black px-6 py-3 rounded-lg font-semibold text-center hover:bg-yellow-300 transition-colors duration-200"
+								className="block w-full bg-ventauri text-black px-6 py-3 rounded-lg font-semibold text-center hover:bg-yellow-300 transition-colors duration-200"
 							>
 								View Order History
 							</Link>
@@ -158,7 +160,7 @@ const Profile: React.FC = () => {
 							</Link>
 							<Link
 								to="/products"
-								className="block w-full border-2 border-yellow-400 text-yellow-400 px-6 py-3 rounded-lg font-semibold text-center hover:bg-yellow-400 hover:text-black transition-colors duration-200"
+								className="block w-full border-2 border-ventauri text-ventauri px-6 py-3 rounded-lg font-semibold text-center hover:bg-yellow-300 hover:text-black transition-colors duration-200"
 							>
 								Continue Shopping
 							</Link>
@@ -167,7 +169,7 @@ const Profile: React.FC = () => {
 
 					{/* Account Details */}
 					<div className="bg-gray-800 rounded-lg p-6">
-						<h3 className="text-xl font-semibold text-yellow-400 mb-6">
+						<h3 className="text-xl font-semibold text-ventauri mb-6">
 							Account Details
 						</h3>
 						<div className="space-y-4">
