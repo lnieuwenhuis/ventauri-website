@@ -84,6 +84,27 @@ const ViewModal = <
 											>
 												{displayValue}
 											</span>
+										) : field.name === 'picture' ? (
+											// Special handling for picture field - show image instead of URL
+											value ? (
+												<div className="mt-1">
+													<img
+														src={String(value)}
+														alt="Team member picture"
+														className="w-32 h-32 object-cover rounded-lg border border-gray-300"
+														onError={(e) => {
+															// Fallback if image fails to load
+															e.currentTarget.style.display = 'none';
+															e.currentTarget.nextElementSibling?.classList.remove('hidden');
+														}}
+													/>
+													<div className="hidden w-32 h-32 bg-gray-200 rounded-lg border border-gray-300 items-center justify-center">
+														<span className="text-gray-500 text-sm">Image not available</span>
+													</div>
+												</div>
+											) : (
+												<p className="mt-1 text-sm text-gray-500">No picture provided</p>
+											)
 										) : (
 											<p className="mt-1 text-sm text-gray-900">{displayValue}</p>
 										)}

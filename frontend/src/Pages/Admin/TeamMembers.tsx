@@ -128,7 +128,7 @@ const AdminTeamMembers: React.FC = () => {
 		{ name: 'bio', label: 'Bio' },
 		{ name: 'role', label: 'Role' },
 		{ name: 'nationality', label: 'Nationality' },
-		{ name: 'picture', label: 'Picture URL' },
+		{ name: 'picture', label: 'Picture' },
 		{ name: 'createdAt', label: 'Created At' },
 		{ name: 'updatedAt', label: 'Updated At' },
 	];
@@ -484,7 +484,7 @@ const AdminTeamMembers: React.FC = () => {
 					<table className="w-full">
 						<thead className="bg-gray-50">
 							<tr>
-								<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+								<th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
 									Team Member
 								</th>
 								<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -613,10 +613,10 @@ const AdminTeamMembers: React.FC = () => {
 												</button>
 												<button
 													onClick={() => deleteTeamMember(teamMember.id)}
-													className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
+													className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
 												>
 													<svg
-														className="w-3 h-3 mr-1"
+														className="w-3 h-3 my-0.5"
 														fill="none"
 														stroke="currentColor"
 														viewBox="0 0 24 24"
@@ -628,7 +628,6 @@ const AdminTeamMembers: React.FC = () => {
 															d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
 														/>
 													</svg>
-													Delete
 												</button>
 											</div>
 										</td>

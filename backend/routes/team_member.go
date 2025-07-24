@@ -215,7 +215,8 @@ func updateTeamMember(db *gorm.DB) gin.HandlerFunc {
 		id := c.Param("id")
 		var teamMember models.TeamMember
 
-		if err := db.Preload("Role").First(&teamMember, "id = ?", id).Error; err != nil {
+		// Just check if the team member exists, no need to preload Role
+		if err := db.First(&teamMember, "id = ?", id).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Team member not found"})
 			return
 		}
@@ -230,7 +231,7 @@ func updateTeamMember(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Reload with role for response
+		// Only preload Role for the response if you want to return the role info
 		db.Preload("Role").First(&teamMember, "id = ?", id)
 
 		// Add activity tracking
