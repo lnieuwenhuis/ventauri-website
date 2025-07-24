@@ -67,7 +67,13 @@ const TrackCard: React.FC<TrackCardProps> = ({
 				</button>
 				<button
 					onClick={() => onManageResults(competition, track)}
-					className="flex-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-1 rounded hover:bg-green-100 transition-colors"
+					disabled={!track.personnel || track.personnel.length === 0}
+					className={`flex-1 text-xs font-medium px-2 py-1 rounded transition-colors ${
+						!track.personnel || track.personnel.length === 0
+							? 'text-gray-400 bg-gray-100 cursor-not-allowed'
+							: 'text-green-700 bg-green-50 hover:bg-green-100'
+					}`}
+					title={!track.personnel || track.personnel.length === 0 ? 'Please add personnel to this track first' : ''}
 				>
 					Results
 				</button>

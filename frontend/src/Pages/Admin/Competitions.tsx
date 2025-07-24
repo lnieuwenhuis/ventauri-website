@@ -18,13 +18,6 @@ interface TeamMember {
 	};
 }
 
-interface TeamMembersResponse {
-	data: TeamMember[];
-	total: number;
-	page: number;
-	limit: number;
-}
-
 const AdminCompetitions: React.FC = () => {
 	const [competitions, setCompetitions] = useState<Competition[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -48,10 +41,6 @@ const AdminCompetitions: React.FC = () => {
 	const [editingTrack, setEditingTrack] = useState<Track | null>(null);
 	const [results, setResults] = useState<ResultFormData[]>([]);
 	
-	// Team members state
-	const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-	const [teamMembersLoading, setTeamMembersLoading] = useState(false);
-
 	// Viewing competition state
 	const [isCompetitionViewOpen, setIsCompetitionViewOpen] = useState(false);
 	const [viewingCompetition, setViewingCompetition] = useState<Competition | null>(null);
@@ -88,7 +77,7 @@ const AdminCompetitions: React.FC = () => {
 			{ value: 'next', label: 'Next' },
 			{ value: 'past', label: 'Past' }
 		] },
-		{ name: 'personnel' as keyof TrackFormData, label: 'Personnel', type: 'array' as const }
+		{ name: 'personnel' as keyof TrackFormData, label: 'Personnel', type: 'personnel-search' as const }
 	];
 
 	// Define fields for viewing competitions
@@ -303,37 +292,30 @@ const AdminCompetitions: React.FC = () => {
 		}
 	};
 
-	// Add team members fetch function
-	const fetchTeamMembers = async () => {
-		try {
-			setTeamMembersLoading(true);
-			const response = await fetch(`${apiURL}/api/admin/team-members/?limit=100&sort=name&role=Driver`, {
-				credentials: 'include',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-			});
-
-			if (!response.ok) {
-				throw new Error('Failed to fetch team members');
-			}
-
-			const result: TeamMembersResponse = await response.json();
-			setTeamMembers(result.data);
-		} catch (err) {
-			console.error('Error fetching team members:', err);
-		} finally {
-			setTeamMembersLoading(false);
-		}
-	};
-
 	const handleManageResults = (competition: Competition, track: Track) => {
+		// Validate that personnel is set
+		if (!track.personnel || track.personnel.length === 0) {
+			setError('Please add personnel to this track before managing results.');
+			return;
+		}
+		
 		setCurrentCompetition(competition);
 		setCurrentTrack(track);
 		setResults(track.results || []);
-		// Fetch team members when opening results modal
-		fetchTeamMembers();
+		// No need to fetch all team members - use track personnel
 		setIsResultsModalOpen(true);
+	};
+
+	// Get available drivers from track personnel (filter for drivers only)
+	const getAvailableDrivers = () => {
+		if (!currentTrack?.personnelData) {
+			return [];
+		}
+		
+		// Filter personnel to only include drivers
+		return currentTrack.personnelData.filter(member => 
+			member.role.name.toLowerCase().includes('driver')
+		);
 	};
 
 	const handleAddResult = () => {
@@ -513,23 +495,49 @@ const AdminCompetitions: React.FC = () => {
 								</div>
 
 								<div className="space-y-4">
+									{/* Add personnel validation message */}
+									{(!currentTrack?.personnel || currentTrack.personnel.length === 0) && (
+										<div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg">
+											<div className="flex items-center">
+												<svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+													<path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+												</svg>
+												No personnel assigned to this track. Please edit the track and add personnel first.
+											</div>
+										</div>
+									)}
+									
+									{/* Show message if no drivers in personnel */}
+									{currentTrack?.personnel && currentTrack.personnel.length > 0 && getAvailableDrivers().length === 0 && (
+										<div className="bg-orange-50 border border-orange-200 text-orange-700 px-4 py-3 rounded-lg">
+											<div className="flex items-center">
+												<svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+													<path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+												</svg>
+												No drivers found in track personnel. Please add drivers to this track.
+											</div>
+										</div>
+									)}
+									
 									{results.map((result, index) => (
 										<div key={index} className="flex gap-4 items-center p-4 border rounded-lg">
 											<select
 												value={result.driver}
 												onChange={(e) => handleResultChange(index, 'driver', e.target.value)}
 												className="flex-1 px-3 py-2 border rounded-lg bg-white"
-												disabled={teamMembersLoading}
+												disabled={getAvailableDrivers().length === 0}
 											>
 												<option value="">Select Driver...</option>
-												{teamMembers.map((member) => (
+												{getAvailableDrivers().map((member) => (
 													<option key={member.id} value={member.id}>
 														{getTeamMemberDisplayName(member)}
 													</option>
 												))}
 											</select>
-											{teamMembersLoading && (
-												<div className="text-sm text-gray-500">Loading drivers...</div>
+											{getAvailableDrivers().length === 0 && (
+												<div className="text-sm text-gray-500">
+													No drivers available
+												</div>
 											)}
 											<input
 												type="number"
@@ -556,7 +564,12 @@ const AdminCompetitions: React.FC = () => {
 									
 									<button
 										onClick={handleAddResult}
-										className="w-full px-4 py-2 text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-50"
+										disabled={!currentTrack?.personnel || currentTrack.personnel.length === 0}
+										className={`w-full px-4 py-2 border rounded-lg ${
+											!currentTrack?.personnel || currentTrack.personnel.length === 0
+												? 'text-gray-400 border-gray-300 cursor-not-allowed'
+												: 'text-blue-600 border-blue-300 hover:bg-blue-50'
+										}`}
 									>
 										+ Add Result
 									</button>

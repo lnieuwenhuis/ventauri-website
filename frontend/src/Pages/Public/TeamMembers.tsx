@@ -102,11 +102,13 @@ const TeamMembers: React.FC = () => {
 										className="bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow"
 									>
 										{member.picture && (
-											<img
-												src={member.picture}
-												alt={`${member.firstName} ${member.lastName}`}
-												className="w-full h-64 object-cover"
-											/>
+											<div className="relative w-full" style={{ paddingBottom: '75%' }}>
+												<img
+													src={member.picture}
+													alt={`${member.firstName} ${member.lastName}`}
+													className="absolute inset-0 w-full h-full object-cover object-center"
+												/>
+											</div>
 										)}
 										<div className="p-6">
 											<h4 className="text-xl font-semibold text-white mb-2">

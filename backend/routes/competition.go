@@ -1,6 +1,8 @@
 package routes
 
 import (
+	"fmt"
+	"time"
 	"net/http"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -436,10 +438,13 @@ func preloadPersonnelForCompetition(db *gorm.DB, competition *models.Competition
 }
 
 type ChampionshipStats struct {
-	RaceWins          int    `json:"raceWins"`
-	PodiumFinishes    int    `json:"podiumFinishes"`
-	ChampionshipPos   int    `json:"championshipPosition"`
-	CompetitionName   string `json:"competitionName"`
+	FirstDriverPosition  string `json:"firstDriverPosition"`
+	FirstDriverName      string `json:"firstDriverName"`
+	SecondDriverPosition string `json:"secondDriverPosition"`
+	SecondDriverName     string `json:"secondDriverName"`
+	TotalPoints         int    `json:"totalPoints"`
+	ChampionshipPos     int    `json:"championshipPosition"`
+	CompetitionName     string `json:"competitionName"`
 }
 
 func getChampionshipStats(db *gorm.DB) gin.HandlerFunc {
@@ -456,30 +461,106 @@ func getChampionshipStats(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 		
-		// Calculate championship statistics
-		raceWins := 0
-		podiumFinishes := 0
+		// Get all team members to identify drivers
+		var teamMembers []models.TeamMember
+		db.Preload("Role").Find(&teamMembers)
 		
-		// Count wins and podiums from completed races
+		// Create a map of driver IDs for quick lookup
+		driverMap := make(map[uuid.UUID]models.TeamMember)
+		for _, member := range teamMembers {
+			if member.Role.Name == "Driver" || member.Role.Name == "driver" {
+				driverMap[member.ID] = member
+			}
+		}
+		
+		// Find latest results for each driver
+		driverLatestResults := make(map[uuid.UUID]struct {
+			latestResult int
+			latestDateTime time.Time
+			member models.TeamMember
+		})
+		
+		// Process all completed races to find latest results
 		for _, track := range competition.Schedule {
 			if track.Status == "past" {
 				for _, result := range track.Results {
-					if result.RacePosition == 1 {
-						raceWins++
-					}
-					if result.RacePosition <= 3 && result.RacePosition > 0 {
-						podiumFinishes++
+					if driver, exists := driverMap[result.Driver]; exists {
+						// Initialize or update if this race is more recent
+						if existing, ok := driverLatestResults[result.Driver]; !ok || track.DateTime.After(existing.latestDateTime) {
+							driverLatestResults[result.Driver] = struct {
+								latestResult int
+								latestDateTime time.Time
+								member models.TeamMember
+							}{
+								latestResult: result.RacePosition,
+								latestDateTime: track.DateTime,
+								member: driver,
+							}
+						}
 					}
 				}
 			}
 		}
 		
+		// Sort drivers alphabetically by first name for consistent ordering
+		var sortedDrivers []struct {
+			member models.TeamMember
+			latestResult int
+		}
+		
+		for _, driverResult := range driverLatestResults {
+			sortedDrivers = append(sortedDrivers, struct {
+				member models.TeamMember
+				latestResult int
+			}{
+				member: driverResult.member,
+				latestResult: driverResult.latestResult,
+			})
+		}
+		
+		for i := 0; i < len(sortedDrivers)-1; i++ {
+			for j := i + 1; j < len(sortedDrivers); j++ {
+				if sortedDrivers[i].member.FirstName > sortedDrivers[j].member.FirstName {
+					sortedDrivers[i], sortedDrivers[j] = sortedDrivers[j], sortedDrivers[i]
+				}
+			}
+		}
+		
+		// Determine first and second driver latest results
+		firstDriverPosition := "--"
+		firstDriverName := "No results yet"
+		secondDriverPosition := "--"
+		secondDriverName := "No results yet"
+		
+		if len(sortedDrivers) > 0 {
+			if sortedDrivers[0].latestResult > 0 {
+				firstDriverPosition = fmt.Sprintf("P%d", sortedDrivers[0].latestResult)
+				firstDriverName = sortedDrivers[0].member.FirstName + " " + sortedDrivers[0].member.LastName
+			} else {
+				firstDriverPosition = "--"
+				firstDriverName = sortedDrivers[0].member.FirstName + " " + sortedDrivers[0].member.LastName
+			}
+		}
+		
+		if len(sortedDrivers) > 1 {
+			if sortedDrivers[1].latestResult > 0 {
+				secondDriverPosition = fmt.Sprintf("P%d", sortedDrivers[1].latestResult)
+				secondDriverName = sortedDrivers[1].member.FirstName + " " + sortedDrivers[1].member.LastName
+			} else {
+				secondDriverPosition = "--"
+				secondDriverName = sortedDrivers[1].member.FirstName + " " + sortedDrivers[1].member.LastName
+			}
+		}
+		
 		// Create championship stats response
 		stats := ChampionshipStats{
-			RaceWins:          raceWins,
-			PodiumFinishes:    podiumFinishes,
-			ChampionshipPos:   competition.Position,
-			CompetitionName:   competition.Name,
+			FirstDriverPosition:  firstDriverPosition,
+			FirstDriverName:     firstDriverName,
+			SecondDriverPosition: secondDriverPosition,
+			SecondDriverName:    secondDriverName,
+			TotalPoints:         competition.Points,
+			ChampionshipPos:     competition.Position,
+			CompetitionName:     competition.Name,
 		}
 		
 		// Default championship position to 3 if not set

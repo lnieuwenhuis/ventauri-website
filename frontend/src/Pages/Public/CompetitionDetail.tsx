@@ -109,7 +109,7 @@ const CompetitionDetail: React.FC = () => {
 		driverId: string,
 		personnelData?: Track['personnelData']
 	) => {
-		if (!personnelData) return `Driver ${driverId.slice(0, 8)}`;
+		if (!personnelData) return `No Personnel Added`;
 
 		const driver = personnelData.find(
 			(person) =>

@@ -29,8 +29,11 @@ interface ProductsResponse {
 
 // Updated interfaces
 interface ChampionshipStats {
-	raceWins: number;
-	podiumFinishes: number;
+	firstDriverPosition: string;
+	firstDriverName: string;
+	secondDriverPosition: string;
+	secondDriverName: string;
+	totalPoints: number;
 	championshipPosition: number;
 	competitionName: string;
 }
@@ -52,9 +55,12 @@ export default function Home() {
 	const apiURL = import.meta.env.VITE_BACKEND_URL || '';
 	const { addToCart, loading: cartLoading } = useCart();
 	const [championshipStats, setChampionshipStats] = useState<ChampionshipStats>({
-		raceWins: 0,
-		podiumFinishes: 0,
-		championshipPosition: 3,
+		firstDriverPosition: '--',
+		firstDriverName: 'Loading...',
+		secondDriverPosition: '--',
+		secondDriverName: 'Loading...',
+		totalPoints: 0,
+		championshipPosition: 0,
 		competitionName: 'Loading...',
 	});
 
@@ -238,33 +244,42 @@ export default function Home() {
 				</div>
 			</section>
 
-			{/* Team Stats */}
+			{/* Championship Performance */}
 			<section className="py-20 bg-gray-900">
-				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+				<div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 					<div className="text-center mb-16">
 						<h2 className="text-4xl font-bold text-white mb-4">
-							Championship Performance
+							Our Latest Results
 						</h2>
 						<p className="text-xl text-gray-300">
-							{championshipStats.competitionName} - Racing at the highest level
+							{championshipStats.competitionName}
 						</p>
 					</div>
-
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
 						<div className="text-center">
-							<div className="text-5xl font-bold text-ventauri mb-2">
-								{championshipStats.raceWins}
+							<div className="text-3xl font-bold text-ventauri mb-2">
+								{championshipStats.firstDriverPosition}
 							</div>
-							<div className="text-gray-300 text-lg">Race Wins</div>
+							<div className="text-lg text-gray-300 mb-2">
+								{championshipStats.firstDriverName}
+							</div>
 						</div>
 						<div className="text-center">
-							<div className="text-5xl font-bold text-ventauri mb-2">
-								{championshipStats.podiumFinishes}
+							<div className="text-3xl font-bold text-ventauri mb-2">
+								{championshipStats.secondDriverPosition}
 							</div>
-							<div className="text-gray-300 text-lg">Podium Finishes</div>
+							<div className="text-lg text-gray-300 mb-2">
+								{championshipStats.secondDriverName}
+							</div>
 						</div>
 						<div className="text-center">
-							<div className="text-5xl font-bold text-ventauri mb-2">
+							<div className="text-3xl font-bold text-ventauri mb-2">
+								{championshipStats.totalPoints}
+							</div>
+							<div className="text-gray-300 text-lg">Championship Points</div>
+						</div>
+						<div className="text-center">
+							<div className="text-3xl font-bold text-ventauri mb-2">
 								{getOrdinal(championshipStats.championshipPosition)}
 							</div>
 							<div className="text-gray-300 text-lg">Championship Position</div>

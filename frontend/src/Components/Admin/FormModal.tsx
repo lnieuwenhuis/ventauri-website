@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import PersonnelSearch from './PersonnelSearch';
 
 interface FormField<T = Record<string, unknown>> {
 	name: keyof T;
@@ -12,7 +13,8 @@ interface FormField<T = Record<string, unknown>> {
 		| 'url'
 		| 'array'
 		| 'date'
-		| 'datetime-local';
+		| 'datetime-local'
+		| 'personnel-search';
 	required?: boolean;
 	options?: { value: string; label: string }[];
 	placeholder?: string;
@@ -47,10 +49,25 @@ const FormModal = <
 
 	useEffect(() => {
 		if (isOpen) {
-			setFormData(initialData);
+			// Check if this is a new item (no ID in initialData)
+			const isNewItem = !initialData || !(initialData as Record<string, unknown>)?.id;
+			
+			if (isNewItem) {
+				// For new items, initialize personnel-search fields as empty arrays
+				const clearedData = { ...initialData };
+				fields.forEach(field => {
+					if (field.type === 'personnel-search') {
+						clearedData[field.name] = [] as unknown as Partial<T>[keyof T];
+					}
+				});
+				setFormData(clearedData);
+			} else {
+				setFormData(initialData);
+			}
+			
 			setErrors({});
 		}
-	}, [isOpen, initialData]);
+	}, [isOpen, initialData, fields]);
 
 	const handleInputChange = (name: keyof T, value: unknown) => {
 		setFormData((prev: Partial<T>) => ({ ...prev, [name]: value }));
@@ -91,7 +108,7 @@ const FormModal = <
 	};
 
 	const renderField = (field: FormField<T>) => {
-		const value = formData[field.name as keyof T] || '';
+		const value = formData[field.name];
 		const fieldName = String(field.name);
 		const error = errors[fieldName];
 
@@ -99,7 +116,7 @@ const FormModal = <
 			case 'textarea':
 				return (
 					<textarea
-						value={String(value)}
+						value={value ? String(value) : ''}
 						onChange={(e) => handleInputChange(field.name as keyof T, e.target.value)}
 						placeholder={field.placeholder}
 						rows={3}
@@ -127,7 +144,7 @@ const FormModal = <
 			case 'select':
 				return (
 					<select
-						value={String(value)}
+						value={value ? String(value) : ''}
 						onChange={(e) => handleInputChange(field.name as keyof T, e.target.value)}
 						className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
 							error ? 'border-red-300' : 'border-gray-300'
@@ -154,6 +171,14 @@ const FormModal = <
 						/>
 						<span className="text-sm text-gray-700">{field.label}</span>
 					</label>
+				);
+			case 'personnel-search':
+				return (
+					<PersonnelSearch
+						selectedPersonnel={Array.isArray(value) ? value as string[] : []}
+						onChange={(personnel) => handleInputChange(field.name as keyof T, personnel)}
+						error={error}
+					/>
 				);
 			case 'array': {
 				const arrayValue: string[] = Array.isArray(value)
@@ -207,7 +232,7 @@ const FormModal = <
 				return (
 					<input
 						type={field.type}
-						value={String(value)}
+						value={value ? String(value) : ''}
 						onChange={(e) => handleInputChange(field.name as keyof T, e.target.value)}
 						placeholder={field.placeholder}
 						className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
