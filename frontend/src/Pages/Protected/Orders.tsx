@@ -1,39 +1,46 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../Contexts/AuthContext';
 import Navbar from '../../Components/Navbar';
 import { Link } from 'react-router-dom';
 import usePageTitle from '../../hooks/usePageTitle';
 
 interface Product {
-	id: string;
-	name: string;
-	images: string;
-	price: number;
+    id: string;
+    name: string;
+    images: string;
+    price: number;
 }
 
 interface Order {
-	id: string;
-	created_at: string;
-	updated_at: string;
-	user_id: string;
-	product_id: string;
-	quantity: number;
-	price: number;
-	status: string;
-	shipping_address_id?: string;
-	billing_address_id?: string;
-	coupon_id?: string;
-	payment_method_id?: string;
-	product?: Product;
+    id: string;
+    created_at: string;
+    updated_at: string;
+    user_id: string;
+    product_id: string;
+    product_variant_id?: string | null;
+    quantity: number;
+    subtotal: number;
+    tax: number;
+    shipping: number;
+    total: number;
+    status: string;
+    order_number: string;
+    shipping_address_id?: string;
+    billing_address_id?: string;
+    payment_method_id?: string | null;
+    product?: Product;
 }
 
 const Orders: React.FC = () => {
-	const { user } = useAuth();
+    const { user } = useAuth();
+    const location = useLocation();
 	const [orders, setOrders] = useState<Order[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [currentPage, setCurrentPage] = useState(1);
 	const [totalPages, setTotalPages] = useState(1);
+    const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
 	usePageTitle('Orders');
 
 	const API_BASE_URL =
@@ -75,12 +82,61 @@ const Orders: React.FC = () => {
 		}
 	};
 
-	useEffect(() => {
-		if (user) {
-			fetchOrders(currentPage);
-		}
-		// eslint-disable-next-line
-	}, [user, currentPage]);
+    useEffect(() => {
+        // Show a banner if redirected back from Stripe
+        const params = new URLSearchParams(location.search);
+        const redirectStatus = params.get('redirect_status');
+        if (redirectStatus === 'succeeded') {
+            setPaymentMessage('Payment succeeded. Your order is being processed.');
+        } else if (redirectStatus === 'failed' || redirectStatus === 'canceled') {
+            setPaymentMessage('Payment did not complete. You can try again.');
+        } else {
+            setPaymentMessage(null);
+        }
+    }, [location.search]);
+
+    // Poll backend to confirm PaymentIntent and update order status if needed
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const pi = params.get('payment_intent');
+        const redirectStatus = params.get('redirect_status');
+        if (!pi || redirectStatus !== 'succeeded') return;
+
+        let cancelled = false;
+        let tries = 0;
+
+        const tick = async () => {
+            if (cancelled || tries > 6) return; // ~6s
+            tries += 1;
+            try {
+                const resp = await fetch(`${API_BASE_URL}/api/checkout/confirm?payment_intent=${encodeURIComponent(pi)}`, {
+                    credentials: 'include',
+                });
+                if (resp.ok) {
+                    const data: { data?: Array<{ status?: string }> } = await resp.json();
+                    const statuses: string[] = Array.isArray(data.data) ? data.data.map((o) => (o.status || '').toLowerCase()) : [];
+                    if (statuses.some((s) => s === 'processing' || s === 'succeeded' || s === 'paid')) {
+                        await fetchOrders(currentPage);
+                        return; // stop polling once updated
+                    }
+                }
+            } catch {
+                // ignore transient network errors while polling
+            }
+            setTimeout(tick, 1000);
+        };
+
+        tick();
+        return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [location.search]);
+
+    useEffect(() => {
+        if (user) {
+            fetchOrders(currentPage);
+        }
+        // eslint-disable-next-line
+    }, [user, currentPage]);
 
 	const getStatusColor = (status: string) => {
 		switch (status.toLowerCase()) {
@@ -117,7 +173,7 @@ const Orders: React.FC = () => {
 	return (
 		<div className="min-h-screen bg-gray-900 text-white">
 			<Navbar />
-			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 				{/* Header */}
 				<div className="mb-8">
 					<h1 className="text-4xl font-bold mb-4">
@@ -126,6 +182,12 @@ const Orders: React.FC = () => {
 					</h1>
 					<p className="text-gray-300 text-lg">Track and manage your orders</p>
 				</div>
+
+                {paymentMessage && (
+                    <div className="mb-6 p-4 rounded-md border border-gray-700 bg-gray-800 text-gray-100">
+                        {paymentMessage}
+                    </div>
+                )}
 
 				{loading ? (
 					<div className="flex justify-center items-center py-20">
@@ -195,7 +257,7 @@ const Orders: React.FC = () => {
 									: [];
 								const firstImage = productImages.length > 0 ? productImages[0] : null;
 
-								return (
+                                return (
 									<div
 										key={order.id}
 										className="bg-gray-800 rounded-lg overflow-hidden hover:bg-gray-750 transition-colors duration-200"
@@ -204,7 +266,7 @@ const Orders: React.FC = () => {
 											<div className="flex items-center justify-between">
 												<div>
 													<h3 className="text-lg font-semibold text-white">
-														Order #{order.id.slice(0, 8).toUpperCase()}
+                                                        Order #{(order.order_number || order.id.slice(0, 8)).toUpperCase()}
 													</h3>
 													<p className="text-gray-400">
 														Placed on{' '}
@@ -247,12 +309,12 @@ const Orders: React.FC = () => {
 													<div className="flex items-center space-x-4 text-gray-400">
 														<span>Qty: {order.quantity}</span>
 														<span>•</span>
-														<span>€{order.price.toFixed(2)} each</span>
+                                                        <span>€{(order.product?.price ?? 0).toFixed(2)} each</span>
 													</div>
 												</div>
 												<div className="text-right">
 													<p className="text-2xl font-bold text-ventauri">
-														€{(order.price * order.quantity).toFixed(2)}
+                                                        €{(order.total ?? (order.product?.price ?? 0) * order.quantity).toFixed(2)}
 													</p>
 													<p className="text-gray-400 text-sm">Total</p>
 												</div>

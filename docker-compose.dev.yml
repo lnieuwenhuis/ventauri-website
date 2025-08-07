@@ -8,6 +8,7 @@ services:
     restart: unless-stopped
     env_file:
       - ./.env
+      - ./stripe.env
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: ventauri_merch
@@ -40,6 +41,8 @@ services:
     restart: unless-stopped
     ports:
       - "8080:8080"
+    env_file:
+      - ./stripe.env
     environment:
       - PORT=8080
       - MARIADB_HOST=mariadb
@@ -70,6 +73,7 @@ services:
     container_name: ventauri-merch-frontend-dev
     env_file:
       - ./frontend/.env
+      - ./stripe.env
     restart: unless-stopped
     ports:
       - "5173:5173"

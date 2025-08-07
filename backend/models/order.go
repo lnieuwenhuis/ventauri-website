@@ -2,6 +2,7 @@ package models
 
 import (
 	"time"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -24,7 +25,9 @@ type Order struct {
 	Tax               float64        `json:"tax"`
 	Shipping          float64        `json:"shipping"`
 	OrderNumber       string         `gorm:"unique;index:idx_order_number" json:"order_number"`
-	
+	// Stripe integration
+	StripePaymentIntentID *string `gorm:"type:varchar(255);index:idx_order_stripe_pi" json:"stripe_payment_intent_id,omitempty"`
+
 	// Relationships
 	User            User            `gorm:"foreignKey:UserID" json:"user"`
 	Product         Product         `gorm:"foreignKey:ProductID" json:"product"`

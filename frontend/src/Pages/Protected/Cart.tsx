@@ -3,6 +3,7 @@ import Navbar from '../../Components/Navbar';
 import { useCart } from '../../Contexts/CartContext';
 import { useAuth } from '../../Contexts/AuthContext';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import usePageTitle from '../../hooks/usePageTitle';
 
 export default function Cart() {
@@ -11,7 +12,8 @@ export default function Cart() {
 	const { isAuthenticated } = useAuth();
 	const [updatingItems, setUpdatingItems] = useState<Set<string>>(new Set());
 	const [isOperationLoading, setIsOperationLoading] = useState(false);
-	usePageTitle('Cart');
+    usePageTitle('Cart');
+    const navigate = useNavigate();
 
 	const parseImages = (images: string): string[] => {
 		try {
@@ -274,10 +276,11 @@ export default function Cart() {
 								</div>
 							</div>
 
-							<div className="space-y-3">
+                            <div className="space-y-3">
 								<button
 									disabled={isOperationLoading}
-									className="w-full bg-ventauri text-black py-3 rounded-lg font-medium hover:bg-bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-600 disabled:text-gray-400"
+                                    onClick={() => navigate('/checkout')}
+                                    className="w-full bg-ventauri text-black py-3 rounded-lg font-medium hover:bg-bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-600 disabled:text-gray-400"
 								>
 									{isOperationLoading ? (
 										<div className="flex items-center justify-center">

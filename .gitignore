@@ -74,3 +74,4 @@ coverage/
 # Air live reload tool
 tmp/
 .env prod
+stripe.env
