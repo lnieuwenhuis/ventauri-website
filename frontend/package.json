@@ -13,6 +13,9 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.10",
+    "@react-google-maps/api": "^2.20.6",
+    "i18n-iso-countries": "^7.14.0",
+    "use-places-autocomplete": "^4.0.1",
     "@stripe/react-stripe-js": "^2.7.1",
     "@stripe/stripe-js": "^4.7.0",
     "better-auth": "^1.2.10",

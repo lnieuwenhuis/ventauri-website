@@ -2,28 +2,30 @@ package models
 
 import (
 	"time"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type Product struct {
-	ID        	uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
-	CreatedAt 	time.Time      `gorm:"default:current_timestamp;index:idx_product_active_created,priority:2" json:"createdAt"`
-	UpdatedAt 	time.Time      `gorm:"default:current_timestamp" json:"updatedAt"`
-	DeletedAt 	gorm.DeletedAt `gorm:"index" json:"deletedAt"`
-	Name      	string         `gorm:"index:idx_product_name_search" json:"name"`
-	Price     	float64        `gorm:"index:idx_product_price_range" json:"price"`
-	Images    	string         `gorm:"type:json" json:"images"`
-	CategoryID 	uuid.UUID      `gorm:"type:char(36);index:idx_product_category_active,priority:1" json:"categoryId"`
+	ID          uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
+	CreatedAt   time.Time      `gorm:"default:current_timestamp;index:idx_product_active_created,priority:2" json:"createdAt"`
+	UpdatedAt   time.Time      `gorm:"default:current_timestamp" json:"updatedAt"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deletedAt"`
+	Name        string         `gorm:"index:idx_product_name_search" json:"name"`
+	Price       float64        `gorm:"index:idx_product_price_range" json:"price"`
+	Images      string         `gorm:"type:json" json:"images"`
+	CategoryID  uuid.UUID      `gorm:"type:char(36);index:idx_product_category_active,priority:1" json:"categoryId"`
 	Description string         `gorm:"type:text;index:idx_product_desc_search" json:"description"`
-	SKU        	string         `gorm:"unique;index:idx_product_sku" json:"sku"`
-	Weight     	float64        `json:"weight"`
-	IsActive   	bool           `gorm:"default:true;index:idx_product_active_created,priority:1;index:idx_product_category_active,priority:2" json:"isActive"`
-	
-	Category   Category         `gorm:"foreignKey:CategoryID" json:"category"`
-	Variants   []ProductVariant `gorm:"foreignKey:ProductID" json:"variants"`
-	Reviews    []Review         `gorm:"foreignKey:ProductID" json:"reviews"`
-	Orders     []Order          `gorm:"foreignKey:ProductID" json:"orders"`
+	SKU         string         `gorm:"unique;index:idx_product_sku" json:"sku"`
+	Weight      float64        `json:"weight"`
+	IsActive    bool           `gorm:"default:true;index:idx_product_active_created,priority:1;index:idx_product_category_active,priority:2" json:"isActive"`
+	// Size configuration - JSON array of enabled sizes
+	EnabledSizes string `gorm:"type:json" json:"enabledSizes"`
+
+	Category Category         `gorm:"foreignKey:CategoryID" json:"category"`
+	Variants []ProductVariant `gorm:"foreignKey:ProductID" json:"variants"`
+	Reviews  []Review         `gorm:"foreignKey:ProductID" json:"reviews"`
 }
 
 // BeforeCreate will set a UUID rather than numeric ID.

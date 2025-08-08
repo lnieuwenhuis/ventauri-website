@@ -171,14 +171,7 @@ export default function Cart() {
 														{item.product.name}
 													</Link>
 												</h3>
-												{item.size && item.color && (
-													<>
-														<span className="text-gray-500">-</span>
-														<span className="text-sm text-gray-400">
-															Size: {item.size}, Color: {item.color}
-														</span>
-													</>
-												)}
+
 											</div>
 											{item.product.category && (
 												<p className="text-sm text-ventauri mb-2">
@@ -186,8 +179,13 @@ export default function Cart() {
 												</p>
 											)}
 											<p className="text-xl font-bold text-ventauri">
-												${item.product.price.toFixed(2)}
+												€{(item.product.price + (item.productVariant?.priceAdjust || 0)).toFixed(2)}
 											</p>
+											{item.productVariant && (
+												<p className="text-sm text-gray-400">
+													Size: {item.productVariant.size} • {item.productVariant.title}
+												</p>
+											)}
 										</div>
 
 										{/* Quantity Controls */}
@@ -222,7 +220,7 @@ export default function Cart() {
 										{/* Item Total */}
 										<div className="text-right">
 											<p className="text-lg font-bold text-white">
-												${(item.product.price * item.quantity).toFixed(2)}
+												€{((item.product.price + (item.productVariant?.priceAdjust || 0)) * item.quantity).toFixed(2)}
 											</p>
 										</div>
 
@@ -262,7 +260,7 @@ export default function Cart() {
 							<div className="space-y-4 mb-6">
 								<div className="flex justify-between text-gray-300">
 									<span>Subtotal ({items.length} items)</span>
-									<span>${total.toFixed(2)}</span>
+									<span>€{total.toFixed(2)}</span>
 								</div>
 								<div className="flex justify-between text-gray-300">
 									<span>Shipping</span>
@@ -271,7 +269,7 @@ export default function Cart() {
 								<div className="border-t border-gray-700 pt-4">
 									<div className="flex justify-between text-lg font-bold text-white">
 										<span>Total</span>
-										<span className="text-ventauri">${total.toFixed(2)}</span>
+										<span className="text-ventauri">€{total.toFixed(2)}</span>
 									</div>
 								</div>
 							</div>

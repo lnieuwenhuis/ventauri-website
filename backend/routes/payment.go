@@ -147,9 +147,68 @@ func createStripePaymentIntent(db *gorm.DB) gin.HandlerFunc {
 				totalAmount += order.Total
 			}
 		} else {
+			// Create a single order with multiple items
+			// Resolve address IDs first
+			var shippingAddrID uuid.UUID
+			var billingAddrID uuid.UUID
+			if strings.TrimSpace(req.ShippingAddressID) != "" {
+				var parseShipErr error
+				shippingAddrID, parseShipErr = uuid.Parse(req.ShippingAddressID)
+				if parseShipErr != nil {
+					tx.Rollback()
+					c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid shipping address ID"})
+					return
+				}
+			} else {
+				var addr models.Address
+				if err := tx.Where("user_id = ?", user.ID).Order("is_default DESC, created_at DESC").First(&addr).Error; err == nil {
+					shippingAddrID = addr.ID
+				} else {
+					tx.Rollback()
+					c.JSON(http.StatusBadRequest, gin.H{"error": "Shipping address required"})
+					return
+				}
+			}
+			if strings.TrimSpace(req.BillingAddressID) != "" {
+				var parseBillErr error
+				billingAddrID, parseBillErr = uuid.Parse(req.BillingAddressID)
+				if parseBillErr != nil {
+					tx.Rollback()
+					c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid billing address ID"})
+					return
+				}
+			} else {
+				var addr models.Address
+				if err := tx.Where("user_id = ?", user.ID).Order("is_default DESC, created_at DESC").First(&addr).Error; err == nil {
+					billingAddrID = addr.ID
+				} else {
+					tx.Rollback()
+					c.JSON(http.StatusBadRequest, gin.H{"error": "Billing address required"})
+					return
+				}
+			}
+
+			orderNumber := fmt.Sprintf("ORD-%d-%s", time.Now().Unix(), uuid.New().String()[:8])
+			order := models.Order{
+				UserID:            user.ID,
+				Subtotal:          0,
+				Tax:               0,
+				Shipping:          0,
+				Total:             0,
+				Status:            "pending",
+				OrderNumber:       orderNumber,
+				ShippingAddressID: shippingAddrID,
+				BillingAddressID:  billingAddrID,
+			}
+			if err := tx.Create(&order).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create order"})
+				return
+			}
+			orderIDs = append(orderIDs, order.ID.String())
+
+			// Build items and accumulate totals
 			for _, item := range req.Items {
-				// We will call existing order price calc by mimicking logic here to avoid import cycles
-				// Fetch product price
 				productUUID, parseProductErr := uuid.Parse(item.ProductID)
 				if parseProductErr != nil {
 					tx.Rollback()
@@ -163,7 +222,7 @@ func createStripePaymentIntent(db *gorm.DB) gin.HandlerFunc {
 					return
 				}
 
-				itemPrice := product.Price
+				unitPrice := product.Price
 				var variantID *uuid.UUID
 				if item.ProductVariantID != nil {
 					var variant models.ProductVariant
@@ -178,96 +237,39 @@ func createStripePaymentIntent(db *gorm.DB) gin.HandlerFunc {
 						c.JSON(http.StatusNotFound, gin.H{"error": "Product variant not found"})
 						return
 					}
-					itemPrice += variant.PriceAdjust
+					unitPrice += variant.PriceAdjust
 					variantID = &varID
 				}
-
 				if item.Quantity <= 0 {
 					item.Quantity = 1
 				}
+				lineSubtotal := unitPrice * float64(item.Quantity)
 
-				subtotal := itemPrice * float64(item.Quantity)
-				tax := subtotal * 0.1
-				shipping := 5.99
-				total := subtotal + tax + shipping
-				totalAmount += total
-
-				// Resolve address IDs: use provided or default user's address
-				var shippingAddrID uuid.UUID
-				var billingAddrID uuid.UUID
-				if strings.TrimSpace(req.ShippingAddressID) != "" {
-					var parseShipErr error
-					shippingAddrID, parseShipErr = uuid.Parse(req.ShippingAddressID)
-					if parseShipErr != nil {
-						tx.Rollback()
-						c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid shipping address ID"})
-						return
-					}
-				} else {
-					var addr models.Address
-					if err := tx.Where("user_id = ?", user.ID).Order("is_default DESC, created_at DESC").First(&addr).Error; err == nil {
-						shippingAddrID = addr.ID
-					} else {
-						// create a minimal placeholder address
-						placeholder := models.Address{
-							UserID:    user.ID,
-							Street:    "Unknown",
-							City:      "Unknown",
-							State:     "",
-							ZipCode:   "00000",
-							Country:   "US",
-							IsDefault: true,
-							IsActive:  true,
-						}
-						if err := tx.Create(&placeholder).Error; err != nil {
-							tx.Rollback()
-							c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create default address"})
-							return
-						}
-						shippingAddrID = placeholder.ID
-					}
+				orderItem := models.OrderItem{
+					OrderID:          order.ID,
+					ProductID:        product.ID,
+					ProductVariantID: variantID,
+					Quantity:         item.Quantity,
+					UnitPrice:        unitPrice,
+					Subtotal:         lineSubtotal,
 				}
-				if strings.TrimSpace(req.BillingAddressID) != "" {
-					var parseBillErr error
-					billingAddrID, parseBillErr = uuid.Parse(req.BillingAddressID)
-					if parseBillErr != nil {
-						tx.Rollback()
-						c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid billing address ID"})
-						return
-					}
-				} else {
-					var addr models.Address
-					if err := tx.Where("user_id = ?", user.ID).Order("is_default DESC, created_at DESC").First(&addr).Error; err == nil {
-						billingAddrID = addr.ID
-					} else {
-						billingAddrID = shippingAddrID
-					}
-				}
-
-				orderNumber := fmt.Sprintf("ORD-%d-%s", time.Now().Unix(), uuid.New().String()[:8])
-
-				order := models.Order{
-					UserID:            user.ID,
-					ProductID:         product.ID,
-					ProductVariantID:  variantID,
-					Quantity:          item.Quantity,
-					Subtotal:          subtotal,
-					Tax:               tax,
-					Shipping:          shipping,
-					Total:             total,
-					Status:            "pending",
-					OrderNumber:       orderNumber,
-					ShippingAddressID: shippingAddrID,
-					BillingAddressID:  billingAddrID,
-				}
-
-				if err := tx.Create(&order).Error; err != nil {
+				if err := tx.Create(&orderItem).Error; err != nil {
 					tx.Rollback()
-					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create order"})
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create order item"})
 					return
 				}
-				orderIDs = append(orderIDs, order.ID.String())
+				order.Subtotal += lineSubtotal
 			}
+			// shipping is per order (flat 5.99) and tax 10%
+			order.Tax = order.Subtotal * 0.1
+			order.Shipping = 5.99
+			order.Total = order.Subtotal + order.Tax + order.Shipping
+			if err := tx.Save(&order).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to finalize order totals"})
+				return
+			}
+			totalAmount += order.Total
 		}
 
 		amountInCents := int64(totalAmount * 100)

@@ -1,12 +1,33 @@
 import React, { useState, useEffect } from 'react';
+import ViewModal from '../../Components/Admin/ViewModal';
 import FormModal from '../../Components/Admin/FormModal';
+
+interface OrderItem {
+	id: string;
+	order_id: string;
+	product_id: string;
+	product_variant_id?: string | null;
+	quantity: number;
+	unit_price: number;
+	subtotal: number;
+	product?: {
+		id: string;
+		name: string;
+		price: number;
+		images: string;
+	};
+	product_variant?: {
+		id: string;
+		title: string;
+		description: string;
+		size: string;
+		price_adjust: number;
+	};
+}
 
 interface Order {
 	id: string;
 	user_id: string;
-	product_id: string;
-	product_variant_id?: string;
-	quantity: number;
 	total: number;
 	status: string;
 	shipping_address_id: string;
@@ -18,22 +39,13 @@ interface Order {
 	order_number: string;
 	created_at: string;
 	updated_at: string;
+	items: OrderItem[];
 	user?: {
 		id: string;
 		firstName: string;
 		lastName: string;
 		displayName?: string;
 		email: string;
-	};
-	product?: {
-		id: string;
-		name: string;
-		price: number;
-	};
-	product_variant?: {
-		id: string;
-		name: string;
-		price: number;
 	};
 }
 
@@ -47,7 +59,6 @@ interface OrdersResponse {
 interface OrderFormData extends Record<string, unknown> {
 	id: string;
 	status: string;
-	quantity?: number;
 	subtotal?: number;
 	tax?: number;
 	shipping?: number;
@@ -65,6 +76,9 @@ export default function AdminOrders() {
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 	const [modalLoading, setModalLoading] = useState(false);
+	const [isViewOpen, setIsViewOpen] = useState(false);
+	const [viewOrder, setViewOrder] = useState<Order | null>(null);
+	const [viewData, setViewData] = useState<Partial<Record<string, unknown>> | null>(null);
 	const itemsPerPage = 10;
 	const apiURL = import.meta.env.VITE_BACKEND_URL || '';
 
@@ -126,6 +140,59 @@ export default function AdminOrders() {
 		setIsModalOpen(true);
 	};
 
+	const handleViewOrder = async (order: Order) => {
+		// fetch full order with relationships for view
+		try {
+		const res = await fetch(`${apiURL}/api/admin/orders/${order.id}`, { credentials: 'include' });
+		if (res.ok) {
+			const data = await res.json();
+			const o = data.data || order;
+			setViewOrder(o);
+			const fmtMoney = (n: number | undefined) => (typeof n === 'number' ? `$${n.toFixed(2)}` : '—');
+			const fmtAddr = (a: { street?: string; city?: string; state?: string; zipCode?: string; country?: string } | null | undefined) =>
+			a ? `${a.street || ''}, ${a.city || ''}, ${a.state || ''} ${a.zipCode || ''}, ${a.country || ''}`.replace(/(^[ ,]+|[ ,]+$)/g, '') : 'Not provided';
+			const userStr = o.user
+			? `${o.user.firstName || ''} ${o.user.lastName || ''} (${o.user.email || ''})`.trim()
+			: o.user_id;
+			
+			// Clean, structured formatting for items
+			const itemsData = o.items && o.items.length > 0
+				? o.items.map((item: OrderItem) => ({
+					productName: item.product?.name || 'Unknown Product',
+					variantInfo: item.product_variant 
+						? `${item.product_variant.title} (${item.product_variant.size})` 
+						: 'Standard',
+					quantity: item.quantity,
+					unitPrice: fmtMoney(item.unit_price),
+					subtotal: fmtMoney(item.subtotal)
+				}))
+				: [];
+			
+			setViewData({
+			order_number: o.order_number,
+			status: o.status,
+			total: fmtMoney(o.total),
+			subtotal: fmtMoney(o.subtotal),
+			tax: fmtMoney(o.tax),
+			shipping: fmtMoney(o.shipping),
+			created_at: new Date(o.created_at).toLocaleString(),
+			updated_at: new Date(o.updated_at).toLocaleString(),
+			user: userStr,
+			items: itemsData,
+			shipping_address: fmtAddr(o.shipping_address || o.ShippingAddress),
+			billing_address: fmtAddr(o.billing_address || o.BillingAddress),
+			});
+		} else {
+			setViewOrder(order);
+			setViewData(null);
+		}
+		} catch {
+		setViewOrder(order);
+		setViewData(null);
+		}
+		setIsViewOpen(true);
+	};
+
 	const handleSubmitOrder = async (formData: OrderFormData) => {
 		if (!editingOrder) return;
 
@@ -143,7 +210,6 @@ export default function AdminOrders() {
 					},
 					body: JSON.stringify({
 						status: formData.status,
-						quantity: formData.quantity,
 						subtotal: formData.subtotal,
 						tax: formData.tax,
 						shipping: formData.shipping,
@@ -170,7 +236,6 @@ export default function AdminOrders() {
 		return {
 			id: order.id,
 			status: order.status,
-			quantity: order.quantity,
 			subtotal: order.subtotal,
 			tax: order.tax,
 			shipping: order.shipping,
@@ -192,13 +257,7 @@ export default function AdminOrders() {
 				{ value: 'cancelled', label: 'Cancelled' },
 			],
 		},
-		{
-			name: 'quantity',
-			label: 'Quantity',
-			type: 'number' as const,
-			required: false,
-			placeholder: 'Enter quantity',
-		},
+
 		{
 			name: 'subtotal',
 			label: 'Subtotal',
@@ -417,7 +476,7 @@ export default function AdminOrders() {
 										</td>
 										<td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
 											<div className="flex items-center justify-end space-x-2">
-												<button
+                                                <button
 													onClick={() => handleEditOrder(order)}
 													className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
 												>
@@ -436,7 +495,13 @@ export default function AdminOrders() {
 													</svg>
 													Edit
 												</button>
-												<select
+                                                <button
+                                                    onClick={() => handleViewOrder(order)}
+                                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-gray-700 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600 transition-colors duration-200"
+                                                >
+                                                    View
+                                                </button>
+                                                <select
 													value={order.status}
 													onChange={(e) => updateOrderStatus(order.id, e.target.value)}
 													className="inline-flex items-center px-2 py-1.5 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
@@ -505,7 +570,7 @@ export default function AdminOrders() {
 				)}
 			</div>
 
-			<FormModal<OrderFormData>
+            <FormModal<OrderFormData>
 				isOpen={isModalOpen}
 				onClose={() => setIsModalOpen(false)}
 				onSubmit={handleSubmitOrder}
@@ -516,6 +581,27 @@ export default function AdminOrders() {
 				title="Edit Order"
 				isLoading={modalLoading}
 			/>
+
+            <ViewModal
+                isOpen={isViewOpen}
+                onClose={() => setIsViewOpen(false)}
+                data={(viewData ?? (viewOrder as unknown as Partial<Record<string, unknown>>) ?? {})}
+                fields={[
+                    { name: 'order_number', label: 'Order Number' },
+                    { name: 'status', label: 'Status' },
+                    { name: 'total', label: 'Total' },
+                    { name: 'subtotal', label: 'Subtotal' },
+                    { name: 'tax', label: 'Tax' },
+                    { name: 'shipping', label: 'Shipping' },
+                    { name: 'created_at', label: 'Created At' },
+                    { name: 'updated_at', label: 'Updated At' },
+                    { name: 'user', label: 'User' },
+                    { name: 'items', label: 'Order Items' },
+                    { name: 'shipping_address', label: 'Shipping Address' },
+                    { name: 'billing_address', label: 'Billing Address' },
+                ]}
+                linkedSubjects={[]}
+            />
 		</div>
 	);
 }

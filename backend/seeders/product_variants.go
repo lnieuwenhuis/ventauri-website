@@ -5,8 +5,9 @@ import (
 	"log"
 	"strings"
 
-	"gorm.io/gorm"
 	"ventauri-merch/models"
+
+	"gorm.io/gorm"
 )
 
 func SeedProductVariants(db *gorm.DB) {
@@ -25,20 +26,30 @@ func SeedProductVariants(db *gorm.DB) {
 		return
 	}
 
-	colors := []string{"Red", "Blue", "Black", "White", "Green"}
+	variants := []struct {
+		title       string
+		description string
+	}{
+		{"Classic Red", "Bold red color"},
+		{"Navy Blue", "Deep navy blue"},
+		{"Jet Black", "Pure black"},
+		{"Crisp White", "Clean white"},
+		{"Forest Green", "Rich green"},
+	}
 	sizes := []string{"XS", "S", "M", "L", "XL"}
 	createdCount := 0
 	// Create 3-5 variants per product
 	for i, product := range products {
-		numVariants := 3 + (i % 3) // 3-5 variants per product
-		for j := 0; j < numVariants && createdCount < 75; j++ { // Limit total variants
-			color := colors[j%len(colors)]
+		numVariants := 3 + (i % 3)
+		for j := 0; j < numVariants && createdCount < 75; j++ {
+			variantData := variants[j%len(variants)]
 			size := sizes[j%len(sizes)]
 			variant := models.ProductVariant{
 				ProductID:   product.ID,
-				SKU:         fmt.Sprintf("%s-%s-%s", product.SKU, size, strings.ToUpper(color[:3])),
+				SKU:         fmt.Sprintf("%s-%s-%s", product.SKU, size, strings.ToUpper(variantData.title[:3])),
 				Size:        size,
-				Color:       color,
+				Title:       variantData.title,
+				Description: variantData.description,
 				Stock:       20 + (j * 5),
 				PriceAdjust: float64(j * 2),
 				Weight:      product.Weight,

@@ -45,7 +45,7 @@ func getUserOrders(db *gorm.DB) gin.HandlerFunc {
 		limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 		offset := (page - 1) * limit
 
-		if err := db.Where("user_id = ?", user.ID).Preload("Product").Preload("ProductVariant").Preload("ShippingAddress").Preload("BillingAddress").Order("created_at DESC").Offset(offset).Limit(limit).Find(&orders).Error; err != nil {
+		if err := db.Where("user_id = ?", user.ID).Preload("Items").Preload("Items.Product").Preload("Items.ProductVariant").Preload("ShippingAddress").Preload("BillingAddress").Order("created_at DESC").Offset(offset).Limit(limit).Find(&orders).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch orders"})
 			return
 		}
@@ -60,7 +60,7 @@ func getOrder(db *gorm.DB) gin.HandlerFunc {
 		id := c.Param("id")
 		var order models.Order
 
-		if err := db.Where("id = ? AND user_id = ?", id, user.ID).Preload("Product").Preload("ProductVariant").Preload("ShippingAddress").Preload("BillingAddress").Preload("PaymentMethod").First(&order).Error; err != nil {
+		if err := db.Where("id = ? AND user_id = ?", id, user.ID).Preload("Items").Preload("Items.Product").Preload("Items.ProductVariant").Preload("ShippingAddress").Preload("BillingAddress").Preload("PaymentMethod").First(&order).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
 			return
 		}
@@ -73,7 +73,7 @@ func createOrder(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, _ := utils.GetCurrentUser(c)
 		var req struct {
-			Items             []struct {
+			Items []struct {
 				ProductID        string  `json:"productId" binding:"required"`
 				ProductVariantID *string `json:"productVariantId,omitempty"`
 				Quantity         int     `json:"quantity" binding:"required,min=1"`
@@ -96,10 +96,11 @@ func createOrder(db *gorm.DB) gin.HandlerFunc {
 			}
 		}()
 
-		var orders []models.Order
-		var totalAmount float64
+		// Calculate order totals
+		var orderSubtotal float64
+		var orderItems []models.OrderItem
 
-		// Create orders for each item
+		// Process each item
 		for _, item := range req.Items {
 			productID, err := uuid.Parse(item.ProductID)
 			if err != nil {
@@ -116,7 +117,7 @@ func createOrder(db *gorm.DB) gin.HandlerFunc {
 				return
 			}
 
-			itemPrice := product.Price
+			unitPrice := product.Price
 			var variantID *uuid.UUID
 
 			// Handle variant if specified
@@ -135,62 +136,78 @@ func createOrder(db *gorm.DB) gin.HandlerFunc {
 					c.JSON(http.StatusNotFound, gin.H{"error": "Product variant not found"})
 					return
 				}
-				itemPrice += variant.PriceAdjust
+				unitPrice += variant.PriceAdjust
 			}
 
-			subtotal := itemPrice * float64(item.Quantity)
-			tax := subtotal * 0.1 // 10% tax
-			shipping := 5.99 // Fixed shipping
-			total := subtotal + tax + shipping
-			totalAmount += total
+			subtotal := unitPrice * float64(item.Quantity)
+			orderSubtotal += subtotal
 
-			// Generate order number
-			orderNumber := fmt.Sprintf("ORD-%d-%s", time.Now().Unix(), uuid.New().String()[:8])
-
-			shippingAddrID, _ := uuid.Parse(req.ShippingAddressID)
-			billingAddrID, _ := uuid.Parse(req.BillingAddressID)
-
-			order := models.Order{
-				UserID:            user.ID,
-				ProductID:         productID,
-				ProductVariantID:  variantID,
-				Quantity:          item.Quantity,
-				Subtotal:          subtotal,
-				Tax:               tax,
-				Shipping:          shipping,
-				Total:             total,
-				Status:            "pending",
-				OrderNumber:       orderNumber,
-				ShippingAddressID: shippingAddrID,
-				BillingAddressID:  billingAddrID,
+			orderItem := models.OrderItem{
+				ProductID:        productID,
+				ProductVariantID: variantID,
+				Quantity:         item.Quantity,
+				UnitPrice:        unitPrice,
+				Subtotal:         subtotal,
 			}
+			orderItems = append(orderItems, orderItem)
+		}
 
-			if req.PaymentMethodID != nil {
-				paymentID, _ := uuid.Parse(*req.PaymentMethodID)
-				order.PaymentMethodID = &paymentID
-			}
+		// Calculate order totals
+		tax := orderSubtotal * 0.08 // 8% tax
+		shipping := 5.99            // Fixed shipping
+		total := orderSubtotal + tax + shipping
 
-			if err := tx.Create(&order).Error; err != nil {
+		// Generate order number
+		orderNumber := fmt.Sprintf("ORD-%d-%s", time.Now().Unix(), uuid.New().String()[:8])
+
+		shippingAddrID, _ := uuid.Parse(req.ShippingAddressID)
+		billingAddrID, _ := uuid.Parse(req.BillingAddressID)
+
+		// Create the order
+		order := models.Order{
+			UserID:            user.ID,
+			Subtotal:          orderSubtotal,
+			Tax:               tax,
+			Shipping:          shipping,
+			Total:             total,
+			Status:            "pending",
+			OrderNumber:       orderNumber,
+			ShippingAddressID: shippingAddrID,
+			BillingAddressID:  billingAddrID,
+		}
+
+		if req.PaymentMethodID != nil {
+			paymentID, _ := uuid.Parse(*req.PaymentMethodID)
+			order.PaymentMethodID = &paymentID
+		}
+
+		// Create the order first
+		if err := tx.Create(&order).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create order"})
+			return
+		}
+
+		// Then create the order items
+		for i := range orderItems {
+			orderItems[i].OrderID = order.ID
+			if err := tx.Create(&orderItems[i]).Error; err != nil {
 				tx.Rollback()
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create order"})
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create order item"})
 				return
 			}
-
-			orders = append(orders, order)
 		}
 
 		// Clear cart after successful order
 		tx.Where("user_id = ?", user.ID).Delete(&models.Cart{})
-		
-		// Add activity tracking for each order
-		for _, order := range orders {
-			utils.CreateActivity(db, &user.ID, models.ActivityOrderCreated, "New order #"+order.OrderNumber+" created", utils.StringPtr("order"), utils.StringPtr(order.ID.String()), nil)
-		}
-		
+
+		// Add activity tracking
+		utils.CreateActivity(db, &user.ID, models.ActivityOrderCreated, "New order #"+order.OrderNumber+" created", utils.StringPtr("order"), utils.StringPtr(order.ID.String()), nil)
+
 		tx.Commit()
 		c.JSON(http.StatusCreated, gin.H{
-			"data": orders,
-			"totalAmount": totalAmount,
+			"data":        order,
+			"totalAmount": total,
 		})
 	}
 }
@@ -232,14 +249,16 @@ func getAllOrders(db *gorm.DB) gin.HandlerFunc {
 		limit := c.DefaultQuery("limit", "10")
 		search := c.Query("search")
 		status := c.Query("status")
-		
+
 		// Build query with proper preloading
 		query := db.Model(&models.Order{}).
 			Preload("User").
-			Preload("Product").
+			Preload("Items").
+			Preload("Items.Product").
+			Preload("Items.ProductVariant").
 			Preload("BillingAddress").
 			Preload("ShippingAddress")
-		
+
 		if search != "" {
 			query = query.Joins("LEFT JOIN users ON orders.user_id = users.id").
 				Joins("LEFT JOIN products ON orders.product_id = products.id").
@@ -247,14 +266,14 @@ func getAllOrders(db *gorm.DB) gin.HandlerFunc {
 					users.email ILIKE ? OR 
 					users.first_name ILIKE ? OR 
 					users.last_name ILIKE ? OR 
-					products.name ILIKE ?)`, 
+					products.name ILIKE ?)`,
 					"%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%")
 		}
-		
+
 		if status != "" && status != "all" {
 			query = query.Where("orders.status = ?", status)
 		}
-		
+
 		// Count total with same filters
 		var total int64
 		countQuery := db.Model(&models.Order{})
@@ -265,7 +284,7 @@ func getAllOrders(db *gorm.DB) gin.HandlerFunc {
 					users.email ILIKE ? OR 
 					users.first_name ILIKE ? OR 
 					users.last_name ILIKE ? OR 
-					products.name ILIKE ?)`, 
+					products.name ILIKE ?)`,
 					"%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%")
 		}
 		if status != "" && status != "all" {
@@ -275,7 +294,7 @@ func getAllOrders(db *gorm.DB) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to count orders"})
 			return
 		}
-		
+
 		offset := (utils.ParseInt(page, 1) - 1) * utils.ParseInt(limit, 10)
 		if err := query.Order("orders.created_at DESC").
 			Offset(offset).
@@ -284,11 +303,11 @@ func getAllOrders(db *gorm.DB) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch orders"})
 			return
 		}
-		
+
 		c.JSON(http.StatusOK, gin.H{
-			"data": orders,
+			"data":  orders,
 			"total": total,
-			"page": utils.ParseInt(page, 1),
+			"page":  utils.ParseInt(page, 1),
 			"limit": utils.ParseInt(limit, 10),
 		})
 	}
@@ -317,11 +336,11 @@ func updateOrderStatus(db *gorm.DB) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update order status"})
 			return
 		}
-		
+
 		// Add activity tracking
 		currentUser, _ := utils.GetCurrentUser(c)
 		utils.CreateActivity(db, &currentUser.ID, models.ActivityOrderUpdated, "Order #"+order.OrderNumber+" status updated to "+req.Status, utils.StringPtr("order"), utils.StringPtr(order.ID.String()), nil)
-		
+
 		c.JSON(http.StatusOK, gin.H{"data": order})
 	}
 }
@@ -331,12 +350,12 @@ func getOrderAdmin(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
 		var order models.Order
-		
-		if err := db.Preload("User").Preload("Product").Preload("ProductVariant").Preload("ShippingAddress").Preload("BillingAddress").Preload("PaymentMethod").First(&order, "id = ?", id).Error; err != nil {
+
+		if err := db.Preload("User").Preload("Items").Preload("Items.Product").Preload("Items.ProductVariant").Preload("ShippingAddress").Preload("BillingAddress").Preload("PaymentMethod").First(&order, "id = ?", id).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
 			return
 		}
-		
+
 		c.JSON(http.StatusOK, gin.H{"data": order})
 	}
 }
@@ -344,70 +363,66 @@ func getOrderAdmin(db *gorm.DB) gin.HandlerFunc {
 func deleteOrderAdmin(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
-		
+
 		if err := db.Delete(&models.Order{}, "id = ?", id).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete order"})
 			return
 		}
-		
+
 		c.JSON(http.StatusOK, gin.H{"message": "Order deleted successfully"})
 	}
 }
 
 func updateOrder(db *gorm.DB) gin.HandlerFunc {
-    return func(c *gin.Context) {
-        id := c.Param("id")
-        var req struct {
-            Quantity  *int     `json:"quantity,omitempty"`
-            Subtotal  *float64 `json:"subtotal,omitempty"`
-            Tax       *float64 `json:"tax,omitempty"`
-            Shipping  *float64 `json:"shipping,omitempty"`
-            Total     *float64 `json:"total,omitempty"`
-            Status    *string  `json:"status,omitempty"`
-        }
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		var req struct {
+			Subtotal *float64 `json:"subtotal,omitempty"`
+			Tax      *float64 `json:"tax,omitempty"`
+			Shipping *float64 `json:"shipping,omitempty"`
+			Total    *float64 `json:"total,omitempty"`
+			Status   *string  `json:"status,omitempty"`
+		}
 
-        if err := c.ShouldBindJSON(&req); err != nil {
-            c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-            return
-        }
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 
-        var order models.Order
-        if err := db.First(&order, "id = ?", id).Error; err != nil {
-            c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
-            return
-        }
+		var order models.Order
+		if err := db.First(&order, "id = ?", id).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
+			return
+		}
 
-        // Update only provided fields
-        if req.Quantity != nil {
-            order.Quantity = *req.Quantity
-        }
-        if req.Subtotal != nil {
-            order.Subtotal = *req.Subtotal
-        }
-        if req.Tax != nil {
-            order.Tax = *req.Tax
-        }
-        if req.Shipping != nil {
-            order.Shipping = *req.Shipping
-        }
-        if req.Total != nil {
-            order.Total = *req.Total
-        }
-        if req.Status != nil {
-            order.Status = *req.Status
-        }
+		// Update only provided fields
+		if req.Subtotal != nil {
+			order.Subtotal = *req.Subtotal
+		}
+		if req.Tax != nil {
+			order.Tax = *req.Tax
+		}
+		if req.Shipping != nil {
+			order.Shipping = *req.Shipping
+		}
+		if req.Total != nil {
+			order.Total = *req.Total
+		}
+		if req.Status != nil {
+			order.Status = *req.Status
+		}
 
-        if err := db.Save(&order).Error; err != nil {
-            c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update order"})
-            return
-        }
+		if err := db.Save(&order).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update order"})
+			return
+		}
 
-        // Return updated order with relationships
-        if err := db.Preload("User").Preload("Product").Preload("ProductVariant").Preload("ShippingAddress").Preload("BillingAddress").Preload("PaymentMethod").First(&order, "id = ?", id).Error; err != nil {
-            c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch updated order"})
-            return
-        }
+		// Return updated order with relationships
+		if err := db.Preload("User").Preload("Items").Preload("Items.Product").Preload("Items.ProductVariant").Preload("ShippingAddress").Preload("BillingAddress").Preload("PaymentMethod").First(&order, "id = ?", id).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch updated order"})
+			return
+		}
 
-        c.JSON(http.StatusOK, gin.H{"data": order})
-    }
+		c.JSON(http.StatusOK, gin.H{"data": order})
+	}
 }

@@ -41,28 +41,28 @@ func getAllCarts(db *gorm.DB) gin.HandlerFunc {
 		page := c.DefaultQuery("page", "1")
 		limit := c.DefaultQuery("limit", "10")
 		search := c.Query("search")
-		
-		query := db.Model(&models.Cart{}).Preload("User").Preload("Product").Preload("Product.Category")
-		
+
+		query := db.Model(&models.Cart{}).Preload("User").Preload("Product").Preload("Product.Category").Preload("ProductVariant")
+
 		if search != "" {
 			query = query.Joins("JOIN users ON carts.user_id = users.id").Joins("JOIN products ON carts.product_id = products.id").Where(
-				"users.first_name ILIKE ? OR users.last_name ILIKE ? OR users.email ILIKE ? OR products.name ILIKE ?", 
+				"users.first_name ILIKE ? OR users.last_name ILIKE ? OR users.email ILIKE ? OR products.name ILIKE ?",
 				"%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%")
 		}
-		
+
 		var total int64
 		query.Count(&total)
-		
+
 		offset := (utils.ParseInt(page, 1) - 1) * utils.ParseInt(limit, 10)
 		if err := query.Offset(offset).Limit(utils.ParseInt(limit, 10)).Find(&carts).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch carts"})
 			return
 		}
-		
+
 		c.JSON(http.StatusOK, gin.H{
-			"data": carts,
+			"data":  carts,
 			"total": total,
-			"page": utils.ParseInt(page, 1),
+			"page":  utils.ParseInt(page, 1),
 			"limit": utils.ParseInt(limit, 10),
 		})
 	}
@@ -72,12 +72,12 @@ func getCartByID(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
 		var cart models.Cart
-		
-		if err := db.Preload("User").Preload("Product").Preload("Product.Category").First(&cart, "id = ?", id).Error; err != nil {
+
+		if err := db.Preload("User").Preload("Product").Preload("Product.Category").Preload("ProductVariant").First(&cart, "id = ?", id).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Cart item not found"})
 			return
 		}
-		
+
 		c.JSON(http.StatusOK, gin.H{"data": cart})
 	}
 }
@@ -85,12 +85,12 @@ func getCartByID(db *gorm.DB) gin.HandlerFunc {
 func deleteCartAdmin(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
-		
+
 		if err := db.Delete(&models.Cart{}, "id = ?", id).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete cart item"})
 			return
 		}
-		
+
 		c.JSON(http.StatusOK, gin.H{"message": "Cart item deleted successfully"})
 	}
 }
@@ -98,12 +98,12 @@ func deleteCartAdmin(db *gorm.DB) gin.HandlerFunc {
 func clearUserCart(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.Param("userId")
-		
+
 		if err := db.Where("user_id = ?", userID).Delete(&models.Cart{}).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to clear user cart"})
 			return
 		}
-		
+
 		c.JSON(http.StatusOK, gin.H{"message": "User cart cleared successfully"})
 	}
 }
@@ -113,7 +113,7 @@ func getCart(db *gorm.DB) gin.HandlerFunc {
 		user, _ := utils.GetCurrentUser(c)
 		var cartItems []models.Cart
 
-		if err := db.Where("user_id = ?", user.ID).Preload("Product").Preload("Product.Category").Find(&cartItems).Error; err != nil {
+		if err := db.Where("user_id = ?", user.ID).Preload("Product").Preload("Product.Category").Preload("ProductVariant").Find(&cartItems).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch cart"})
 			return
 		}
@@ -121,12 +121,16 @@ func getCart(db *gorm.DB) gin.HandlerFunc {
 		// Calculate total
 		var total float64
 		for _, item := range cartItems {
-			total += item.Product.Price * float64(item.Quantity)
+			unitPrice := item.Product.Price
+			if item.ProductVariant != nil {
+				unitPrice += item.ProductVariant.PriceAdjust
+			}
+			total += unitPrice * float64(item.Quantity)
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"data": cartItems,
-			"total": total,
+			"data":      cartItems,
+			"total":     total,
 			"itemCount": len(cartItems),
 		})
 	}
@@ -136,10 +140,9 @@ func addToCart(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, _ := utils.GetCurrentUser(c)
 		var req struct {
-			ProductID string `json:"productId" binding:"required"`
-			Quantity  int    `json:"quantity" binding:"required,min=1"`
-			Size      string `json:"size"`
-			Color     string `json:"color"`
+			ProductID        string `json:"productId" binding:"required"`
+			ProductVariantID string `json:"productVariantId"`
+			Quantity         int    `json:"quantity" binding:"required,min=1"`
 		}
 
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -153,10 +156,21 @@ func addToCart(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Check if item with same product, size, and color already exists in cart
+		// Parse variant ID if provided
+		var variantID *uuid.UUID
+		if req.ProductVariantID != "" {
+			varID, err := uuid.Parse(req.ProductVariantID)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid variant ID"})
+				return
+			}
+			variantID = &varID
+		}
+
+		// Check if item with same product and variant already exists in cart
 		var existingItem models.Cart
-		err = db.Where("user_id = ? AND product_id = ? AND size = ? AND color = ?", 
-			user.ID, productID, req.Size, req.Color).First(&existingItem).Error
+		err = db.Where("user_id = ? AND product_id = ? AND product_variant_id = ?",
+			user.ID, productID, variantID).First(&existingItem).Error
 
 		if err == nil {
 			// Item exists, update quantity
@@ -168,11 +182,10 @@ func addToCart(db *gorm.DB) gin.HandlerFunc {
 		} else {
 			// Item doesn't exist, create new
 			cartItem := models.Cart{
-				UserID:    user.ID,
-				ProductID: productID,
-				Quantity:  req.Quantity,
-				Size:      req.Size,
-				Color:     req.Color,
+				UserID:           user.ID,
+				ProductID:        productID,
+				ProductVariantID: variantID,
+				Quantity:         req.Quantity,
 			}
 
 			if err := db.Create(&cartItem).Error; err != nil {

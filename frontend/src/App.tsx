@@ -30,6 +30,7 @@ import Cart from './Pages/Protected/Cart';
 import Checkout from './Pages/Protected/Checkout';
 import Profile from './Pages/Protected/Profile';
 import Orders from './Pages/Protected/Orders';
+import Addresses from './Pages/Protected/Addresses';
 import About from './Pages/Public/About';
 import Competitions from './Pages/Public/Competitions';
 import CompetitionDetail from './Pages/Public/CompetitionDetail';
@@ -90,7 +91,8 @@ const AppRoutes = () => {
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
 			<Route path="/profile" element={<Profile />} />
-			<Route path="/orders" element={<Orders />} />
+            <Route path="/orders" element={<Orders />} />
+            <Route path="/addresses" element={<ProtectedRoute><Addresses /></ProtectedRoute>} />
 			<Route path="/about" element={<About />} />
 			<Route path="/competitions" element={<Competitions />} />
 			<Route path="/competitions/:id" element={<CompetitionDetail />} />

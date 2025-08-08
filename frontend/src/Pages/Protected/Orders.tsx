@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../Contexts/AuthContext';
+import { useCart } from '../../Contexts/CartContext';
 import Navbar from '../../Components/Navbar';
 import { Link } from 'react-router-dom';
 import usePageTitle from '../../hooks/usePageTitle';
@@ -12,14 +13,29 @@ interface Product {
     price: number;
 }
 
+interface OrderItem {
+    id: string;
+    order_id: string;
+    product_id: string;
+    product_variant_id?: string | null;
+    quantity: number;
+    unit_price: number;
+    subtotal: number;
+    product?: Product;
+    product_variant?: {
+        id: string;
+        title: string;
+        description: string;
+        size: string;
+        price_adjust: number;
+    };
+}
+
 interface Order {
     id: string;
     created_at: string;
     updated_at: string;
     user_id: string;
-    product_id: string;
-    product_variant_id?: string | null;
-    quantity: number;
     subtotal: number;
     tax: number;
     shipping: number;
@@ -29,18 +45,20 @@ interface Order {
     shipping_address_id?: string;
     billing_address_id?: string;
     payment_method_id?: string | null;
-    product?: Product;
+    items: OrderItem[];
 }
 
 const Orders: React.FC = () => {
     const { user } = useAuth();
     const location = useLocation();
+    const { clearCart, refreshCart } = useCart();
 	const [orders, setOrders] = useState<Order[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [currentPage, setCurrentPage] = useState(1);
 	const [totalPages, setTotalPages] = useState(1);
     const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
+    const cartClearedRef = useRef(false);
 	usePageTitle('Orders');
 
 	const API_BASE_URL =
@@ -88,11 +106,20 @@ const Orders: React.FC = () => {
         const redirectStatus = params.get('redirect_status');
         if (redirectStatus === 'succeeded') {
             setPaymentMessage('Payment succeeded. Your order is being processed.');
+            // Clear cart on first load after successful payment
+            if (!cartClearedRef.current) {
+                cartClearedRef.current = true;
+                clearCart().finally(() => {
+                    refreshCart();
+                    try { localStorage.removeItem('checkout_order_ids'); } catch { /* ignore */ }
+                });
+            }
         } else if (redirectStatus === 'failed' || redirectStatus === 'canceled') {
             setPaymentMessage('Payment did not complete. You can try again.');
         } else {
             setPaymentMessage(null);
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [location.search]);
 
     // Poll backend to confirm PaymentIntent and update order status if needed
@@ -117,12 +144,10 @@ const Orders: React.FC = () => {
                     const statuses: string[] = Array.isArray(data.data) ? data.data.map((o) => (o.status || '').toLowerCase()) : [];
                     if (statuses.some((s) => s === 'processing' || s === 'succeeded' || s === 'paid')) {
                         await fetchOrders(currentPage);
-                        return; // stop polling once updated
+                        return;
                     }
                 }
-            } catch {
-                // ignore transient network errors while polling
-            }
+            } catch { /* ignore transient network errors while polling */ }
             setTimeout(tick, 1000);
         };
 
@@ -251,78 +276,113 @@ const Orders: React.FC = () => {
 				) : (
 					<>
 						<div className="space-y-6">
-							{orders.map((order) => {
-								const productImages = order.product?.images
-									? parseImages(order.product.images)
-									: [];
-								const firstImage = productImages.length > 0 ? productImages[0] : null;
-
-                                return (
-									<div
-										key={order.id}
-										className="bg-gray-800 rounded-lg overflow-hidden hover:bg-gray-750 transition-colors duration-200"
-									>
-										<div className="px-6 py-4 border-b border-gray-700">
-											<div className="flex items-center justify-between">
-												<div>
-													<h3 className="text-lg font-semibold text-white">
-                                                        Order #{(order.order_number || order.id.slice(0, 8)).toUpperCase()}
-													</h3>
-													<p className="text-gray-400">
-														Placed on{' '}
-														{new Date(order.created_at).toLocaleDateString('en-US', {
-															year: 'numeric',
-															month: 'long',
-															day: 'numeric',
-														})}
-													</p>
-												</div>
-												<span
-													className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium capitalize ${getStatusColor(
-														order.status
-													)}`}
-												>
-													{order.status}
-												</span>
+							{orders.map((order) => (
+								<div
+									key={order.id}
+									className="bg-gray-800 rounded-lg overflow-hidden hover:bg-gray-750 transition-colors duration-200"
+								>
+									<div className="px-6 py-4 border-b border-gray-700">
+										<div className="flex items-center justify-between">
+											<div>
+												<h3 className="text-lg font-semibold text-white">
+													Order #{(order.order_number || order.id.slice(0, 8)).toUpperCase()}
+												</h3>
+												<p className="text-gray-400">
+													Placed on{' '}
+													{new Date(order.created_at).toLocaleDateString('en-US', {
+														year: 'numeric',
+														month: 'long',
+														day: 'numeric',
+													})}
+												</p>
 											</div>
+											<span
+												className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium capitalize ${getStatusColor(
+													order.status
+												)}`}
+											>
+												{order.status}
+											</span>
 										</div>
+									</div>
 
-										<div className="px-6 py-6">
-											<div className="flex items-center space-x-6">
-												<div className="flex-shrink-0">
-													{firstImage ? (
-														<img
-															className="h-20 w-20 rounded-lg object-cover border border-gray-600"
-															src={firstImage}
-															alt={order.product?.name || 'Product'}
-														/>
-													) : (
-														<div className="h-20 w-20 rounded-lg bg-gray-700 flex items-center justify-center border border-gray-600">
-															<span className="text-3xl text-ventauri">📦</span>
+									<div className="px-6 py-6">
+										{order.items && order.items.length > 0 ? (
+											<div className="space-y-4">
+												{order.items.map((item) => {
+													const productImages = item.product?.images
+														? parseImages(item.product.images)
+														: [];
+													const firstImage = productImages.length > 0 ? productImages[0] : null;
+													
+													return (
+														<div key={item.id} className="flex items-center space-x-6">
+															<div className="flex-shrink-0">
+																{firstImage ? (
+																	<img
+																		className="h-20 w-20 rounded-lg object-cover border border-gray-600"
+																		src={firstImage}
+																		alt={item.product?.name || 'Product'}
+																	/>
+																) : (
+																	<div className="h-20 w-20 rounded-lg bg-gray-700 flex items-center justify-center border border-gray-600">
+																		<span className="text-3xl text-ventauri">📦</span>
+																	</div>
+																)}
+															</div>
+															<div className="flex-1 min-w-0">
+																<h4 className="text-lg font-medium text-white mb-1">
+																	{item.product?.name || 'Product'}
+																</h4>
+																<div className="flex items-center space-x-4 text-gray-400">
+																	<span>Qty: {item.quantity}</span>
+																	{item.product_variant && (
+																		<>
+																			<span>•</span>
+																			<span>Size: {item.product_variant.size}</span>
+																			<span>•</span>
+																			<span>{item.product_variant.title}</span>
+																		</>
+																	)}
+																	<span>•</span>
+																	<span>€{item.unit_price.toFixed(2)} each</span>
+																</div>
+															</div>
+															<div className="text-right">
+																<p className="text-lg font-bold text-ventauri">
+																	€{item.subtotal.toFixed(2)}
+																</p>
+																<p className="text-gray-400 text-sm">Subtotal</p>
+															</div>
 														</div>
-													)}
-												</div>
-												<div className="flex-1 min-w-0">
-													<h4 className="text-lg font-medium text-white mb-1">
-														{order.product?.name || 'Product'}
-													</h4>
-													<div className="flex items-center space-x-4 text-gray-400">
-														<span>Qty: {order.quantity}</span>
-														<span>•</span>
-                                                        <span>€{(order.product?.price ?? 0).toFixed(2)} each</span>
-													</div>
+													);
+												})}
+											</div>
+										) : (
+											<div className="text-center text-gray-400 py-4">
+												No items found for this order
+											</div>
+										)}
+										
+										{/* Order Total */}
+										<div className="mt-6 pt-4 border-t border-gray-700">
+											<div className="flex justify-between items-center">
+												<div className="text-gray-400">
+													<p>Subtotal: €{order.subtotal.toFixed(2)}</p>
+													<p>Tax: €{order.tax.toFixed(2)}</p>
+													<p>Shipping: €{order.shipping.toFixed(2)}</p>
 												</div>
 												<div className="text-right">
 													<p className="text-2xl font-bold text-ventauri">
-                                                        €{(order.total ?? (order.product?.price ?? 0) * order.quantity).toFixed(2)}
+														€{order.total.toFixed(2)}
 													</p>
 													<p className="text-gray-400 text-sm">Total</p>
 												</div>
 											</div>
 										</div>
 									</div>
-								);
-							})}
+								</div>
+							))}
 						</div>
 
 						{/* Pagination */}

@@ -60,10 +60,6 @@ services:
     depends_on:
       mariadb:
         condition: service_healthy
-    command: >
-      sh -c "go mod download && 
-             go install github.com/air-verse/air@latest && 
-             air"
 
   # Frontend (React/Vite)
   frontend:
@@ -87,7 +83,6 @@ services:
       - ventauri-dev-network
     depends_on:
       - backend
-    command: bun run dev --host 0.0.0.0
 
 volumes:
   mariadb_dev_data:

@@ -8,8 +8,10 @@ interface ProductVariant {
 	id: string;
 	sku: string;
 	size: string;
-	color: string;
+	title: string;
+	description: string;
 	stock: number;
+	priceAdjust: number;
 	weight: number;
 	isActive: boolean;
 	images: string[];
@@ -53,7 +55,7 @@ export default function Product() {
 	const { id } = useParams<{ id: string }>();
 	const [product, setProduct] = useState<Product | null>(null);
 	const [selectedSize, setSelectedSize] = useState<string | null>(null);
-	const [selectedColor, setSelectedColor] = useState<string | null>(null);
+	const [selectedVariantTitle, setSelectedVariantTitle] = useState<string | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const apiURL = import.meta.env.VITE_BACKEND_URL || '';
@@ -62,7 +64,7 @@ export default function Product() {
 
 	const handleAddToCart = async () => {
 		if (product && selectedVariant && selectedVariant.stock > 0) {
-			await addToCart(product.id, 1, selectedSize || '', selectedColor || '');
+			await addToCart(product.id, 1, selectedVariant.id);
 		}
 	};
 
@@ -91,35 +93,35 @@ export default function Product() {
 		}
 	}, [id, apiURL]);
 
-	// Get the currently selected variant based on size and color
+	// Get the currently selected variant based on size and variant title
 	const getSelectedVariant = (): ProductVariant | null => {
-		if (!product?.variants || !selectedSize || !selectedColor) return null;
+		if (!product?.variants || !selectedSize || !selectedVariantTitle) return null;
 		return (
 			product.variants.find(
-				(v) => v.size === selectedSize && v.color === selectedColor
+				(v) => v.size === selectedSize && v.title === selectedVariantTitle
 			) || null
 		);
 	};
 
-	// Check if a size is available for the current color selection
+	// Check if a size is available for the current variant title selection
 	const isSizeAvailable = (size: string): boolean => {
 		if (!product?.variants) return false;
-		if (!selectedColor) {
+		if (!selectedVariantTitle) {
 			return product.variants.some((v) => v.size === size && v.stock > 0);
 		}
 		return product.variants.some(
-			(v) => v.size === size && v.color === selectedColor && v.stock > 0
+			(v) => v.size === size && v.title === selectedVariantTitle && v.stock > 0
 		);
 	};
 
-	// Check if a color is available for the current size selection
-	const isColorAvailable = (color: string): boolean => {
+	// Check if a variant title is available for the current size selection
+	const isVariantTitleAvailable = (title: string): boolean => {
 		if (!product?.variants) return false;
 		if (!selectedSize) {
-			return product.variants.some((v) => v.color === color && v.stock > 0);
+			return product.variants.some((v) => v.title === title && v.stock > 0);
 		}
 		return product.variants.some(
-			(v) => v.color === color && v.size === selectedSize && v.stock > 0
+			(v) => v.title === title && v.size === selectedSize && v.stock > 0
 		);
 	};
 
@@ -130,30 +132,30 @@ export default function Product() {
 			setSelectedSize(null);
 		} else if (isSizeAvailable(size)) {
 			setSelectedSize(size);
-			// Reset color if current combination is not available
+			// Reset variant title if current combination is not available
 			if (
-				selectedColor &&
+				selectedVariantTitle &&
 				!product?.variants?.some(
-					(v) => v.size === size && v.color === selectedColor && v.stock > 0
+					(v) => v.size === size && v.title === selectedVariantTitle && v.stock > 0
 				)
 			) {
-				setSelectedColor(null);
+				setSelectedVariantTitle(null);
 			}
 		}
 	};
 
-	// Handle color selection/deselection
-	const handleColorClick = (color: string) => {
-		if (selectedColor === color) {
-			// Deselect if clicking on already selected color
-			setSelectedColor(null);
-		} else if (isColorAvailable(color)) {
-			setSelectedColor(color);
+	// Handle variant title selection/deselection
+	const handleVariantTitleClick = (title: string) => {
+		if (selectedVariantTitle === title) {
+			// Deselect if clicking on already selected variant title
+			setSelectedVariantTitle(null);
+		} else if (isVariantTitleAvailable(title)) {
+			setSelectedVariantTitle(title);
 			// Reset size if current combination is not available
 			if (
 				selectedSize &&
 				!product?.variants?.some(
-					(v) => v.color === color && v.size === selectedSize && v.stock > 0
+					(v) => v.title === title && v.size === selectedSize && v.stock > 0
 				)
 			) {
 				setSelectedSize(null);
@@ -164,7 +166,7 @@ export default function Product() {
 	// Clear all selections
 	const clearSelections = () => {
 		setSelectedSize(null);
-		setSelectedColor(null);
+		setSelectedVariantTitle(null);
 	};
 
 	const parseImages = (images: string): string[] => {
@@ -306,7 +308,7 @@ export default function Product() {
 							<div className="space-y-4">
 								<div className="flex items-center justify-between">
 									<h3 className="text-lg font-semibold">Available Options</h3>
-									{(selectedSize || selectedColor) && (
+									{(selectedSize || selectedVariantTitle) && (
 										<button
 											onClick={clearSelections}
 											className="text-sm text-ventauri hover:text-ventauri underline"
@@ -353,24 +355,24 @@ export default function Product() {
 									</div>
 								)}
 
-								{/* Colors */}
-								{Array.from(new Set(product.variants.map((v) => v.color))).length >
+								{/* Variant Titles */}
+								{Array.from(new Set(product.variants.map((v) => v.title))).length >
 									0 && (
 									<div className="space-y-2">
 										<label className="block text-sm font-medium text-gray-300">
-											Color{' '}
-											{selectedColor && (
+											Style{' '}
+											{selectedVariantTitle && (
 												<span className="text-ventauri">(Click to deselect)</span>
 											)}
 										</label>
 										<div className="flex flex-wrap gap-2">
-											{Array.from(new Set(product.variants.map((v) => v.color))).map(
-												(color) => {
-													const isAvailable = isColorAvailable(color);
-													const isSelected = selectedColor === color;
+											{Array.from(new Set(product.variants.map((v) => v.title))).map(
+												(title) => {
+													const isAvailable = isVariantTitleAvailable(title);
+													const isSelected = selectedVariantTitle === title;
 													return (
 														<button
-															key={color}
+															key={title}
 															className={`px-4 py-2 rounded-lg border transition-all ${
 																isSelected
 																	? 'border-ventauri bg-ventauri text-black hover:bg-yellow-300'
@@ -379,9 +381,9 @@ export default function Product() {
 																		: 'border-gray-700 bg-gray-800 text-gray-500 cursor-not-allowed'
 															}`}
 															disabled={!isAvailable && !isSelected}
-															onClick={() => handleColorClick(color)}
+															onClick={() => handleVariantTitleClick(title)}
 														>
-															{color}
+															{title}
 														</button>
 													);
 												}
@@ -393,19 +395,19 @@ export default function Product() {
 						)}
 
 						{/* Selection Status */}
-						{(selectedSize || selectedColor) && (
+						{(selectedSize || selectedVariantTitle) && (
 							<div className="bg-gray-800 rounded-lg p-4">
 								<h4 className="font-medium mb-2">Current Selection:</h4>
 								<div className="text-sm text-gray-300">
 									{selectedSize && (
 										<span>
-											Size: <span className="text-ventauri">{selectedSize}</span>
+											Size: <span className="ventauri">{selectedSize}</span>
 										</span>
 									)}
-									{selectedSize && selectedColor && <span className="mx-2">•</span>}
-									{selectedColor && (
+									{selectedSize && selectedVariantTitle && <span className="mx-2">•</span>}
+									{selectedVariantTitle && (
 										<span>
-											Color: <span className="text-ventauri">{selectedColor}</span>
+											Style: <span className="text-ventauri">{selectedVariantTitle}</span>
 										</span>
 									)}
 								</div>
@@ -428,8 +430,8 @@ export default function Product() {
 						>
 							{cartLoading
 								? 'Adding to Cart...'
-								: !selectedSize || !selectedColor
-									? 'Select Size and Color'
+								: !selectedSize || !selectedVariantTitle
+									? 'Select Size and Style'
 									: selectedVariant && selectedVariant.stock <= 0
 										? 'Out of Stock'
 										: 'Add to Cart'}

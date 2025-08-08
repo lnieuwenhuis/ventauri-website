@@ -10,9 +10,8 @@ import { useAuth } from './AuthContext';
 interface CartItem {
 	id: string;
 	productId: string;
+	productVariantId?: string;
 	quantity: number;
-	size: string;
-	color: string;
 	product: {
 		id: string;
 		name: string;
@@ -22,6 +21,13 @@ interface CartItem {
 			id: string;
 			name: string;
 		};
+	};
+	productVariant?: {
+		id: string;
+		title: string;
+		description: string;
+		size: string;
+		priceAdjust: number;
 	};
 }
 
@@ -33,8 +39,7 @@ interface CartContextType {
 	addToCart: (
 		productId: string,
 		quantity: number,
-		size?: string,
-		color?: string
+		productVariantId?: string
 	) => Promise<void>;
 	updateQuantity: (itemId: string, quantity: number) => Promise<void>;
 	removeFromCart: (itemId: string) => Promise<void>;
@@ -96,8 +101,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
 	const addToCart = async (
 		productId: string,
 		quantity: number,
-		size?: string,
-		color?: string
+		productVariantId?: string
 	) => {
 		if (!isAuthenticated) {
 			alert('Please log in to add items to cart');
@@ -116,8 +120,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
 				body: JSON.stringify({
 					productId,
 					quantity,
-					size: size || '',
-					color: color || '',
+					productVariantId: productVariantId || '',
 				}),
 			});
 

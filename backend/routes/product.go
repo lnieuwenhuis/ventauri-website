@@ -1,10 +1,12 @@
 package routes
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
-	"fmt"
+
 	"gorm.io/gorm/logger"
 
 	"github.com/gin-gonic/gin"
@@ -25,12 +27,13 @@ func SetupProductRoutes(router *gin.Engine, db *gorm.DB) {
 		products.GET("/search", searchProducts(db))
 		products.GET("/:id/variants", getProductVariants(db))
 		products.GET("/:id/reviews", getProductReviews(db))
+		products.GET("/sizes", getAvailableSizes(db))
 	}
 
 	// Protected admin routes
 	auth := utils.NewAuthService(db)
 	adminProducts := router.Group("/api/admin/products")
-	adminProducts.Use(auth.AdminMiddleware()) 
+	adminProducts.Use(auth.AdminMiddleware())
 	{
 		adminProducts.POST("/", createProduct(db))
 		adminProducts.PUT("/:id", updateProduct(db))
@@ -41,6 +44,9 @@ func SetupProductRoutes(router *gin.Engine, db *gorm.DB) {
 		adminProducts.DELETE("/variants/:variantId", deleteProductVariant(db))
 		adminProducts.GET("/", getAllProductsAdmin(db))
 		adminProducts.GET("/:id", getProductAdmin(db))
+		// New routes for improved variant management
+		adminProducts.PUT("/:id/sizes", updateProductSizes(db))
+		adminProducts.GET("/:id/sizes", getProductSizes(db))
 	}
 }
 
@@ -51,7 +57,7 @@ func getProducts(db *gorm.DB) gin.HandlerFunc {
 		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 		limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 		offset := (page - 1) * limit
-		
+
 		// Get query parameters
 		search := c.Query("search")
 		categoryId := c.Query("categoryId")
@@ -59,25 +65,25 @@ func getProducts(db *gorm.DB) gin.HandlerFunc {
 
 		// Start with base query including active products and preload relationships
 		query := db.Model(&models.Product{}).Where("is_active = ?", true)
-		
+
 		// Apply search filter
 		if search != "" {
 			searchQuery := "%" + search + "%"
 			query = query.Where("(name LIKE ? OR description LIKE ?)", searchQuery, searchQuery)
 		}
-		
+
 		// Apply category filter
 		if categoryId != "" {
 			query = query.Where("category_id = ?", categoryId)
 		}
-		
+
 		// Get total count before pagination
 		var total int64
 		if err := query.Count(&total).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to count products"})
 			return
 		}
-		
+
 		// Apply sorting
 		switch sortBy {
 		case "price-low":
@@ -91,7 +97,7 @@ func getProducts(db *gorm.DB) gin.HandlerFunc {
 		default: // "newest"
 			query = query.Order("created_at DESC")
 		}
-		
+
 		// Apply pagination and preload relationships
 		if err := query.Preload("Category").Preload("Variants").Offset(offset).Limit(limit).Find(&products).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch products"})
@@ -99,9 +105,9 @@ func getProducts(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"data": products,
+			"data":  products,
 			"total": total,
-			"page": page,
+			"page":  page,
 			"limit": limit,
 		})
 	}
@@ -209,14 +215,14 @@ func createProduct(db *gorm.DB) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create product"})
 			return
 		}
-		
+
 		// Fetch the created product with relationships for clean response
 		var responseProduct models.Product
 		if err := db.Preload("Category").First(&responseProduct, "id = ?", product.ID).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch created product"})
 			return
 		}
-		
+
 		// Add activity tracking
 		currentUser, _ := utils.GetCurrentUser(c)
 		utils.CreateActivity(db, &currentUser.ID, models.ActivityProductCreated, "New product '"+product.Name+"' created", utils.StringPtr("product"), utils.StringPtr(product.ID.String()), nil)
@@ -299,7 +305,7 @@ func updateProduct(db *gorm.DB) gin.HandlerFunc {
 				// Clear timestamps to let GORM handle them
 				updatedProduct.Variants[i].CreatedAt = time.Time{}
 				updatedProduct.Variants[i].UpdatedAt = time.Time{}
-				
+
 				// Generate a unique SKU to avoid empty string duplicates
 				if updatedProduct.Variants[i].SKU == "" {
 					// Generate a temporary unique SKU using UUID
@@ -332,7 +338,7 @@ func updateProduct(db *gorm.DB) gin.HandlerFunc {
 						}
 					}
 				}
-				
+
 				if err := tx.Create(&updatedProduct.Variants[i]).Error; err != nil {
 					tx.Rollback()
 					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create product variants"})
@@ -346,7 +352,7 @@ func updateProduct(db *gorm.DB) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
 			return
 		}
-		
+
 		// Fetch the updated product with all relationships for the response
 		var responseProduct models.Product
 		if err := db.Preload("Category").Preload("Variants", func(db *gorm.DB) *gorm.DB {
@@ -370,16 +376,16 @@ func updateProduct(db *gorm.DB) gin.HandlerFunc {
 func deleteProduct(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
-		
+
 		// Get product name before deletion
 		var product models.Product
 		db.First(&product, "id = ?", id)
-		
+
 		if err := db.Delete(&models.Product{}, "id = ?", id).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete product"})
 			return
 		}
-		
+
 		// Add activity tracking
 		currentUser, _ := utils.GetCurrentUser(c)
 		utils.CreateActivity(db, &currentUser.ID, models.ActivityProductDeleted, "Product '"+product.Name+"' deleted", utils.StringPtr("product"), utils.StringPtr(id), nil)
@@ -391,9 +397,52 @@ func deleteProduct(db *gorm.DB) gin.HandlerFunc {
 func createProductVariant(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		productId := c.Param("id")
+
+		// First, get the product to check enabled sizes
+		var product models.Product
+		if err := db.First(&product, "id = ?", productId).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
+			return
+		}
+
 		var variant models.ProductVariant
 		if err := c.ShouldBindJSON(&variant); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Validate size
+		if !models.IsValidSize(variant.Size) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid size: " + variant.Size})
+			return
+		}
+
+		// Check if size is enabled for this product
+		var enabledSizes []string
+		if product.EnabledSizes != "" {
+			if err := json.Unmarshal([]byte(product.EnabledSizes), &enabledSizes); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse product sizes"})
+				return
+			}
+		}
+
+		sizeEnabled := false
+		for _, size := range enabledSizes {
+			if size == variant.Size {
+				sizeEnabled = true
+				break
+			}
+		}
+
+		if !sizeEnabled {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Size " + variant.Size + " is not enabled for this product"})
+			return
+		}
+
+		// Check if variant already exists for this product and size
+		var existingVariant models.ProductVariant
+		if err := db.Where("product_id = ? AND size = ?", productId, variant.Size).First(&existingVariant).Error; err == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Variant already exists for size " + variant.Size})
 			return
 		}
 
@@ -451,31 +500,31 @@ func getAllProductsAdmin(db *gorm.DB) gin.HandlerFunc {
 		limit := c.DefaultQuery("limit", "10")
 		search := c.Query("search")
 		categoryId := c.Query("categoryId")
-		
+
 		query := db.Model(&models.Product{}).Preload("Category").Preload("Variants")
-		
+
 		if search != "" {
 			query = query.Where("name ILIKE ? OR description ILIKE ?", "%"+search+"%", "%"+search+"%")
 		}
-		
+
 		// Add category filtering
 		if categoryId != "" {
 			query = query.Where("category_id = ?", categoryId)
 		}
-		
+
 		var total int64
 		query.Count(&total)
-		
+
 		offset := (utils.ParseInt(page, 1) - 1) * utils.ParseInt(limit, 10)
 		if err := query.Order("created_at DESC").Offset(offset).Limit(utils.ParseInt(limit, 10)).Find(&products).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch products"})
 			return
 		}
-		
+
 		c.JSON(http.StatusOK, gin.H{
-			"data": products,
+			"data":  products,
 			"total": total,
-			"page": utils.ParseInt(page, 1),
+			"page":  utils.ParseInt(page, 1),
 			"limit": utils.ParseInt(limit, 10),
 		})
 	}
@@ -485,12 +534,12 @@ func getProductAdmin(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
 		var product models.Product
-		
+
 		if err := db.Preload("Category").Preload("Variants").Preload("Reviews").First(&product, "id = ?", id).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
 			return
 		}
-		
+
 		c.JSON(http.StatusOK, gin.H{"data": product})
 	}
 }
@@ -500,27 +549,109 @@ func toggleProductStatus(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
 		var product models.Product
-		
+
 		if err := db.First(&product, "id = ?", id).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
 			return
 		}
-		
+
 		product.IsActive = !product.IsActive
-		
+
 		if err := db.Save(&product).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update product status"})
 			return
 		}
-		
-		// Add activity tracking
-		currentUser, _ := utils.GetCurrentUser(c)
-		status := "activated"
-		if !product.IsActive {
-			status = "deactivated"
+
+		c.JSON(http.StatusOK, gin.H{"data": product})
+	}
+}
+
+// New functions for improved variant system
+func getAvailableSizes(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		sizes := models.GetAvailableSizes()
+		c.JSON(http.StatusOK, gin.H{"data": sizes})
+	}
+}
+
+func getProductSizes(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		var product models.Product
+
+		if err := db.First(&product, "id = ?", id).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
+			return
 		}
-		utils.CreateActivity(db, &currentUser.ID, models.ActivityInventoryUpdated, "Product '"+product.Name+"' "+status, utils.StringPtr("product"), utils.StringPtr(product.ID.String()), nil)
-		
+
+		// Parse enabled sizes from JSON string
+		var enabledSizes []string
+		if product.EnabledSizes != "" {
+			if err := json.Unmarshal([]byte(product.EnabledSizes), &enabledSizes); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse enabled sizes"})
+				return
+			}
+		}
+
+		// Get all available sizes and mark which ones are enabled
+		allSizes := models.GetAvailableSizes()
+		sizeStatus := make(map[string]bool)
+		for _, size := range allSizes {
+			sizeStatus[size] = false
+		}
+		for _, size := range enabledSizes {
+			sizeStatus[size] = true
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"data": gin.H{
+				"allSizes":     allSizes,
+				"enabledSizes": enabledSizes,
+				"sizeStatus":   sizeStatus,
+			},
+		})
+	}
+}
+
+func updateProductSizes(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		var product models.Product
+
+		if err := db.First(&product, "id = ?", id).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
+			return
+		}
+
+		var req struct {
+			EnabledSizes []string `json:"enabledSizes"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Validate sizes
+		for _, size := range req.EnabledSizes {
+			if !models.IsValidSize(size) {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid size: " + size})
+				return
+			}
+		}
+
+		// Convert to JSON string
+		enabledSizesJSON, err := json.Marshal(req.EnabledSizes)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to serialize sizes"})
+			return
+		}
+
+		product.EnabledSizes = string(enabledSizesJSON)
+		if err := db.Save(&product).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update product sizes"})
+			return
+		}
+
 		c.JSON(http.StatusOK, gin.H{"data": product})
 	}
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import FormModal from '../../Components/Admin/FormModal';
+import VariantManager from '../../Components/Admin/VariantManager';
 
 interface Product {
 	id: string;
@@ -45,6 +46,8 @@ const AdminProducts: React.FC = () => {
 		[]
 	);
 	const [categoryFilter, setCategoryFilter] = useState<string>('');
+	const [showVariantManager, setShowVariantManager] = useState(false);
+	const [selectedProductId, setSelectedProductId] = useState<string>('');
 	const itemsPerPage = 10;
 
 	const apiURL = import.meta.env.VITE_BACKEND_URL || '';
@@ -325,9 +328,7 @@ const AdminProducts: React.FC = () => {
 	};
 
 	const deleteProduct = async (productId: string) => {
-		if (!confirm('Are you sure you want to delete this product?')) {
-			return;
-		}
+		if (!confirm('Are you sure you want to delete this product?')) return;
 
 		try {
 			const response = await fetch(`${apiURL}/api/admin/products/${productId}`, {
@@ -338,15 +339,20 @@ const AdminProducts: React.FC = () => {
 				},
 			});
 
-			if (!response.ok) {
+			if (response.ok) {
+				fetchProducts(currentPage, searchTerm, categoryFilter);
+			} else {
 				throw new Error('Failed to delete product');
 			}
-
-			fetchProducts(currentPage, searchTerm);
 		} catch (err) {
+			setError(err instanceof Error ? err.message : 'An error occurred');
 			console.error('Error deleting product:', err);
-			setError(err instanceof Error ? err.message : 'Failed to delete product');
 		}
+	};
+
+	const handleManageVariants = (productId: string) => {
+		setSelectedProductId(productId);
+		setShowVariantManager(true);
 	};
 
 	const totalPages = Math.ceil(totalProducts / itemsPerPage);
@@ -588,6 +594,25 @@ const AdminProducts: React.FC = () => {
 														</svg>
 														Delete
 													</button>
+													<button
+														onClick={() => handleManageVariants(product.id)}
+														className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200"
+													>
+														<svg
+															className="w-3 h-3 mr-1"
+															fill="none"
+															stroke="currentColor"
+															viewBox="0 0 24 24"
+														>
+															<path
+																strokeLinecap="round"
+																strokeLinejoin="round"
+																strokeWidth={2}
+																d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 016-6h10a4 4 0 004-4V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h10a4 4 0 004-4v-1a6 6 0 01-3 5.242"
+															/>
+														</svg>
+														Manage Variants
+													</button>
 												</div>
 											</td>
 										</tr>
@@ -641,6 +666,14 @@ const AdminProducts: React.FC = () => {
 				}
 				isLoading={modalLoading}
 			/>
+
+			{/* Variant Manager Modal */}
+			{showVariantManager && (
+				<VariantManager
+					productId={selectedProductId}
+					onClose={() => setShowVariantManager(false)}
+				/>
+			)}
 		</div>
 	);
 };

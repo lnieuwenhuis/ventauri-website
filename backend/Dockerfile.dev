@@ -6,19 +6,10 @@ RUN apk add --no-cache git
 # Set working directory
 WORKDIR /app
 
-# Copy go mod files
-COPY go.mod go.sum ./
-
-# Download dependencies
-RUN go mod download
-
 # Install air for hot reloading
 RUN go install github.com/air-verse/air@latest
 
-# Copy source code
-COPY . .
-
-# Create air config
+# Create air config with polling enabled for Docker
 RUN echo 'root = "."\n\
 testdata_dir = "testdata"\n\
 tmp_dir = "tmp"\n\
@@ -39,8 +30,8 @@ tmp_dir = "tmp"\n\
   include_file = []\n\
   kill_delay = "0s"\n\
   log = "build-errors.log"\n\
-  poll = false\n\
-  poll_interval = 0\n\
+  poll = true\n\
+  poll_interval = 500\n\
   rerun = false\n\
   rerun_delay = 500\n\
   send_interrupt = false\n\

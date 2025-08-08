@@ -24,7 +24,7 @@ func CreateActivity(db *gorm.DB, userID *uuid.UUID, activityType models.Activity
 		EntityID:    entityID,
 		Metadata:    metadata,
 	}
-	
+
 	return db.Create(&activity).Error
 }
 
@@ -33,12 +33,12 @@ func ParseInt(s string, defaultValue int) int {
 	if s == "" {
 		return defaultValue
 	}
-	
+
 	value, err := strconv.Atoi(s)
 	if err != nil {
 		return defaultValue
 	}
-	
+
 	return value
 }
 
@@ -81,6 +81,7 @@ func MigrateDatabase(db *gorm.DB) error {
 		&models.ProductVariant{},
 		&models.Address{},
 		&models.PaymentMethod{},
+		&models.OrderItem{},
 		&models.Order{},
 		&models.Cart{},
 		&models.Review{},

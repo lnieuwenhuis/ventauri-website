@@ -14,6 +14,15 @@ interface ViewModalProps<
 	}[];
 }
 
+interface OrderItem {
+	productName: string;
+	variantInfo: string;
+	quantity: number;
+	unitPrice: number;
+	subtotal: number;
+}
+
+
 const ViewModal = <
 	T extends Record<string, unknown> = Record<string, unknown>,
 >({
@@ -67,12 +76,15 @@ const ViewModal = <
 								} else if (field.name === 'role' && value && typeof value === 'object') {
 									// Handle role object - display the role name
 									displayValue = (value as unknown as { name: string }).name || 'Unknown Role';
+								} else if (field.name === 'items' && Array.isArray(value)) {
+									// Special handling for order items - will be rendered separately
+									displayValue = '';
 								} else {
 									displayValue = value ? String(value) : 'Not provided';
 								}
 
 								return (
-									<div key={field.name}>
+									<div key={field.name} className={field.name === 'items' ? 'md:col-span-2' : ''}>
 										<label className="block text-sm font-bold text-gray-700">
 											{field.label}
 										</label>
@@ -105,6 +117,31 @@ const ViewModal = <
 											) : (
 												<p className="mt-1 text-sm text-gray-500">No picture provided</p>
 											)
+										) : field.name === 'items' && Array.isArray(value) ? (
+											// Special rendering for order items as ordered list
+											<div className="mt-1">
+												{value.length > 0 ? (
+													<ol className="list-decimal space-y-3 bg-gray-50 p-4 rounded-lg">
+														{value.map((item: OrderItem, index: number) => (
+															<li key={index} className="text-sm ml-6">
+																<div>
+																	<div className="font-semibold text-gray-900">
+																		{item.productName || 'Unknown Product'}
+																	</div>
+																	<div className="text-gray-600 mt-1">
+																		<span className="font-medium">Variant:</span> {item.variantInfo || 'Standard'}
+																	</div>
+																	<div className="text-gray-600">
+																		<span className="font-medium">Quantity:</span> {item.quantity} × {item.unitPrice} = <span className="font-semibold">{item.subtotal}</span>
+																	</div>
+																</div>
+															</li>
+														))}
+													</ol>
+												) : (
+													<p className="text-sm text-gray-500 bg-gray-50 p-4 rounded-lg">No items</p>
+												)}
+											</div>
 										) : (
 											<p className="mt-1 text-sm text-gray-900">{displayValue}</p>
 										)}
