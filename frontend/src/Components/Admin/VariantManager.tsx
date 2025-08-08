@@ -166,9 +166,9 @@ const VariantManager: React.FC<VariantManagerProps> = ({ productId, onClose }) =
     if (loading) {
         return (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-gray-800 p-6 rounded-lg">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ventauri mx-auto"></div>
-                    <p className="text-white mt-2">Loading...</p>
+                <div className="bg-white p-6 rounded-lg">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="text-gray-900 mt-2">Loading...</p>
                 </div>
             </div>
         );
@@ -176,26 +176,38 @@ const VariantManager: React.FC<VariantManagerProps> = ({ productId, onClose }) =
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-white">Manage Product Variants</h2>
+            <div className="bg-white rounded-lg shadow-xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-200">
+                    <h2 className="text-xl font-semibold text-gray-900">Manage Product Variants</h2>
                     <button
                         onClick={onClose}
-                        className="text-gray-400 hover:text-white"
+                        className="text-gray-400 hover:text-gray-600 transition-colors"
                     >
-                        ✕
+                        <svg
+                            className="w-6 h-6"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                            />
+                        </svg>
                     </button>
                 </div>
 
                 {error && (
-                    <div className="mb-4 p-3 bg-red-900 text-red-200 rounded">
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg">
                         {error}
                     </div>
                 )}
 
                 {/* Size Configuration */}
                 <div className="mb-8">
-                    <h3 className="text-lg font-semibold text-white mb-4">Size Configuration</h3>
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Size Configuration</h3>
                     <div className="grid grid-cols-7 gap-2">
                         {availableSizes.map(size => (
                             <label key={size} className="flex items-center space-x-2">
@@ -209,9 +221,9 @@ const VariantManager: React.FC<VariantManagerProps> = ({ productId, onClose }) =
                                             handleUpdateSizes(enabledSizes.filter(s => s !== size));
                                         }
                                     }}
-                                    className="accent-ventauri"
+                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                 />
-                                <span className="text-white text-sm">{size}</span>
+                                <span className="text-gray-700 text-sm">{size}</span>
                             </label>
                         ))}
                     </div>
@@ -219,22 +231,22 @@ const VariantManager: React.FC<VariantManagerProps> = ({ productId, onClose }) =
 
                 {/* Existing Variants */}
                 <div className="mb-8">
-                    <h3 className="text-lg font-semibold text-white mb-4">Existing Variants</h3>
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Existing Variants</h3>
                     {variants.length === 0 ? (
-                        <p className="text-gray-400">No variants created yet.</p>
+                        <p className="text-gray-500">No variants created yet.</p>
                     ) : (
                         <div className="space-y-4">
                             {variants.map(variant => (
-                                <div key={variant.id} className="bg-gray-700 p-4 rounded">
+                                <div key={variant.id} className="bg-gray-50 border border-gray-200 p-4 rounded-lg">
                                     <div className="flex justify-between items-start">
                                         <div>
-                                            <h4 className="text-white font-medium">
+                                            <h4 className="text-gray-900 font-medium">
                                                 {variant.size} - {variant.title}
                                             </h4>
-                                            <p className="text-gray-300 text-sm mt-1">
+                                            <p className="text-gray-600 text-sm mt-1">
                                                 {variant.description}
                                             </p>
-                                            <div className="text-gray-400 text-sm mt-2">
+                                            <div className="text-gray-500 text-sm mt-2">
                                                 Stock: {variant.stock} | 
                                                 Price Adjust: €{variant.priceAdjust.toFixed(2)} | 
                                                 Weight: {variant.weight}g
@@ -242,7 +254,7 @@ const VariantManager: React.FC<VariantManagerProps> = ({ productId, onClose }) =
                                         </div>
                                         <button
                                             onClick={() => handleDeleteVariant(variant.id)}
-                                            className="text-red-400 hover:text-red-300"
+                                            className="text-red-600 hover:text-red-700 transition-colors"
                                         >
                                             Delete
                                         </button>
@@ -256,26 +268,26 @@ const VariantManager: React.FC<VariantManagerProps> = ({ productId, onClose }) =
                 {/* Create New Variant */}
                 <div className="mb-8">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-semibold text-white">Create New Variant</h3>
+                        <h3 className="text-lg font-medium text-gray-900">Create New Variant</h3>
                         {getAvailableSizesForCreation().length > 0 && (
                             <button
                                 onClick={() => setShowCreateForm(!showCreateForm)}
-                                className="bg-ventauri text-black px-4 py-2 rounded hover:bg-ventauri/80"
+                                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                             >
                                 {showCreateForm ? 'Cancel' : 'Add Variant'}
                             </button>
                         )}
                     </div>
                     {getAvailableSizesForCreation().length === 0 ? (
-                        <p className="text-gray-400">All enabled sizes have variants. Enable more sizes above to create new variants.</p>
+                        <p className="text-gray-500">All enabled sizes have variants. Enable more sizes above to create new variants.</p>
                     ) : showCreateForm ? (
-                        <div className="space-y-4">
+                        <div className="space-y-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
                             <div>
-                                <label className="block text-white text-sm mb-2">Size</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Size</label>
                                 <select
                                     value={selectedSize}
                                     onChange={(e) => setSelectedSize(e.target.value)}
-                                    className="w-full bg-gray-700 text-white px-3 py-2 rounded"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 >
                                     <option value="">Select a size</option>
                                     {getAvailableSizesForCreation().map(size => (
@@ -286,57 +298,57 @@ const VariantManager: React.FC<VariantManagerProps> = ({ productId, onClose }) =
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-white text-sm mb-2">Title</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
                                     <input
                                         type="text"
                                         value={newVariant.title}
                                         onChange={(e) => setNewVariant({...newVariant, title: e.target.value})}
                                         placeholder="e.g., Black, Premium Print"
-                                        className="w-full bg-gray-700 text-white px-3 py-2 rounded"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-white text-sm mb-2">Stock</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
                                     <input
                                         type="number"
                                         value={newVariant.stock}
                                         onChange={(e) => setNewVariant({...newVariant, stock: parseInt(e.target.value) || 0})}
-                                        className="w-full bg-gray-700 text-white px-3 py-2 rounded"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     />
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-white text-sm mb-2">Description</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                                 <textarea
                                     value={newVariant.description}
                                     onChange={(e) => setNewVariant({...newVariant, description: e.target.value})}
                                     placeholder="Describe this variant (color, print, material, etc.)"
-                                    className="w-full bg-gray-700 text-white px-3 py-2 rounded h-20"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent h-20"
                                 />
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-white text-sm mb-2">Price Adjustment</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Price Adjustment</label>
                                     <input
                                         type="number"
                                         step="0.01"
                                         value={newVariant.priceAdjust}
                                         onChange={(e) => setNewVariant({...newVariant, priceAdjust: parseFloat(e.target.value) || 0})}
                                         placeholder="0.00"
-                                        className="w-full bg-gray-700 text-white px-3 py-2 rounded"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-white text-sm mb-2">Weight (g)</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Weight (g)</label>
                                     <input
                                         type="number"
                                         step="0.1"
                                         value={newVariant.weight}
                                         onChange={(e) => setNewVariant({...newVariant, weight: parseFloat(e.target.value) || 0})}
                                         placeholder="0.0"
-                                        className="w-full bg-gray-700 text-white px-3 py-2 rounded"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     />
                                 </div>
                             </div>
@@ -344,13 +356,13 @@ const VariantManager: React.FC<VariantManagerProps> = ({ productId, onClose }) =
                             <button
                                 onClick={handleCreateVariant}
                                 disabled={!selectedSize || !newVariant.title}
-                                className="bg-ventauri text-black px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
                             >
                                 Create Variant
                             </button>
                         </div>
                     ) : (
-                        <p className="text-gray-400">Click "Add Variant" to create a new product variant.</p>
+                        <p className="text-gray-500">Click "Add Variant" to create a new product variant.</p>
                     )}
                 </div>
             </div>
