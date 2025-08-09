@@ -7,6 +7,7 @@ import {
 } from 'react-router-dom';
 import { AuthProvider, useAuth } from './Contexts/AuthContext';
 import { CartProvider } from './Contexts/CartContext';
+import PasswordProtection from './Components/PasswordProtection';
 
 import Home from './Pages/Public/Home';
 import Login from './Pages/Public/Login';
@@ -106,13 +107,15 @@ const AppRoutes = () => {
 
 function App() {
 	return (
-		<AuthProvider>
-			<CartProvider>
-				<Router>
-					<AppRoutes />
-				</Router>
-			</CartProvider>
-		</AuthProvider>
+		<PasswordProtection>
+			<AuthProvider>
+				<CartProvider>
+					<Router>
+						<AppRoutes />
+					</Router>
+				</CartProvider>
+			</AuthProvider>
+		</PasswordProtection>
 	);
 }
 
