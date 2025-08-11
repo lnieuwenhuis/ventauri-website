@@ -75,3 +75,4 @@ coverage/
 tmp/
 .env prod
 stripe.env
+.env.prod
