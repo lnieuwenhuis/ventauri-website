@@ -45,9 +45,8 @@ func main() {
 		}
 	} else {
 		allowedList = []string{
-			"https://chat.safasfly.dev",
-			"https://safasfly.dev",
-			"https://www.safasfly.dev",
+			"https://ventaurivnt.com",
+			"https://www.ventaurivnt.com",
 		}
 	}
 
