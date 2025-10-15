@@ -32,8 +32,6 @@ services:
       dockerfile: Dockerfile.prod
     container_name: ventauri-merch-backend-prod
     restart: unless-stopped
-    env_file:
-      - ./stripe.env
     environment:
       - PORT=8080
       - MARIADB_HOST=mariadb
@@ -50,6 +48,9 @@ services:
       - BACKEND_URL=${BACKEND_URL}
       - FRONTEND_URL=${FRONTEND_URL}
       - FRONTEND_DOMAIN=${FRONTEND_DOMAIN}
+      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_CURRENCY=${STRIPE_CURRENCY}
     networks:
       - ventauri-prod-network
     depends_on:
@@ -70,8 +71,14 @@ services:
         - VITE_BACKEND_URL=${VITE_BACKEND_URL}
     container_name: ventauri-merch-frontend-prod
     restart: unless-stopped
-    env_file:
-      - ./stripe.env
+    environment:
+      - VITE_ENVIRONMENT=${VITE_ENVIRONMENT}
+      - VITE_STAGING_PASSWORD=${VITE_STAGING_PASSWORD}
+      - DOMAIN=${DOMAIN}
+      - SSL_EMAIL=${SSL_EMAIL}
+      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_CURRENCY=${STRIPE_CURRENCY}
     networks:
       - ventauri-prod-network
     depends_on:
