@@ -45,6 +45,7 @@ services:
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - VITE_BACKEND_URL=${VITE_BACKEND_URL}
       - GOOGLE_USERINFO_URL=${GOOGLE_USERINFO_URL}
+      - BACKEND_URL=${BACKEND_URL}
     networks:
       - ventauri-prod-network
     depends_on:
