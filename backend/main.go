@@ -14,10 +14,10 @@ import (
 )
 
 func main() {
-	// Load .env file
-	if err := godotenv.Load(); err != nil {
-		log.Println("Failed to load .env file")
-	}
+    // Load .env file
+    if _, err := os.Stat(".env"); err == nil {
+        _ = godotenv.Load()
+    }
 
 	// Initialize database
 	db := utils.InitDatabase()

@@ -47,10 +47,10 @@ func StringPtr(s string) *string {
 }
 
 func InitDatabase() *gorm.DB {
-	// Load .env file
-	if err := godotenv.Load(); err != nil {
-		log.Println("Failed to load .env file")
-	}
+    // Load .env file
+    if _, err := os.Stat(".env"); err == nil {
+        _ = godotenv.Load()
+    }
 
 	// Get environment variables
 	dbHost := os.Getenv("MARIADB_HOST")
