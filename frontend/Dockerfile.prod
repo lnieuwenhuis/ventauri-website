@@ -4,6 +4,10 @@ FROM oven/bun:1-alpine AS builder
 # Set working directory
 WORKDIR /app
 
+# Accept build-time backend URL and expose to build env
+ARG VITE_BACKEND_URL
+ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
+
 # Copy package files
 COPY package.json bun.lock* ./
 
