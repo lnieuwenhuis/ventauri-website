@@ -4,33 +4,7 @@ set -e
 
 echo "🚀 Starting Ventauri Merch Production Deployment..."
 
-wait_for_service_health() {
-  local service_name="$1"
-  local label="$2"
-  local max_seconds="${3:-300}"
-
-  echo "⏳ Waiting for ${label} (${service_name}) to be healthy (timeout: ${max_seconds}s)..."
-  local elapsed=0
-  while [ "$elapsed" -lt "$max_seconds" ]; do
-    # Get container ID for service (robust to project name differences)
-    cid=$(docker compose -f docker-compose.prod.yml ps -q "$service_name" 2>/dev/null)
-    if [ -z "$cid" ]; then
-      echo "   - ${label} container not found yet"
-    else
-      status=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$cid" 2>/dev/null || echo "unknown")
-      if [ "$status" = "healthy" ]; then
-        echo "✅ ${label} is healthy."
-        return 0
-      fi
-      printf "   - ${label} status: %s\n" "$status"
-    fi
-    sleep 5
-    elapsed=$((elapsed + 5))
-  done
-  echo "❌ ${label} did not become healthy in time (${max_seconds}s)."
-  docker-compose -f docker-compose.prod.yml ps || true
-  return 1
-}
+## Compose handles ordering via depends_on with service_healthy; no script polling needed.
 
 # Check if .env.prod exists
 if [ ! -f ".env.prod" ]; then
@@ -48,17 +22,8 @@ echo "📦 Building and starting services..."
 # Stop existing services
 docker-compose -f docker-compose.prod.yml down
 
-# Start core services first (DB + Backend)
-echo "🌟 Starting core services (DB + Backend)..."
-docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d --build mariadb backend
-
-# Ensure DB and backend reach healthy before continuing
-wait_for_service_health mariadb "MariaDB" 300 || exit 1
-wait_for_service_health backend "Backend" 300 || exit 1
-
-# Start frontend and nginx
-echo "🌟 Starting frontend and nginx..."
-docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d --build frontend nginx
+echo "🌟 Starting core services (DB, Backend, Frontend, Nginx)..."
+docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d --build mariadb backend frontend nginx
 
 echo "⏳ Waiting briefly for nginx to be ready..."
 sleep 10
@@ -73,10 +38,6 @@ docker-compose -f docker-compose.prod.yml --env-file .env.prod restart nginx
 
 # Ensure everything is up
 docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
-
-# Final health check for DB and Backend
-wait_for_service_health mariadb "MariaDB" 300 || exit 1
-wait_for_service_health backend "Backend" 300 || exit 1
 
 # Start auto-renewal
 echo "🔄 Starting certificate auto-renewal..."

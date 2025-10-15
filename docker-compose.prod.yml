@@ -70,6 +70,12 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      start_period: 15s
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   # SSL Certificate Management
   certbot:
@@ -88,7 +94,8 @@ services:
              -d ventaurivnt.com 
              -d www.ventaurivnt.com"
     depends_on:
-      - nginx
+      nginx:
+        condition: service_healthy
 
   # Auto-renewal service
   certbot-renew:
@@ -103,8 +110,10 @@ services:
                certbot renew --webroot --webroot-path=/var/www/certbot; 
              done"
     depends_on:
-      - nginx
-      - certbot
+      nginx:
+        condition: service_healthy
+      certbot:
+        condition: service_started
 
   nginx:
     image: nginx:alpine
@@ -128,8 +137,10 @@ services:
     networks:
       - ventauri-prod-network
     depends_on:
-      - frontend
-      - backend
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
       interval: 30s
