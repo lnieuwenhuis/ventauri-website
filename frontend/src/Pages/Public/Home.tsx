@@ -132,10 +132,10 @@ export default function Home() {
 				<div className="absolute inset-0 bg-gradient-to-r from-ventauri/10 to-transparent"></div>
 				<div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
 					<div className="text-center">
-						<h1 className="text-5xl lg:text-7xl font-bold mb-6">
-							<span className="text-ventauri">VENTAURI</span>
-							<span className="text-white ml-4">ESPORTS</span>
-						</h1>
+                        <h1 className="text-5xl lg:text-7xl font-bold mb-6">
+                            <span className="text-ventauri">VENTAURI</span>
+                            <span className="text-white block md:inline md:ml-4">ESPORTS</span>
+                        </h1>
 						<p className="text-xl lg:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
 							Official merchandise for the fastest F1 Esports team on the grid
 						</p>
