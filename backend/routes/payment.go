@@ -260,10 +260,11 @@ func createStripePaymentIntent(db *gorm.DB) gin.HandlerFunc {
 				}
 				order.Subtotal += lineSubtotal
 			}
-			// shipping is per order (flat 5.99) and tax 10%
-			order.Tax = order.Subtotal * 0.1
-			order.Shipping = 5.99
-			order.Total = order.Subtotal + order.Tax + order.Shipping
+            // All-inclusive pricing: product prices already include tax and shipping
+            // Do not add extra tax or shipping here; totals equal subtotal
+            order.Tax = 0
+            order.Shipping = 0
+            order.Total = order.Subtotal
 			if err := tx.Save(&order).Error; err != nil {
 				tx.Rollback()
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to finalize order totals"})

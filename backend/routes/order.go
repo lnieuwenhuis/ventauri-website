@@ -152,10 +152,11 @@ func createOrder(db *gorm.DB) gin.HandlerFunc {
 			orderItems = append(orderItems, orderItem)
 		}
 
-		// Calculate order totals
-		tax := orderSubtotal * 0.08 // 8% tax
-		shipping := 5.99            // Fixed shipping
-		total := orderSubtotal + tax + shipping
+        // All-inclusive pricing: product prices include tax and shipping
+        // Do not add extra tax or shipping; totals equal subtotal
+        tax := 0.0
+        shipping := 0.0
+        total := orderSubtotal
 
 		// Generate order number
 		orderNumber := fmt.Sprintf("ORD-%d-%s", time.Now().Unix(), uuid.New().String()[:8])
