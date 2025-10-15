@@ -1,2 +1,7 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Ensure shell scripts always use LF line endings (avoids CRLF in containers)
+*.sh text eol=lf
+*.bash text eol=lf
+nginx/conf.d/*.template text eol=lf

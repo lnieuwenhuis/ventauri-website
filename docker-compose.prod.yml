@@ -117,7 +117,10 @@ services:
       - ./nginx/entrypoint.sh:/etc/nginx/entrypoint.sh:ro
       - ./ssl:/etc/nginx/ssl:ro
       - ./ssl/www:/var/www/certbot:ro
-    entrypoint: ["/bin/sh", "/etc/nginx/entrypoint.sh"]
+    entrypoint:
+      - /bin/sh
+      - -c
+      - "tr -d '\r' < /etc/nginx/entrypoint.sh > /tmp/entrypoint.sh && /bin/sh /tmp/entrypoint.sh"
     networks:
       - ventauri-prod-network
     depends_on:

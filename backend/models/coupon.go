@@ -15,10 +15,10 @@ const (
 )
 
 type Coupon struct {
-	ID               uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
-	CreatedAt        time.Time      `gorm:"default:current_timestamp" json:"createdAt"`
-	UpdatedAt        time.Time      `gorm:"default:current_timestamp" json:"updatedAt"`
-	DeletedAt        gorm.DeletedAt `gorm:"index" json:"deletedAt"`
+    ID               uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
+    CreatedAt        time.Time      `gorm:"autoCreateTime" json:"createdAt"`
+    UpdatedAt        time.Time      `gorm:"autoUpdateTime" json:"updatedAt"`
+    DeletedAt        gorm.DeletedAt `gorm:"index" json:"deletedAt"`
 	Code             string         `gorm:"unique;index:idx_coupon_code_active,priority:1" json:"code"`
 	Name             string         `gorm:"index:idx_coupon_search" json:"name"`
 	Description      string         `gorm:"index:idx_coupon_search" json:"description"`
@@ -36,12 +36,12 @@ type Coupon struct {
 
 // CouponUsage tracks individual coupon usage
 type CouponUsage struct {
-	ID        uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
-	CreatedAt time.Time      `gorm:"default:current_timestamp" json:"createdAt"`
-	CouponID  uuid.UUID      `gorm:"type:char(36);index:idx_coupon_usage_coupon_user,priority:1" json:"couponId"`
-	UserID    uuid.UUID      `gorm:"type:char(36);index:idx_coupon_usage_coupon_user,priority:2;index:idx_coupon_usage_user" json:"userId"`
-	OrderID   uuid.UUID      `gorm:"type:char(36);index:idx_coupon_usage_order" json:"orderId"`
-	Discount  float64        `json:"discount"`
+    ID        uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
+    CreatedAt time.Time      `gorm:"autoCreateTime" json:"createdAt"`
+    CouponID  uuid.UUID      `gorm:"type:char(36);index:idx_coupon_usage_coupon_user,priority:1" json:"couponId"`
+    UserID    uuid.UUID      `gorm:"type:char(36);index:idx_coupon_usage_coupon_user,priority:2;index:idx_coupon_usage_user" json:"userId"`
+    OrderID   uuid.UUID      `gorm:"type:char(36);index:idx_coupon_usage_order" json:"orderId"`
+    Discount  float64        `json:"discount"`
 	
 	Coupon    Coupon         `gorm:"foreignKey:CouponID" json:"coupon"`
 	User      User           `gorm:"foreignKey:UserID" json:"user"`

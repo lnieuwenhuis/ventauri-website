@@ -9,10 +9,10 @@ import (
 )
 
 type ProductVariant struct {
-	ID          uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
-	CreatedAt   time.Time      `gorm:"default:current_timestamp" json:"createdAt"`
-	UpdatedAt   time.Time      `gorm:"default:current_timestamp" json:"updatedAt"`
-	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deletedAt"`
+    ID          uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
+    CreatedAt   time.Time      `gorm:"autoCreateTime" json:"createdAt"`
+    UpdatedAt   time.Time      `gorm:"autoUpdateTime" json:"updatedAt"`
+    DeletedAt   gorm.DeletedAt `gorm:"index" json:"deletedAt"`
 	ProductID   uuid.UUID      `gorm:"type:char(36);index:idx_variant_product_active,priority:1;index:idx_variant_product_size,priority:1" json:"productId"`
 	SKU         string         `gorm:"unique;index:idx_variant_sku" json:"sku"`
 	Size        string         `gorm:"index:idx_variant_size;index:idx_variant_product_size,priority:2" json:"size"`

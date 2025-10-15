@@ -18,10 +18,10 @@ const (
 )
 
 type PaymentMethod struct {
-	ID           uuid.UUID         `gorm:"type:char(36);primary_key" json:"id"`
-	CreatedAt    time.Time         `gorm:"default:current_timestamp" json:"createdAt"`
-	UpdatedAt    time.Time         `gorm:"default:current_timestamp" json:"updatedAt"`
-	DeletedAt    gorm.DeletedAt    `gorm:"index" json:"deletedAt"`
+    ID           uuid.UUID         `gorm:"type:char(36);primary_key" json:"id"`
+    CreatedAt    time.Time         `gorm:"autoCreateTime" json:"createdAt"`
+    UpdatedAt    time.Time         `gorm:"autoUpdateTime" json:"updatedAt"`
+    DeletedAt    gorm.DeletedAt    `gorm:"index" json:"deletedAt"`
 	UserID       uuid.UUID         `gorm:"type:char(36);index:idx_payment_user_active,priority:1;index:idx_payment_user_default,priority:1" json:"userId"`
 	Type         PaymentMethodType `gorm:"index:idx_payment_type" json:"type"`
 	Provider     string            `gorm:"index:idx_payment_provider" json:"provider"`

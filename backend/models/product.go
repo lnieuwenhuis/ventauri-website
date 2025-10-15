@@ -8,10 +8,10 @@ import (
 )
 
 type Product struct {
-	ID          uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
-	CreatedAt   time.Time      `gorm:"default:current_timestamp;index:idx_product_active_created,priority:2" json:"createdAt"`
-	UpdatedAt   time.Time      `gorm:"default:current_timestamp" json:"updatedAt"`
-	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deletedAt"`
+    ID          uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
+    CreatedAt   time.Time      `gorm:"autoCreateTime;index:idx_product_active_created,priority:2" json:"createdAt"`
+    UpdatedAt   time.Time      `gorm:"autoUpdateTime" json:"updatedAt"`
+    DeletedAt   gorm.DeletedAt `gorm:"index" json:"deletedAt"`
 	Name        string         `gorm:"index:idx_product_name_search" json:"name"`
 	Price       float64        `gorm:"index:idx_product_price_range" json:"price"`
 	Images      string         `gorm:"type:json" json:"images"`

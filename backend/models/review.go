@@ -7,10 +7,10 @@ import (
 )
 
 type Review struct {
-	ID        uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
-	CreatedAt time.Time      `gorm:"default:current_timestamp;index:idx_review_product_approved_created,priority:3" json:"createdAt"`
-	UpdatedAt time.Time      `gorm:"default:current_timestamp" json:"updatedAt"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt"`
+    ID        uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
+    CreatedAt time.Time      `gorm:"autoCreateTime;index:idx_review_product_approved_created,priority:3" json:"createdAt"`
+    UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updatedAt"`
+    DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt"`
 	UserID    uuid.UUID      `gorm:"type:char(36);index:idx_review_user_product,priority:1" json:"userId"`
 	ProductID uuid.UUID      `gorm:"type:char(36);index:idx_review_user_product,priority:2;index:idx_review_product_approved_created,priority:1" json:"productId"`
 	OrderID   uuid.UUID      `gorm:"type:char(36);index:idx_review_order" json:"orderId"`

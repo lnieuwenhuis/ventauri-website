@@ -8,10 +8,10 @@ import (
 )
 
 type Order struct {
-	ID        uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
-	CreatedAt time.Time      `gorm:"default:current_timestamp;index:idx_order_status_created,priority:2;index:idx_order_user_created,priority:2" json:"created_at"`
-	UpdatedAt time.Time      `gorm:"default:current_timestamp" json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at"`
+    ID        uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
+    CreatedAt time.Time      `gorm:"autoCreateTime;index:idx_order_status_created,priority:2;index:idx_order_user_created,priority:2" json:"created_at"`
+    UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
+    DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at"`
 	UserID    uuid.UUID      `gorm:"type:char(36);index:idx_order_user_created,priority:1;index:idx_order_user_status,priority:1" json:"user_id"`
 	Total             float64    `gorm:"index:idx_order_total_status,priority:1" json:"total"`
 	Status            string     `gorm:"default:pending;index:idx_order_status_created,priority:1;index:idx_order_user_status,priority:2;index:idx_order_total_status,priority:2" json:"status"`

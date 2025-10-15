@@ -14,11 +14,11 @@ const (
 )
 
 type User struct {
-	ID          uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
-	CreatedAt   time.Time      `gorm:"default:current_timestamp;index:idx_user_active_created,priority:2" json:"createdAt"`
-	UpdatedAt   time.Time      `gorm:"default:current_timestamp" json:"updatedAt"`
-	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deletedAt"`
-	Email       string         `gorm:"unique;index:idx_user_email_search" json:"email"`
+    ID          uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
+    CreatedAt   time.Time      `gorm:"autoCreateTime;index:idx_user_active_created,priority:2" json:"createdAt"`
+    UpdatedAt   time.Time      `gorm:"autoUpdateTime" json:"updatedAt"`
+    DeletedAt   gorm.DeletedAt `gorm:"index" json:"deletedAt"`
+    Email       string         `gorm:"unique;index:idx_user_email_search" json:"email"`
 	Password    *string        `json:"password,omitempty"` 
 	Role        UserRole       `gorm:"default:user;index:idx_user_role" json:"role"`
 	FirstName   string         `gorm:"index:idx_user_name_search,priority:1" json:"firstName"`
@@ -40,11 +40,11 @@ type User struct {
 }
 
 type Session struct {
-	ID        uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
-	CreatedAt time.Time      `gorm:"default:current_timestamp" json:"createdAt"`
-	UpdatedAt time.Time      `gorm:"default:current_timestamp" json:"updatedAt"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt"`
-	UserID    uuid.UUID      `gorm:"type:char(36);index:idx_session_user_active,priority:1" json:"userId"`
+    ID        uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
+    CreatedAt time.Time      `gorm:"autoCreateTime" json:"createdAt"`
+    UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updatedAt"`
+    DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt"`
+    UserID    uuid.UUID      `gorm:"type:char(36);index:idx_session_user_active,priority:1" json:"userId"`
 	Token     string         `gorm:"unique;index:idx_session_token" json:"token"`
 	ExpiresAt time.Time      `gorm:"index:idx_session_expires" json:"expiresAt"`
 	IsActive  bool           `gorm:"default:true;index:idx_session_user_active,priority:2" json:"isActive"`

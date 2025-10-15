@@ -7,12 +7,12 @@ import (
 )
 
 type TeamRoles struct {
-	ID          uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
-	Name        string         `gorm:"index:idx_team_roles_name_search,priority:1" json:"name"`
-	Description string         `json:"description"`
+    ID          uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
+    Name        string         `gorm:"index:idx_team_roles_name_search,priority:1" json:"name"`
+    Description string         `json:"description"`
 
-	CreatedAt   time.Time      `gorm:"default:current_timestamp" json:"createdAt"`
-	UpdatedAt   time.Time      `gorm:"default:current_timestamp" json:"updatedAt"`
+    CreatedAt   time.Time      `gorm:"autoCreateTime" json:"createdAt"`
+    UpdatedAt   time.Time      `gorm:"autoUpdateTime" json:"updatedAt"`
 }
 
 func (tm *TeamRoles) BeforeCreate(tx *gorm.DB) (err error) {

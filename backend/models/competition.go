@@ -56,10 +56,10 @@ func (ts *TrackSlice) Scan(value interface{}) error {
 }
 
 type Competition struct {
-	ID        uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
-	CreatedAt time.Time      `gorm:"default:current_timestamp;index:idx_competition_active_created,priority:2" json:"createdAt"`
-	UpdatedAt time.Time      `gorm:"default:current_timestamp" json:"updatedAt"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt"`
+    ID        uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
+    CreatedAt time.Time      `gorm:"autoCreateTime;index:idx_competition_active_created,priority:2" json:"createdAt"`
+    UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updatedAt"`
+    DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt"`
 	Name      string         `gorm:"index:idx_competition_name_search" json:"name"`
 	Desc      string         `gorm:"index:idx_competition_desc_search" json:"desc"`
 	Schedule  TrackSlice     `gorm:"type:json" json:"schedule"`

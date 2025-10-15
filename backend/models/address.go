@@ -7,10 +7,10 @@ import (
 )
 
 type Address struct {
-	ID        uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
-	CreatedAt time.Time      `gorm:"default:current_timestamp" json:"createdAt"`
-	UpdatedAt time.Time      `gorm:"default:current_timestamp" json:"updatedAt"`
-	UserID    uuid.UUID      `gorm:"type:char(36);index:idx_address_user_active,priority:1" json:"userId"`
+    ID        uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
+    CreatedAt time.Time      `gorm:"autoCreateTime" json:"createdAt"`
+    UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updatedAt"`
+    UserID    uuid.UUID      `gorm:"type:char(36);index:idx_address_user_active,priority:1" json:"userId"`
 	Street    string         `json:"street"`
 	City      string         `gorm:"index:idx_address_location" json:"city"`
 	State     string         `gorm:"index:idx_address_location" json:"state"`

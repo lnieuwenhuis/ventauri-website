@@ -16,9 +16,9 @@ type TeamMember struct {
 	Nationality string         `json:"nationality"`
 	Picture     string         `json:"picture"`
 	
-	CreatedAt   time.Time      `gorm:"default:current_timestamp" json:"createdAt"`
-	UpdatedAt   time.Time      `gorm:"default:current_timestamp" json:"updatedAt"`
-	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deletedAt"`
+    CreatedAt   time.Time      `gorm:"autoCreateTime" json:"createdAt"`
+    UpdatedAt   time.Time      `gorm:"autoUpdateTime" json:"updatedAt"`
+    DeletedAt   gorm.DeletedAt `gorm:"index" json:"deletedAt"`
 }
 
 func (tm *TeamMember) BeforeCreate(tx *gorm.DB) (err error) {

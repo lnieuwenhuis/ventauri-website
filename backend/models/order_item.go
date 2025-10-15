@@ -9,9 +9,9 @@ import (
 
 // OrderItem represents a single line item within an Order
 type OrderItem struct {
-	ID        uuid.UUID `gorm:"type:char(36);primary_key" json:"id"`
-	CreatedAt time.Time `gorm:"default:current_timestamp" json:"created_at"`
-	UpdatedAt time.Time `gorm:"default:current_timestamp" json:"updated_at"`
+    ID        uuid.UUID `gorm:"type:char(36);primary_key" json:"id"`
+    CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
+    UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 
 	OrderID          uuid.UUID  `gorm:"type:char(36);index" json:"order_id"`
 	ProductID        uuid.UUID  `gorm:"type:char(36);index" json:"product_id"`
