@@ -145,9 +145,8 @@ export default function Checkout() {
         const unitPrice = i.product.price + (i.productVariant?.priceAdjust || 0);
         return sum + unitPrice * i.quantity;
     }, 0);
-    const computedTax = computedSubtotal * 0.1;
-    const computedShipping = 5.99 * items.length;
-    const computedTotal = computedSubtotal + computedTax + computedShipping;
+    // Tax and shipping are now included in product prices
+    const computedTotal = computedSubtotal;
 
     const formatMoney = (amount: number, currency: string) => {
         try {
@@ -209,13 +208,9 @@ export default function Checkout() {
                                     <span>Subtotal</span>
                                     <span>{formatMoney(computedSubtotal, piCurrency)}</span>
                                 </div>
-                                <div className="flex justify-between text-gray-300">
-                                    <span>Tax (10%)</span>
-                                    <span>{formatMoney(computedTax, piCurrency)}</span>
-                                </div>
-                                <div className="flex justify-between text-gray-300">
-                                    <span>Shipping</span>
-                                    <span>{formatMoney(computedShipping, piCurrency)}</span>
+                                {/* Informational note: prices include tax and shipping */}
+                                <div className="mt-2 text-xs text-gray-400 italic">
+                                    Prices include tax and shipping.
                                 </div>
                                 <div className="border-t border-gray-700 pt-3 flex justify-between text-lg font-bold">
                                     <span>Total</span>
