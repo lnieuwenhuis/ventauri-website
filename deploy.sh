@@ -4,21 +4,26 @@ set -e
 
 echo "🚀 Starting Ventauri Merch Production Deployment..."
 
-wait_for_container_health() {
-  local container_name="$1"
+wait_for_service_health() {
+  local service_name="$1"
   local label="$2"
-  local max_seconds="${3:-240}"
+  local max_seconds="${3:-300}"
 
-  echo "⏳ Waiting for ${label} to be healthy (timeout: ${max_seconds}s)..."
+  echo "⏳ Waiting for ${label} (${service_name}) to be healthy (timeout: ${max_seconds}s)..."
   local elapsed=0
   while [ "$elapsed" -lt "$max_seconds" ]; do
-    # Capture health status; default to "starting" if inspect fails
-    status=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_name" 2>/dev/null || echo "unknown")
-    if [ "$status" = "healthy" ]; then
-      echo "✅ ${label} is healthy."
-      return 0
+    # Get container ID for service (robust to project name differences)
+    cid=$(docker compose -f docker-compose.prod.yml ps -q "$service_name" 2>/dev/null)
+    if [ -z "$cid" ]; then
+      echo "   - ${label} container not found yet"
+    else
+      status=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$cid" 2>/dev/null || echo "unknown")
+      if [ "$status" = "healthy" ]; then
+        echo "✅ ${label} is healthy."
+        return 0
+      fi
+      printf "   - ${label} status: %s\n" "$status"
     fi
-    printf "   - ${label} status: %s\n" "$status"
     sleep 5
     elapsed=$((elapsed + 5))
   done
@@ -43,10 +48,19 @@ echo "📦 Building and starting services..."
 # Stop existing services
 docker-compose -f docker-compose.prod.yml down
 
-# Start services (nginx first for certbot)
-docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d --build nginx
+# Start core services first (DB + Backend)
+echo "🌟 Starting core services (DB + Backend)..."
+docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d --build mariadb backend
 
-echo "⏳ Waiting for nginx to be ready..."
+# Ensure DB and backend reach healthy before continuing
+wait_for_service_health mariadb "MariaDB" 300 || exit 1
+wait_for_service_health backend "Backend" 300 || exit 1
+
+# Start frontend and nginx
+echo "🌟 Starting frontend and nginx..."
+docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d --build frontend nginx
+
+echo "⏳ Waiting briefly for nginx to be ready..."
 sleep 10
 
 # Generate SSL certificates
@@ -57,13 +71,12 @@ docker-compose -f docker-compose.prod.yml --env-file .env.prod run --rm certbot
 echo "🔁 Restarting nginx to enable HTTPS..."
 docker-compose -f docker-compose.prod.yml --env-file .env.prod restart nginx
 
-# Start all services
-echo "🌟 Starting all services..."
+# Ensure everything is up
 docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 
-# Ensure DB and backend reach healthy before finishing
-wait_for_container_health ventauri-merch-db-prod "MariaDB" 300 || exit 1
-wait_for_container_health ventauri-merch-backend-prod "Backend" 300 || exit 1
+# Final health check for DB and Backend
+wait_for_service_health mariadb "MariaDB" 300 || exit 1
+wait_for_service_health backend "Backend" 300 || exit 1
 
 # Start auto-renewal
 echo "🔄 Starting certificate auto-renewal..."
