@@ -109,8 +109,8 @@ services:
     volumes:
       - ./ssl:/etc/letsencrypt
       - ./ssl/www:/var/www/certbot
-    entrypoint: ["/bin/sh", "-c"]
-    command: "while true; do certbot renew --webroot --webroot-path=/var/www/certbot; sleep 12h; done"
+      - ./scripts/certbot-renew.sh:/usr/local/bin/certbot-renew.sh:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/certbot-renew.sh"]
     depends_on:
       nginx:
         condition: service_healthy
