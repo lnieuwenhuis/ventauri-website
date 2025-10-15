@@ -44,10 +44,10 @@ const (
 )
 
 type Activity struct {
-	ID          uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
-	CreatedAt   time.Time      `gorm:"default:current_timestamp;index:idx_activity_created" json:"createdAt"`
-	UpdatedAt   time.Time      `gorm:"default:current_timestamp" json:"updatedAt"`
-	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deletedAt"`
+    ID          uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
+    CreatedAt   time.Time      `gorm:"autoCreateTime;index:idx_activity_created" json:"createdAt"`
+    UpdatedAt   time.Time      `gorm:"autoUpdateTime" json:"updatedAt"`
+    DeletedAt   gorm.DeletedAt `gorm:"index" json:"deletedAt"`
 	
 	UserID      *uuid.UUID     `gorm:"type:char(36);index:idx_activity_user" json:"userId,omitempty"`
 	User        *User          `gorm:"foreignKey:UserID" json:"user,omitempty"`

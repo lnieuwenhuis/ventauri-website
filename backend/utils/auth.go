@@ -33,28 +33,32 @@ type GoogleUserInfo struct {
 }
 
 func NewAuthService(db *gorm.DB) *AuthService {
-	clientID := os.Getenv("GOOGLE_CLIENT_ID")
-	clientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
-	backendURL := os.Getenv("BACKEND_URL")
+    clientID := os.Getenv("GOOGLE_CLIENT_ID")
+    clientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
+    backendURL := os.Getenv("BACKEND_URL")
 
-	// Debug logging (remove in production)
-	if clientID == "" {
-		log.Fatal("GOOGLE_CLIENT_ID environment variable is not set")
-	}
-	if clientSecret == "" {
-		log.Fatal("GOOGLE_CLIENT_SECRET environment variable is not set")
-	}
-	if backendURL == "" {
-		log.Fatal("BACKEND_URL environment variable is not set")
-	}
-
-	googleConfig := &oauth2.Config{
-		ClientID:     clientID,
-		ClientSecret: clientSecret,
-		RedirectURL:  backendURL + "/api/auth/callback/google",
-		Scopes:       []string{"openid", "email", "profile"},
-		Endpoint:     google.Endpoint,
-	}
+    // Make OAuth optional: warn if missing, but don't crash the app
+    var googleConfig *oauth2.Config
+    if clientID == "" || clientSecret == "" || backendURL == "" {
+        if clientID == "" {
+            log.Printf("GOOGLE_CLIENT_ID environment variable is not set")
+        }
+        if clientSecret == "" {
+            log.Printf("GOOGLE_CLIENT_SECRET environment variable is not set")
+        }
+        if backendURL == "" {
+            log.Printf("BACKEND_URL environment variable is not set")
+        }
+        // Leave googleConfig as nil; endpoints will respond with 503 when used
+    } else {
+        googleConfig = &oauth2.Config{
+            ClientID:     clientID,
+            ClientSecret: clientSecret,
+            RedirectURL:  backendURL + "/api/auth/callback/google",
+            Scopes:       []string{"openid", "email", "profile"},
+            Endpoint:     google.Endpoint,
+        }
+    }
 
 	return &AuthService{
 		db:           db,
@@ -78,9 +82,15 @@ func (a *AuthService) SignInSocial(c *gin.Context) {
 		return
 	}
 
-	// Store callback URL in session/state
-	state := uuid.New().String()
-	url := a.googleConfig.AuthCodeURL(state, oauth2.AccessTypeOffline)
+    // Ensure Google OAuth is configured
+    if a.googleConfig == nil {
+        c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Social login is not configured"})
+        return
+    }
+
+    // Store callback URL in session/state
+    state := uuid.New().String()
+    url := a.googleConfig.AuthCodeURL(state, oauth2.AccessTypeOffline)
 
 	c.JSON(http.StatusOK, gin.H{
 		"url": url,
@@ -88,6 +98,11 @@ func (a *AuthService) SignInSocial(c *gin.Context) {
 }
 
 func (a *AuthService) GoogleCallback(c *gin.Context) {
+    // Ensure Google OAuth is configured
+    if a.googleConfig == nil {
+        c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Social login is not configured"})
+        return
+    }
 	code := c.Query("code")
 	if code == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No code provided"})
