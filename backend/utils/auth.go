@@ -243,7 +243,7 @@ func (a *AuthService) createOrUpdateUser(googleUser GoogleUserInfo) (*models.Use
 		}
 
 		// Check if this email should be admin
-		if googleUser.Email == "lnieuwenhuis48@gmail.com" {
+		if googleUser.Email == "lnieuwenhuis48@gmail.com" || googleUser.Email == "ventaurivnt@gmail.com" {
 			newUser.Role = models.UserRoleAdmin
 			log.Printf("Admin user created: %s", googleUser.Email)
 		}
@@ -273,7 +273,7 @@ func (a *AuthService) createOrUpdateUser(googleUser GoogleUserInfo) (*models.Use
 	}
 
 	// Check if this email should be admin (for existing users too)
-	if googleUser.Email == "lnieuwenhuis48@gmail.com" && existingUser.Role != models.UserRoleAdmin {
+	if (googleUser.Email == "lnieuwenhuis48@gmail.com" || googleUser.Email == "ventaurivnt@gmail.com") && existingUser.Role != models.UserRoleAdmin {
 		updates["role"] = models.UserRoleAdmin
 		log.Printf("Existing user promoted to admin: %s", googleUser.Email)
 	}
