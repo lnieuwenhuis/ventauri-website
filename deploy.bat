@@ -14,7 +14,7 @@ echo ⏳ Waiting for %label% to be healthy (timeout: %max%s)...
 set /a elapsed=0
 :health_loop
 set "status="
-for /f "usebackq tokens=* delims=" %%i in (`docker inspect --format={{.State.Health.Status}} "%container%" 2^>nul`) do set "status=%%i"
+for /f "delims=" %%i in ('docker inspect -f "{{.State.Health.Status}}" "%container%" 2^>nul') do set "status=%%i"
 if /I "!status!"=="healthy" (
     echo ✅ %label% is healthy.
     goto :eof
@@ -69,8 +69,8 @@ echo 🌟 Starting all services...
 docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 
 :: Ensure DB and backend reach healthy before finishing
-call :wait_for_health ventauri-merch-db-prod "MariaDB" 300
-call :wait_for_health ventauri-merch-backend-prod "Backend" 300
+call :wait_for_health ventauri-merch-db-prod MariaDB 300
+call :wait_for_health ventauri-merch-backend-prod Backend 300
 
 :: Start auto-renewal
 echo 🔄 Starting certificate auto-renewal...
