@@ -46,6 +46,8 @@ services:
       - VITE_BACKEND_URL=${VITE_BACKEND_URL}
       - GOOGLE_USERINFO_URL=${GOOGLE_USERINFO_URL}
       - BACKEND_URL=${BACKEND_URL}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - FRONTEND_DOMAIN=${FRONTEND_DOMAIN}
     networks:
       - ventauri-prod-network
     depends_on:
