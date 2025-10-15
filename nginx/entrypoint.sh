@@ -1,6 +1,12 @@
 #!/bin/sh
 set -e
 
+# Ensure wget is available for container healthcheck
+if ! command -v wget >/dev/null 2>&1; then
+  echo "Installing wget for healthcheck..."
+  apk add --no-cache wget >/dev/null
+fi
+
 if [ -z "$DOMAIN" ]; then
   echo "DOMAIN env var is required" >&2
   exit 1
