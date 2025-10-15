@@ -110,7 +110,7 @@ services:
       - ./ssl:/etc/letsencrypt
       - ./ssl/www:/var/www/certbot
     entrypoint: ["/bin/sh", "-c"]
-    command: "while :; do sleep 12h & wait $${!}; certbot renew --webroot --webroot-path=/var/www/certbot; done"
+    command: "while true; do certbot renew --webroot --webroot-path=/var/www/certbot; sleep 12h; done"
     depends_on:
       nginx:
         condition: service_healthy
