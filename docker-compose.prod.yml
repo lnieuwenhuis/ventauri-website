@@ -77,12 +77,12 @@ services:
     command: >
       sh -c "certbot certonly --webroot 
              --webroot-path=/var/www/certbot 
-             --email ${SSL_EMAIL} 
+             --email ventaurivnt@gmail.com 
              --agree-tos 
              --no-eff-email 
              --force-renewal 
-             -d ${DOMAIN} 
-             -d www.${DOMAIN}"
+             -d ventaurivnt.com 
+             -d www.ventaurivnt.com"
     depends_on:
       - nginx
 
