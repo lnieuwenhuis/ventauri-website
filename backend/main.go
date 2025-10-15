@@ -61,6 +61,7 @@ func main() {
 	}))
 
 	// Setup routes
+	routes.SetupHealthRoutes(r)
 	routes.SetupAuthRoutes(r, db)
 	routes.SetupAddressRoutes(r, db)
 	routes.SetupCartRoutes(r, db)

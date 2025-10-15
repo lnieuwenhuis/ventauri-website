@@ -6,10 +6,10 @@ services:
     container_name: ventauri-merch-db-prod
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
       MYSQL_DATABASE: ventauri_merch
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_USER: ${MARIADB_USER}
+      MYSQL_PASSWORD: ${MARIADB_PASSWORD}
     volumes:
       - mariadb_prod_data:/var/lib/mysql
     networks:
@@ -97,7 +97,6 @@ services:
       sh -c "while :; do 
                sleep 12h & wait $${!}; 
                certbot renew --webroot --webroot-path=/var/www/certbot; 
-               nginx -s reload; 
              done"
     depends_on:
       - nginx
@@ -110,18 +109,22 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      - DOMAIN=${DOMAIN}
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/conf.d:/etc/nginx/templates:ro
+      - ./nginx/entrypoint.sh:/etc/nginx/entrypoint.sh:ro
       - ./ssl:/etc/nginx/ssl:ro
       - ./ssl/www:/var/www/certbot:ro
+    entrypoint: ["/bin/sh", "/etc/nginx/entrypoint.sh"]
     networks:
       - ventauri-prod-network
     depends_on:
       - frontend
       - backend
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
       interval: 30s
       timeout: 10s
       retries: 3

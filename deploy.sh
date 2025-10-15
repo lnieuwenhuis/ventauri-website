@@ -30,6 +30,10 @@ sleep 10
 echo "🔒 Generating SSL certificates..."
 docker-compose -f docker-compose.prod.yml --env-file .env.prod run --rm certbot
 
+# Restart nginx to switch from HTTP-only to HTTPS config
+echo "🔁 Restarting nginx to enable HTTPS..."
+docker-compose -f docker-compose.prod.yml --env-file .env.prod restart nginx
+
 # Start all services
 echo "🌟 Starting all services..."
 docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d --build

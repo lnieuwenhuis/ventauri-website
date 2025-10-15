@@ -10,6 +10,11 @@ if not exist ".env.prod" (
     exit /b 1
 )
 
+:: Read DOMAIN from .env.prod for display
+for /f "usebackq tokens=1,* delims==" %%A in (".env.prod") do (
+    if /I "%%A"=="DOMAIN" set "DOMAIN=%%B"
+)
+
 :: Create SSL directory if it doesn't exist
 if not exist "ssl\www" mkdir ssl\www
 
@@ -28,6 +33,10 @@ timeout /t 10 /nobreak >nul
 echo 🔒 Generating SSL certificates...
 docker compose -f docker-compose.prod.yml --env-file .env.prod run --rm certbot
 
+:: Restart nginx to enable HTTPS
+echo 🔁 Restarting nginx to enable HTTPS...
+docker compose -f docker-compose.prod.yml --env-file .env.prod restart nginx
+
 :: Start all services
 echo 🌟 Starting all services...
 docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
@@ -37,7 +46,11 @@ echo 🔄 Starting certificate auto-renewal...
 docker compose -f docker-compose.prod.yml --env-file .env.prod up -d certbot-renew
 
 echo ✅ Deployment complete!
-echo 🌐 Your site should be available at: https://your-domain.com
+if defined DOMAIN (
+  echo 🌐 Your site should be available at: https://%DOMAIN%
+) else (
+  echo 🌐 Your site should be available at your configured domain.
+)
 echo 📊 Check status with: docker compose -f docker-compose.prod.yml ps
 echo 📋 View logs with: docker compose -f docker-compose.prod.yml logs -f
 
