@@ -1,9 +1,9 @@
 #!/bin/sh
 set -e
 
-# Ensure wget is available for container healthcheck
-if ! command -v wget >/dev/null 2>&1; then
-  echo "Installing wget for healthcheck..."
+# Ensure GNU wget is available for container healthcheck (BusyBox wget may lack flags)
+if ! wget --version 2>/dev/null | grep -qi "gnu wget"; then
+  echo "Ensuring GNU wget for healthcheck..."
   apk add --no-cache wget >/dev/null
 fi
 
