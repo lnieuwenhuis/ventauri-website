@@ -257,22 +257,22 @@ export default function Cart() {
 								Order Summary
 							</h3>
 
-							<div className="space-y-4 mb-6">
-								<div className="flex justify-between text-gray-300">
-									<span>Subtotal ({items.length} items)</span>
-									<span>€{total.toFixed(2)}</span>
-								</div>
-								<div className="flex justify-between text-gray-300">
-									<span>Shipping</span>
-									<span>Free</span>
-								</div>
-								<div className="border-t border-gray-700 pt-4">
-									<div className="flex justify-between text-lg font-bold text-white">
-										<span>Total</span>
-										<span className="text-ventauri">€{total.toFixed(2)}</span>
-									</div>
-								</div>
-							</div>
+                            <div className="space-y-4 mb-6">
+                                <div className="flex justify-between">
+                                    <span>Subtotal ({items.length} items)</span>
+                                    <span>€{total.toFixed(2)}</span>
+                                </div>
+                                {/* Informational note: prices include tax and shipping */}
+                                <div className="mt-1 text-xs text-gray-400 italic">
+                                    Prices include tax and shipping.
+                                </div>
+                                <div className="border-t border-gray-700 pt-4">
+                                    <div className="flex justify-between text-lg font-bold text-white">
+                                        <span>Total <span className="text-xs text-gray-400">(Inc. VAT)</span></span>
+                                        <span className="text-ventauri">€{total.toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            </div>
 
                             <div className="space-y-3">
 								<button

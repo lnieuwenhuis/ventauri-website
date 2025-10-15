@@ -208,7 +208,10 @@ export default function Checkout() {
                                     <span>Subtotal</span>
                                     <span>{formatMoney(computedSubtotal, piCurrency)}</span>
                                 </div>
-                                <div className="text-xs text-gray-400">Prices include tax and shipping.</div>
+                                {/* Informational note: prices include tax and shipping */}
+                                <div className="mt-2 text-xs text-gray-400 italic">
+                                    Prices include tax and shipping.
+                                </div>
                                 <div className="border-t border-gray-700 pt-3 flex justify-between text-lg font-bold">
                                     <span>Total</span>
                                     <span className="text-ventauri">{totalDisplay}</span>
