@@ -171,13 +171,13 @@ export default function Cart() {
 							return (
 								<div
 									key={item.id}
-									className={`bg-gray-800 rounded-lg p-6 transition-opacity ${
+									className={`bg-gray-800 rounded-lg p-4 md:p-6 transition-opacity ${
 										isItemUpdating ? 'opacity-70' : 'opacity-100'
 									}`}
 								>
-									<div className="flex items-center space-x-4">
+									<div className="relative flex flex-col gap-3 md:gap-4 md:flex-row md:items-center">
 										{/* Product Image */}
-										<div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-700">
+										<div className="w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden bg-gray-700">
 											<img
 												src={mainImage}
 												alt={item.product.name}
@@ -188,11 +188,11 @@ export default function Cart() {
 												}}
 											/>
 										</div>
-
+										
 										{/* Product Info */}
 										<div className="flex-1">
-											<div className="flex items-center flex-wrap gap-2 mb-1">
-												<h3 className="text-lg font-semibold text-white">
+											<div className="flex items-start flex-wrap gap-2 mb-1">
+												<h3 className="text-base md:text-lg font-semibold text-white">
 													<Link
 														to={`/product/${item.product.id}`}
 														className="hover:text-ventauri transition-colors"
@@ -200,23 +200,22 @@ export default function Cart() {
 														{item.product.name}
 													</Link>
 												</h3>
-
 											</div>
 											{item.product.category && (
-												<p className="text-sm text-ventauri mb-2">
+												<p className="text-xs md:text-sm text-ventauri mb-1 md:mb-2">
 													{item.product.category.name}
 												</p>
 											)}
-											<p className="text-xl font-bold text-ventauri">
+											<p className="text-lg md:text-xl font-bold text-ventauri">
 												€{(item.product.price + (item.productVariant?.priceAdjust || 0)).toFixed(2)}
 											</p>
 											{item.productVariant && (
-												<p className="text-sm text-gray-400">
+												<p className="text-xs md:text-sm text-gray-400">
 													Size: {item.productVariant.size} • {item.productVariant.title}
 												</p>
 											)}
                                             {item.options && item.options.length > 0 && (
-                                                <div className="mt-2 text-sm text-gray-300">
+                                                <div className="mt-1 md:mt-2 text-xs md:text-sm text-gray-300">
                                                     <span className="text-gray-400">Customizations:</span>
                                                     <div className="mt-1 space-y-1">
                                                         {item.options.map((optObj, idx) => (
@@ -232,48 +231,13 @@ export default function Cart() {
                                                 </div>
                                             )}
 										</div>
-
-										{/* Quantity Controls */}
-										<div className="flex items-center space-x-3">
-											<button
-												onClick={() =>
-													handleUpdateQuantity(item.id, Math.max(1, item.quantity - 1))
-												}
-												disabled={isItemUpdating}
-												className="w-8 h-8 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-											>
-												{isItemUpdating ? (
-													<div className="animate-spin rounded-full h-4 w-4 border-b border-white"></div>
-												) : (
-													'-'
-												)}
-											</button>
-											<span className="w-8 text-center font-medium">{item.quantity}</span>
-											<button
-												onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
-												disabled={isItemUpdating}
-												className="w-8 h-8 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-											>
-												{isItemUpdating ? (
-													<div className="animate-spin rounded-full h-4 w-4 border-b border-white"></div>
-												) : (
-													'+'
-												)}
-											</button>
-										</div>
-
-										{/* Item Total */}
-										<div className="text-right">
-											<p className="text-lg font-bold text-white">
-												€{((item.product.price + (item.productVariant?.priceAdjust || 0)) * item.quantity).toFixed(2)}
-											</p>
-										</div>
-
+										
 										{/* Remove Button */}
 										<button
 											onClick={() => handleRemoveFromCart(item.id)}
 											disabled={isOperationLoading}
-											className="text-red-400 hover:text-red-300 p-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+											className="text-red-400 hover:text-red-300 p-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed absolute right-2 top-2 md:static md:ml-4"
+											aria-label="Remove item"
 										>
 											<svg
 												className="w-5 h-5"
@@ -289,9 +253,45 @@ export default function Cart() {
 												/>
 											</svg>
 										</button>
-									</div>
-								</div>
-							);
+												</div>
+
+												{/* Controls row */}
+												<div className="mt-3 md:mt-4 flex items-center justify-between">
+													<div className="flex items-center gap-3">
+														<button
+															onClick={() =>
+																handleUpdateQuantity(item.id, Math.max(1, item.quantity - 1))
+															}
+															disabled={isItemUpdating}
+															className="w-8 h-8 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+														>
+															{isItemUpdating ? (
+																<div className="animate-spin rounded-full h-4 w-4 border-b border-white"></div>
+															) : (
+																'-'
+															)}
+														</button>
+														<span className="w-8 text-center font-medium">{item.quantity}</span>
+														<button
+															onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
+															disabled={isItemUpdating}
+															className="w-8 h-8 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+														>
+															{isItemUpdating ? (
+																<div className="animate-spin rounded-full h-4 w-4 border-b border-white"></div>
+															) : (
+																'+'
+															)}
+														</button>
+													</div>
+													<div className="text-right">
+														<p className="text-base md:text-lg font-bold text-white">
+																€{((item.product.price + (item.productVariant?.priceAdjust || 0)) * item.quantity).toFixed(2)}
+															</p>
+													</div>
+												</div>
+											</div>
+										);
 						})}
 					</div>
 
