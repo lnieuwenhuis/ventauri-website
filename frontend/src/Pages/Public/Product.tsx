@@ -244,6 +244,27 @@ export default function Product() {
 		await addToCart(product.id, 1, undefined, [optionsObject]);
 	};
 
+	useEffect(() => {
+		if (!product) return;
+		const desc = `${product.name} – ${product.description?.slice(0, 150) || ''}`.trim();
+		const setMeta = (selector: string, attr: string, value: string) => {
+			const el = document.querySelector(selector);
+			if (el) el.setAttribute(attr, value);
+		};
+		setMeta('meta[name="description"]', 'content', desc);
+		setMeta('meta[property="og:title"]', 'content', product.name);
+		setMeta('meta[property="og:description"]', 'content', desc);
+		try {
+			const imgs = JSON.parse(product.images);
+			const img = Array.isArray(imgs) && imgs.length ? imgs[0] : '/Ventauri.png';
+			setMeta('meta[property="og:image"]', 'content', img);
+			setMeta('meta[name="twitter:image"]', 'content', img);
+		} catch {
+			setMeta('meta[property="og:image"]', 'content', '/Ventauri.png');
+			setMeta('meta[name="twitter:image"]', 'content', '/Ventauri.png');
+		}
+	}, [product]);
+
 	if (loading) {
 		return (
 			<div className="min-h-screen bg-gray-900 text-white">
@@ -428,8 +449,38 @@ export default function Product() {
 							</div>
 						)}
 					</div>
-				</div>
 			</div>
 		</div>
-	);
+    {product && (
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Product',
+            name: product.name,
+            description: product.description,
+            image: (() => {
+              try {
+                const arr = JSON.parse(product.images);
+                return Array.isArray(arr) && arr.length ? arr : ['/Ventauri.png'];
+              } catch {
+                return ['/Ventauri.png'];
+              }
+            })(),
+            sku: String(product.id),
+            brand: { '@type': 'Brand', name: 'Ventauri Esports' },
+            offers: {
+              '@type': 'Offer',
+              priceCurrency: 'EUR',
+              price: Number(product.price).toFixed(2),
+              url: typeof window !== 'undefined' ? window.location.href : undefined,
+              availability: 'https://schema.org/InStock'
+            }
+          })
+        }}
+      />
+    )}
+		</div>
+		);
 }
