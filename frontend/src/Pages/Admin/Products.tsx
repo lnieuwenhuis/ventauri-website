@@ -1,18 +1,20 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import FormModal from '../../Components/Admin/FormModal';
-import VariantManager from '../../Components/Admin/VariantManager';
 
 interface Product {
-	id: string;
-	name: string;
-	description: string;
-	price: number;
-	categoryId: string;
-	images: string;
-	isActive: boolean;
-	createdAt: string;
-	updatedAt: string;
-	deletedAt?: string | null;
+    id: string;
+    name: string;
+    description: string;
+    price: number;
+    shippingPrices?: string; // JSON array of { label, price }
+    categoryId: string;
+    images: string;
+    options?: string; // stored as JSON string
+    enabledSizes?: string;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+    deletedAt?: string | null;
 }
 
 interface ProductsResponse {
@@ -23,32 +25,44 @@ interface ProductsResponse {
 }
 
 interface ProductFormData extends Record<string, unknown> {
-	id: string;
-	name: string;
-	description: string;
-	price: number;
-	categoryId: string;
-	images?: string[];
-	isActive: boolean;
+    id: string;
+    name: string;
+    description: string;
+    price: number;
+    categoryId: string;
+    images?: string[];
+    enabledSizes?: string[];
+    options?: string[]; // array of option names
+    shippingPrices?: ({ label: string; price: string } | { key: string; value: string })[]; // supports both label/price and key/value
+    isActive: boolean;
+}
+
+// Option-like shape used for backward compatibility when parsing JSON options
+interface OptionLike {
+    name?: unknown;
+    label?: unknown;
+    title?: unknown;
 }
 
 const AdminProducts: React.FC = () => {
-	const [products, setProducts] = useState<Product[]>([]);
-	const [loading, setLoading] = useState(true);
-	const [searchTerm, setSearchTerm] = useState('');
-	const [currentPage, setCurrentPage] = useState(1);
-	const [totalProducts, setTotalProducts] = useState(0);
-	const [error, setError] = useState<string | null>(null);
-	const [isModalOpen, setIsModalOpen] = useState(false);
-	const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-	const [modalLoading, setModalLoading] = useState(false);
-	const [categories, setCategories] = useState<{ id: string; name: string }[]>(
-		[]
-	);
-	const [categoryFilter, setCategoryFilter] = useState<string>('');
-	const [showVariantManager, setShowVariantManager] = useState(false);
-	const [selectedProductId, setSelectedProductId] = useState<string>('');
-	const itemsPerPage = 10;
+    const [products, setProducts] = useState<Product[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+	const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalProducts, setTotalProducts] = useState(0);
+    const [error, setError] = useState<string | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+    const [modalLoading, setModalLoading] = useState(false);
+    const [categories, setCategories] = useState<{ id: string; name: string }[]>(
+        []
+    );
+    const [categoryFilter, setCategoryFilter] = useState<string>('');
+    const [availableSizes, setAvailableSizes] = useState<string[]>([
+        '2XS','XS','S','M','L','XL','2XL','3XL'
+    ]);
+    const itemsPerPage = 10;
 
 	const apiURL = import.meta.env.VITE_BACKEND_URL || '';
 
@@ -111,28 +125,51 @@ const AdminProducts: React.FC = () => {
 		}
 	};
 
-	useEffect(() => {
-		// Check for categoryId in URL parameters
-		const urlParams = new URLSearchParams(window.location.search);
-		const categoryIdFromUrl = urlParams.get('categoryId');
+    useEffect(() => {
+        // Check for categoryId in URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const categoryIdFromUrl = urlParams.get('categoryId');
 
 		if (categoryIdFromUrl && categoryIdFromUrl !== categoryFilter) {
 			setCategoryFilter(categoryIdFromUrl);
 			// Fetch products with the URL category filter immediately
-			fetchProducts(currentPage, searchTerm, categoryIdFromUrl);
+			fetchProducts(currentPage, debouncedSearch, categoryIdFromUrl);
 		} else {
 			// Fetch products with current filter state
-			fetchProducts(currentPage, searchTerm, categoryFilter);
+			fetchProducts(currentPage, debouncedSearch, categoryFilter);
 		}
 
-		fetchCategories();
-		// eslint-disable-next-line
-	}, [currentPage, searchTerm, categoryFilter]);
+        fetchCategories();
+        // Fetch available sizes (fallback to default list on failure)
+        (async () => {
+            try {
+                const res = await fetch(`${apiURL}/api/products/sizes`, {
+                    credentials: 'include',
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data?.data) && data.data.length > 0) {
+                        setAvailableSizes(data.data);
+                    }
+                }
+            } catch {
+                // keep default sizes
+            }
+        })();
+        // eslint-disable-next-line
+    }, [currentPage, debouncedSearch, categoryFilter]);
 
 	const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
 		setSearchTerm(e.target.value);
 		setCurrentPage(1);
 	};
+
+	useEffect(() => {
+		const id = setTimeout(() => {
+			setDebouncedSearch(searchTerm);
+		}, 300);
+		return () => clearTimeout(id);
+	}, [searchTerm]);
 
 	const handleCategoryFilter = (e: React.ChangeEvent<HTMLSelectElement>) => {
 		const selectedCategoryId = e.target.value;
@@ -160,146 +197,342 @@ const AdminProducts: React.FC = () => {
 		setIsModalOpen(true);
 	};
 
-	const handleSubmitProduct = async (formData: ProductFormData) => {
-		try {
-			setModalLoading(true);
+    const handleSubmitProduct = async (formData: ProductFormData) => {
+        try {
+            setModalLoading(true);
 
-			// Convert images array to JSON string for backend
-			const processedData = {
-				...formData,
-				images: Array.isArray(formData.images)
-					? JSON.stringify(
-							formData.images.filter((url: string) => url.trim() !== '')
-						)
-					: JSON.stringify([]),
-			};
+            // Convert images array to JSON string for backend
+            const processedData: Record<string, unknown> = {
+                ...formData,
+                images: Array.isArray(formData.images)
+                    ? JSON.stringify(
+                            formData.images.filter((url: string) => url.trim() !== '')
+                        )
+                    : JSON.stringify([]),
+            };
 
-			const url = editingProduct
-				? `${apiURL}/api/admin/products/${editingProduct.id}`
-				: `${apiURL}/api/admin/products/`;
+            // Serialize enabledSizes to JSON string
+            processedData.enabledSizes = Array.isArray(formData.enabledSizes)
+                ? JSON.stringify(
+                formData.enabledSizes
+                    .map((s: string) => s.trim())
+                    .filter((s: string) => s.length > 0)
+                )
+                : JSON.stringify([]);
 
-			const method = editingProduct ? 'PUT' : 'POST';
+            // Serialize options (array of names) to JSON string
+            processedData.options = Array.isArray(formData.options)
+                ? JSON.stringify(
+                    formData.options
+                        .map((o: string) => o.trim())
+                        .filter((o: string) => o.length > 0)
+                  )
+                : typeof formData.options === 'string'
+                ? JSON.stringify(
+                    [String(formData.options).trim()].filter((o) => o.length > 0)
+                  )
+                : JSON.stringify([]);
 
-			const response = await fetch(url, {
-				method,
-				credentials: 'include',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify(processedData),
-			});
+            // Serialize shippingPrices supporting both {label, price} and {key, value}
+            if (Array.isArray(formData.shippingPrices)) {
+                const canonicalLabels = ['UK', 'EU', 'Worldwide'];
+                const normalize = (lbl: unknown) => {
+                    const s = String(lbl || '').trim();
+                    if (!s) return '';
+                    const upper = s.toUpperCase();
+                    if (upper === 'WW' || s.toLowerCase() === 'world' || s.toLowerCase() === 'worldwide') return 'Worldwide';
+                    if (upper === 'UK') return 'UK';
+                    if (upper === 'EU') return 'EU';
+                    return s;
+                };
+                const priceMap: Record<string, number> = {};
+                (formData.shippingPrices as Array<Record<string, unknown>>).forEach((item) => {
+                    const lbl = normalize(item.label ?? item.key ?? '');
+                    const rawPrice = item.price ?? item.value;
+                    const num = typeof rawPrice === 'number' ? rawPrice : parseFloat(String(rawPrice ?? '').trim());
+                    if (lbl && !isNaN(num) && canonicalLabels.includes(lbl)) {
+                        priceMap[lbl] = num;
+                    }
+                });
+                const arr = canonicalLabels
+                    .map((lbl) => (priceMap[lbl] != null ? { label: lbl, price: priceMap[lbl] } : null))
+                    .filter((v): v is { label: string; price: number } => v !== null);
+                processedData.shippingPrices = JSON.stringify(arr);
+            } else if (formData.shippingPrices && typeof formData.shippingPrices === 'object') {
+                const canonicalLabels = ['UK', 'EU', 'Worldwide'];
+                const normalize = (lbl: string) => {
+                    const s = String(lbl || '').trim();
+                    if (!s) return '';
+                    const upper = s.toUpperCase();
+                    if (upper === 'WW' || s.toLowerCase() === 'world' || s.toLowerCase() === 'worldwide') return 'Worldwide';
+                    if (upper === 'UK') return 'UK';
+                    if (upper === 'EU') return 'EU';
+                    return s;
+                };
+                const priceMap: Record<string, number> = {};
+                Object.entries(formData.shippingPrices as Record<string, unknown>).forEach(([label, val]) => {
+                    const lbl = normalize(label);
+                    const n = typeof val === 'number' ? val : parseFloat(String(val ?? '').trim());
+                    if (lbl && !isNaN(n) && canonicalLabels.includes(lbl)) {
+                        priceMap[lbl] = n;
+                    }
+                });
+                const arr = canonicalLabels
+                    .map((lbl) => (priceMap[lbl] != null ? { label: lbl, price: priceMap[lbl] } : null))
+                    .filter((v): v is { label: string; price: number } => v !== null);
+                processedData.shippingPrices = JSON.stringify(arr);
+            } else {
+                processedData.shippingPrices = JSON.stringify([]);
+            }
 
-			if (!response.ok) {
-				throw new Error(
-					`Failed to ${editingProduct ? 'update' : 'create'} product`
-				);
-			}
+            const url = editingProduct
+                ? `${apiURL}/api/admin/products/${editingProduct.id}`
+                : `${apiURL}/api/admin/products/`;
 
-			const result = await response.json();
-			const updatedProduct = result.data;
+            const method = editingProduct ? 'PUT' : 'POST';
 
-			// Update the products array directly instead of refetching
-			if (editingProduct) {
-				// Update existing product in the array
-				setProducts((prevProducts) =>
-					prevProducts.map((product) =>
-						product.id === editingProduct.id ? updatedProduct : product
-					)
-				);
-			} else {
-				// Add new product to the beginning and remove the last one to maintain page size
-				setProducts((prevProducts) => {
-					const newProducts = [updatedProduct, ...prevProducts];
-					// If we have more than itemsPerPage products, remove the last one
-					return newProducts.length > itemsPerPage
-						? newProducts.slice(0, itemsPerPage)
-						: newProducts;
-				});
-				// Update total count
-				setTotalProducts((prevTotal) => prevTotal + 1);
-			}
+            const response = await fetch(url, {
+                method,
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(processedData),
+            });
 
-			setIsModalOpen(false);
-		} catch (err) {
-			console.error('Error submitting product:', err);
-			setError(err instanceof Error ? err.message : 'Failed to submit product');
-		} finally {
-			setModalLoading(false);
-		}
-	};
+            if (!response.ok) {
+                throw new Error(
+                    `Failed to ${editingProduct ? 'update' : 'create'} product`
+                );
+            }
 
-	const convertProductToFormData = (product: Product): ProductFormData => {
-		let parsedImages: string[] = [];
-		try {
-			if (product.images && product.images.trim() !== '') {
-				parsedImages = JSON.parse(product.images);
-				if (!Array.isArray(parsedImages)) {
-					parsedImages = [];
-				}
-			}
-		} catch (error) {
-			console.error('Error parsing product images:', error);
-			parsedImages = [];
-		}
+            const result = await response.json();
+            const updatedProduct = result.data;
 
-		return {
-			id: product.id,
-			name: product.name,
-			description: product.description,
-			price: product.price,
-			categoryId: product.categoryId,
-			images: parsedImages,
-			isActive: product.isActive,
-		};
-	};
+            // Update the products array directly instead of refetching
+            if (editingProduct) {
+                // Update existing product in the array
+                setProducts((prevProducts) =>
+                    prevProducts.map((product) =>
+                        product.id === editingProduct.id ? updatedProduct : product
+                    )
+                );
+            } else {
+                // Add new product to the beginning and remove the last one to maintain page size
+                setProducts((prevProducts) => {
+                    const newProducts = [updatedProduct, ...prevProducts];
+                    // If we have more than itemsPerPage products, remove the last one
+                    return newProducts.length > itemsPerPage
+                        ? newProducts.slice(0, itemsPerPage)
+                        : newProducts;
+                });
+                // Update total count
+                setTotalProducts((prevTotal) => prevTotal + 1);
+            }
 
-	const productFields = useMemo(
-		() => [
-			{
-				name: 'name',
-				label: 'Product Name',
-				type: 'text' as const,
-				required: true,
-				placeholder: 'Enter product name',
-			},
-			{
-				name: 'description',
-				label: 'Description',
-				type: 'textarea' as const,
-				required: true,
-				placeholder: 'Enter product description',
-			},
-			{
-				name: 'price',
-				label: 'Price',
-				type: 'number' as const,
-				required: true,
-				placeholder: '0.00',
-			},
-			{
-				name: 'categoryId',
-				label: 'Category',
-				type: 'select' as const,
-				required: true,
-				options: categories.map((cat) => ({ value: cat.id, label: cat.name })),
-			},
-			{
-				name: 'images',
-				label: 'Image URL',
-				type: 'array' as const,
-				arrayType: 'url' as const,
-				required: false,
-				placeholder: 'https://example.com/image.jpg',
-			},
-			{
-				name: 'isActive',
-				label: 'Active',
-				type: 'checkbox' as const,
-				required: false,
-			},
-		],
-		[categories]
-	);
+            setIsModalOpen(false);
+        } catch (err) {
+            console.error('Error submitting product:', err);
+            setError(err instanceof Error ? err.message : 'Failed to submit product');
+        } finally {
+            setModalLoading(false);
+        }
+    };
+
+    const convertProductToFormData = (product: Product): ProductFormData => {
+        let parsedImages: string[] = [];
+        let parsedEnabledSizes: string[] = [];
+        let parsedOptions: string[] = [];
+        try {
+            if (product.images && product.images.trim() !== '') {
+                parsedImages = JSON.parse(product.images);
+                if (!Array.isArray(parsedImages)) {
+                    parsedImages = [];
+                }
+            }
+        } catch (error) {
+            console.error('Error parsing product images:', error);
+            parsedImages = [];
+        }
+
+        try {
+            if (product.enabledSizes && product.enabledSizes.trim() !== '') {
+                parsedEnabledSizes = JSON.parse(product.enabledSizes);
+                if (!Array.isArray(parsedEnabledSizes)) {
+                    parsedEnabledSizes = [];
+                }
+            }
+        } catch (error) {
+            console.error('Error parsing enabled sizes:', error);
+            parsedEnabledSizes = [];
+        }
+
+        // Options stored as JSON string; parse to array of names
+        try {
+            if (product.options && product.options.trim() !== '') {
+                const parsed = JSON.parse(product.options);
+                if (Array.isArray(parsed)) {
+                    if (parsed.every((v) => typeof v === 'string')) {
+                        parsedOptions = parsed as string[];
+                    } else if (parsed.every((obj) => obj && typeof obj === 'object' && !Array.isArray(obj))) {
+                        // Backward compatibility: pick common name-like fields
+                        parsedOptions = (parsed as OptionLike[])
+                            .map((o) => String((o.name ?? o.label ?? o.title ?? '')))
+                            .filter((s) => s.trim().length > 0);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error parsing product options:', error);
+            parsedOptions = [];
+        }
+
+        // Shipping prices stored as JSON string; parse to key-value array
+        let parsedShippingPrices: { label: string; price: string }[] = [];
+        try {
+            if (product.shippingPrices && product.shippingPrices.trim() !== '') {
+                const parsed = JSON.parse(product.shippingPrices);
+                if (Array.isArray(parsed)) {
+                    if (parsed.every((v) => typeof v === 'number')) {
+                        const defaultLabels = ['UK', 'EU', 'WW'];
+                        parsedShippingPrices = (parsed as number[])
+                            .slice(0, defaultLabels.length)
+                            .map((n, i) => ({ label: defaultLabels[i], price: String(n) }));
+                    } else if (parsed.every((obj) => obj && typeof obj === 'object')) {
+                        parsedShippingPrices = (parsed as Array<Record<string, unknown>>)
+                            .map((obj) => {
+                                const label = String(obj.label ?? obj.key ?? obj.name ?? '').trim();
+                                const priceVal = obj.price ?? obj.value;
+                                const priceStr = priceVal != null ? String(priceVal) : '';
+                                return { label, price: priceStr };
+                            })
+                            .filter((p) => p.label.length > 0 && p.price.trim().length > 0);
+                    }
+                } else if (parsed && typeof parsed === 'object') {
+                    parsedShippingPrices = Object.entries(parsed as Record<string, unknown>)
+                        .map(([label, val]) => ({ label, price: String(val) }))
+                        .filter((p) => p.label.trim().length > 0 && p.price.trim().length > 0);
+                }
+            }
+        } catch (error) {
+            console.error('Error parsing shipping prices:', error);
+            parsedShippingPrices = [];
+        }
+
+        // Normalize to canonical labels and fill missing ones
+        const canonicalLabels = ['UK', 'EU', 'Worldwide'];
+        const normalize = (lbl: string) => {
+            const s = lbl.trim();
+            if (s.toUpperCase() === 'WW' || s.toLowerCase() === 'world' || s.toLowerCase() === 'worldwide') {
+                return 'Worldwide';
+            }
+            if (s.toUpperCase() === 'UK') return 'UK';
+            if (s.toUpperCase() === 'EU') return 'EU';
+            return s; // fall back
+        };
+        const map: Record<string, string> = {};
+        parsedShippingPrices.forEach((p) => {
+            const k = normalize(p.label);
+            if (canonicalLabels.includes(k)) map[k] = p.price;
+        });
+        const fixedArray = canonicalLabels.map((lbl) => ({ key: lbl, value: map[lbl] ?? '' }));
+
+        return {
+            id: product.id,
+            name: product.name,
+            description: product.description,
+            price: product.price,
+            categoryId: product.categoryId,
+            images: parsedImages,
+            enabledSizes: parsedEnabledSizes,
+            options: parsedOptions,
+            shippingPrices: fixedArray,
+            isActive: product.isActive,
+        };
+    };
+
+    const productFields = useMemo(
+        () => [
+            {
+                name: 'name',
+                label: 'Product Name',
+                type: 'text' as const,
+                required: true,
+                placeholder: 'Enter product name',
+                column: 'left' as const,
+            },
+            {
+                name: 'description',
+                label: 'Description',
+                type: 'textarea' as const,
+                required: true,
+                placeholder: 'Enter product description',
+                column: 'left' as const,
+            },
+            {
+                name: 'price',
+                label: 'Price',
+                type: 'number' as const,
+                required: true,
+                placeholder: '0.00',
+                column: 'left' as const,
+            },
+            {
+                name: 'shippingPrices',
+                label: 'Shipping Prices',
+                type: 'key-value-array' as const,
+                required: false,
+                keyPlaceholder: 'Region label',
+                valuePlaceholder: 'Price (e.g., 4.99)',
+                valueInputType: 'number' as const,
+                fixedKeys: ['UK', 'EU', 'Worldwide'],
+                lockKeys: true,
+                hideAddRemove: true,
+                column: 'right' as const,
+            },
+            {
+                name: 'categoryId',
+                label: 'Category',
+                type: 'select' as const,
+                required: true,
+                options: categories.map((cat) => ({ value: cat.id, label: cat.name })),
+                column: 'left' as const,
+            },
+            {
+                name: 'images',
+                label: 'Image URL',
+                type: 'array' as const,
+                arrayType: 'url' as const,
+                required: false,
+                placeholder: 'https://example.com/image.jpg',
+                column: 'right' as const,
+            },
+            {
+                name: 'enabledSizes',
+                label: 'Enabled Sizes',
+                type: 'checkbox-group' as const,
+                required: false,
+                options: availableSizes.map((s) => ({ value: s, label: s })),
+                column: 'right' as const,
+            },
+            {
+                name: 'options',
+                label: 'Options',
+                type: 'array-popup' as const,
+                required: false,
+                placeholder: 'Option name (e.g., Engraving)',
+                column: 'right' as const,
+            },
+            {
+                name: 'isActive',
+                label: 'Active',
+                type: 'checkbox' as const,
+                required: false,
+                column: 'right' as const,
+            },
+        ],
+        [categories, availableSizes]
+    );
 
 	const toggleProductStatus = async (productId: string) => {
 		try {
@@ -318,7 +551,7 @@ const AdminProducts: React.FC = () => {
 				throw new Error('Failed to update product status');
 			}
 
-			fetchProducts(currentPage, searchTerm);
+			fetchProducts(currentPage, debouncedSearch);
 		} catch (err) {
 			console.error('Error updating product status:', err);
 			setError(
@@ -340,7 +573,7 @@ const AdminProducts: React.FC = () => {
 			});
 
 			if (response.ok) {
-				fetchProducts(currentPage, searchTerm, categoryFilter);
+				fetchProducts(currentPage, debouncedSearch, categoryFilter);
 			} else {
 				throw new Error('Failed to delete product');
 			}
@@ -350,10 +583,6 @@ const AdminProducts: React.FC = () => {
 		}
 	};
 
-	const handleManageVariants = (productId: string) => {
-		setSelectedProductId(productId);
-		setShowVariantManager(true);
-	};
 
 	const totalPages = Math.ceil(totalProducts / itemsPerPage);
 
@@ -464,15 +693,22 @@ const AdminProducts: React.FC = () => {
 														<div className="flex -space-x-2 mr-4">
 															{productImages.slice(0, 3).map((imageUrl, index) => (
 																<img
-																	key={index}
-																	className="h-12 w-12 rounded-lg object-cover border-2 border-white"
-																	src={
-																		imageUrl && /^https?:\/\/.+/.test(imageUrl)
-																			? imageUrl
-																			: 'https://picsum.photos/200'
-																	}
-																	alt={`${product.name} ${index + 1}`}
-																/>
+													key={index}
+													className="h-12 w-12 rounded-lg object-cover border-2 border-white"
+													src={
+														imageUrl && (
+															/^https?:\/\/.+/.test(imageUrl) ||
+															imageUrl.startsWith('data:image/')
+														)
+															? imageUrl
+															: 'https://picsum.photos/200'
+													}
+													alt={`${product.name} ${index + 1}`}
+													onError={(e) => {
+														const target = e.target as HTMLImageElement;
+														target.src = 'https://picsum.photos/200';
+													}}
+												/>
 															))}
 															{productImages.length > 3 && (
 																<div className="h-12 w-12 rounded-lg bg-gray-200 border-2 border-white flex items-center justify-center text-xs text-gray-600">
@@ -594,25 +830,7 @@ const AdminProducts: React.FC = () => {
 														</svg>
 														Delete
 													</button>
-													<button
-														onClick={() => handleManageVariants(product.id)}
-														className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200"
-													>
-														<svg
-															className="w-3 h-3 mr-1"
-															fill="none"
-															stroke="currentColor"
-															viewBox="0 0 24 24"
-														>
-															<path
-																strokeLinecap="round"
-																strokeLinejoin="round"
-																strokeWidth={2}
-																d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 016-6h10a4 4 0 004-4V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h10a4 4 0 004-4v-1a6 6 0 01-3 5.242"
-															/>
-														</svg>
-														Manage Variants
-													</button>
+                                                    
 												</div>
 											</td>
 										</tr>
@@ -653,27 +871,28 @@ const AdminProducts: React.FC = () => {
 				)}
 			</div>
 
-			<FormModal<ProductFormData>
-				isOpen={isModalOpen}
-				onClose={() => setIsModalOpen(false)}
-				onSubmit={handleSubmitProduct}
-				title={editingProduct ? 'Edit Product' : 'Create New Product'}
-				fields={productFields}
-				initialData={
-					editingProduct
-						? convertProductToFormData(editingProduct)
-						: { isActive: true }
-				}
-				isLoading={modalLoading}
-			/>
+            <FormModal<ProductFormData>
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSubmit={handleSubmitProduct}
+                title={editingProduct ? 'Edit Product' : 'Create New Product'}
+                fields={productFields}
+                initialData={
+                    editingProduct
+                        ? convertProductToFormData(editingProduct)
+                        : { isActive: true, shippingPrices: [
+                            { key: 'UK', value: '' },
+                            { key: 'EU', value: '' },
+                            { key: 'Worldwide', value: '' }
+                        ] }
+                }
+                isLoading={modalLoading}
+                layout={'two-column'}
+                size={'xl'}
+                showDivider={true}
+            />
 
-			{/* Variant Manager Modal */}
-			{showVariantManager && (
-				<VariantManager
-					productId={selectedProductId}
-					onClose={() => setShowVariantManager(false)}
-				/>
-			)}
+
 		</div>
 	);
 };

@@ -150,7 +150,7 @@ const Profile: React.FC = () => {
 								to="/wishlists"
 								className="block w-full bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold text-center hover:bg-gray-600 transition-colors duration-200 border border-gray-600"
 							>
-								View Wishlists
+								View Wishlist
 							</Link>
 							<Link
 								to="/cart"

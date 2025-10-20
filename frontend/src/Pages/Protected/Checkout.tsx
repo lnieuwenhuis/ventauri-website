@@ -8,6 +8,29 @@ import { useCart } from '../../Contexts/CartContext';
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || '';
 
+// EU country ISO codes (alpha-2), excluding GB which maps to UK
+const EU_CODES = new Set([
+  'AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE'
+]);
+
+function normalizeLabel(lbl: string): 'UK' | 'EU' | 'Worldwide' | string {
+  const s = (lbl || '').trim();
+  const upper = s.toUpperCase();
+  if (!s) return s;
+  if (upper === 'UK') return 'UK';
+  if (upper === 'EU') return 'EU';
+  if (upper === 'WW' || s.toLowerCase().startsWith('world')) return 'Worldwide';
+  return s;
+}
+
+function regionLabelForCountry(countryCode: string | undefined | null): 'UK' | 'EU' | 'Worldwide' | null {
+  const code = (countryCode || '').toUpperCase();
+  if (!code) return null;
+  if (code === 'GB' || code === 'UK') return 'UK';
+  if (EU_CODES.has(code)) return 'EU';
+  return 'Worldwide';
+}
+
 function CheckoutForm() {
     const stripe = useStripe();
     const elements = useElements();
@@ -48,8 +71,48 @@ function CheckoutForm() {
     );
 }
 
+// Address type alias used across components
+type Addr = { id: string; street: string; city: string; state: string; zipCode: string; country: string; isDefault: boolean };
+
+// Map panel that displays the selected shipping address on Google Maps
+function ShippingMap({ address }: { address: Addr | null }) {
+    // Ensure country names are available
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    countries.registerLocale(enCountries as any);
+
+    const countryName = address ? (countries.getName(address.country, 'en') || address.country) : '';
+    const query = address
+        ? [address.street, address.city, address.state, address.zipCode, countryName].filter(Boolean).join(', ')
+        : '';
+    const src = address ? `https://www.google.com/maps?q=${encodeURIComponent(query)}&output=embed` : '';
+
+    return (
+        <div className="bg-gray-800 rounded-lg p-6">
+            <h2 className="text-xl font-semibold mb-4 text-ventauri">Delivery Location</h2>
+            {!address ? (
+                <div className="text-sm text-gray-300">Select a shipping address to preview it on the map.</div>
+            ) : (
+                <div>
+                    <p className="text-sm text-gray-300 mb-3">{query}</p>
+                    <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+                        <iframe
+                            title="Selected address map"
+                            src={src}
+                            className="absolute top-0 left-0 w-full h-full rounded"
+                            style={{ border: 0 }}
+                            allowFullScreen
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                        />
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function Checkout() {
-    const { items } = useCart();
+    const { items, appliedCouponCode, couponDiscount, appliedCoupon } = useCart();
     const [clientSecret, setClientSecret] = useState<string | null>(null);
     const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
     const [piAmount, setPiAmount] = useState<number | null>(null); // cents
@@ -57,6 +120,7 @@ export default function Checkout() {
     const [prepError, setPrepError] = useState<string | null>(null);
     const piRequestedRef = useRef(false);
     const [addressesReady, setAddressesReady] = useState(false);
+    const [shippingAddress, setShippingAddress] = useState<Addr | null>(null);
 
     // Load Stripe publishable key once
     useEffect(() => {
@@ -85,10 +149,15 @@ export default function Checkout() {
                         productId: i.product.id,  
                         productVariantId: i.productVariantId || null, 
                         quantity: i.quantity,
+                        // Always encode options as a JSON string per backend contract
+                        options: (() => {
+                            try { return JSON.stringify(i.options ?? []); } catch { return JSON.stringify([]); }
+                        })(),
                     })),
                     shippingAddressId: localStorage.getItem('default_shipping_address_id') || '',
                     billingAddressId: localStorage.getItem('default_billing_address_id') || '',
                     existingOrderIds: existingIds,
+                    couponCode: appliedCouponCode || ((): string | undefined => { try { const raw = localStorage.getItem('cart_coupon'); return raw ? JSON.parse(raw)?.code : undefined; } catch { return undefined; } })(),
                 };
                 const res = await fetch(`${backendUrl}/api/checkout/create-payment-intent`, {
                     method: 'POST',
@@ -145,8 +214,42 @@ export default function Checkout() {
         const unitPrice = i.product.price + (i.productVariant?.priceAdjust || 0);
         return sum + unitPrice * i.quantity;
     }, 0);
-    // All-inclusive pricing: tax and shipping are included in product prices
-    const computedTotal = computedSubtotal;
+
+    const shippingRegion = regionLabelForCountry(shippingAddress?.country);
+
+    const shippingTotal = useMemo(() => {
+        if (!shippingRegion) return 0;
+        let total = 0;
+        for (const i of items) {
+            const spStr = (i.product as unknown as { shippingPrices?: string }).shippingPrices || '';
+            if (!spStr || spStr.trim() === '') continue;
+            try {
+                const parsed = JSON.parse(spStr);
+                if (Array.isArray(parsed)) {
+                    if (parsed.every((v) => typeof v === 'number')) {
+                        const idx = shippingRegion === 'UK' ? 0 : shippingRegion === 'EU' ? 1 : 2;
+                        const numVal = Number(parsed[idx] ?? 0);
+                        if (!isNaN(numVal)) total += numVal * i.quantity;
+                    } else {
+                        const found = (parsed as Array<Record<string, unknown>>).find((obj) => {
+                            const lbl = normalizeLabel(String((obj as { label?: unknown; key?: unknown }).label ?? (obj as { key?: unknown }).key ?? ''));
+                            return lbl === shippingRegion;
+                        });
+                        const raw = found ? ((found as { price?: unknown; value?: unknown }).price ?? (found as { value?: unknown }).value) : 0;
+                        const numVal = typeof raw === 'number' ? raw : parseFloat(String(raw ?? ''));
+                        if (!isNaN(numVal)) total += numVal * i.quantity;
+                    }
+                }
+            } catch {
+                // ignore parse errors
+            }
+        }
+        return total;
+    }, [items, shippingRegion]);
+
+    const effectiveShipping = appliedCoupon?.type === 'free_shipping' ? 0 : shippingTotal;
+    const effectiveDiscount = couponDiscount || 0;
+    const computedTotal = computedSubtotal + effectiveShipping - effectiveDiscount;
 
     const formatMoney = (amount: number, currency: string) => {
         try {
@@ -156,7 +259,7 @@ export default function Checkout() {
         }
     };
 
-    const totalDisplay = piAmount != null ? formatMoney(piAmount / 100, piCurrency) : formatMoney(computedTotal, piCurrency);
+    const totalDisplay = formatMoney(computedTotal, piCurrency);
 
     return (
         <div className="min-h-screen bg-gray-900 text-white">
@@ -191,6 +294,22 @@ export default function Checkout() {
                                                                 </>
                                                             )}
                                                         </p>
+                                                        {item.options && item.options.length > 0 && (
+                                                            <div className="mt-1 text-xs text-gray-300">
+                                                                <span className="text-gray-400">Customizations:</span>
+                                                                <div className="mt-1 space-y-1">
+                                                                    {item.options.map((optObj, idx) => (
+                                                                        <div key={idx}>
+                                                                            {Object.entries(optObj).map(([k, v]) => (
+                                                                                <div key={k}>
+                                                                                    <span className="text-gray-400">{k}:</span> {v}
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     <div className="text-right">
                                                         <p className="font-semibold">{formatMoney(lineTotal, piCurrency)}</p>
@@ -208,15 +327,31 @@ export default function Checkout() {
                                     <span>Subtotal</span>
                                     <span>{formatMoney(computedSubtotal, piCurrency)}</span>
                                 </div>
-                                {/* Informational note: prices include tax and shipping */}
-                                <div className="mt-2 text-xs text-gray-400 italic">
-                                    Prices include tax and shipping.
+                                <div className="flex justify-between text-gray-300">
+                                    <span>Shipping{shippingRegion ? ` (${shippingRegion})` : ''}</span>
+                                    <span>{shippingRegion ? formatMoney(effectiveShipping, piCurrency) : 'Select address'}</span>
                                 </div>
+                                {effectiveDiscount > 0 && (
+                                    <div className="flex justify-between text-green-400">
+                                        <span>Coupon</span>
+                                        <span>-{formatMoney(effectiveDiscount, piCurrency)}</span>
+                                    </div>
+                                )}
                                 <div className="border-t border-gray-700 pt-3 flex justify-between text-lg font-bold">
                                     <span>Total</span>
                                     <span className="text-ventauri">{totalDisplay}</span>
                                 </div>
+                                {piAmount != null && (
+                                    <p className="text-xs text-gray-400">
+                                        Charged via Stripe: {formatMoney(piAmount / 100, piCurrency)}.
+                                    </p>
+                                )}
                             </div>
+                        </div>
+
+                        {/* Map panel under Order Summary to use open space */}
+                        <div className="mt-8">
+                            <ShippingMap address={shippingAddress} />
                         </div>
                     </div>
 
@@ -232,11 +367,11 @@ export default function Checkout() {
                                 setPiAmount(null);
                                 try { localStorage.removeItem('checkout_order_ids'); } catch { /* ignore */ }
                             }
-                        }} />
+                        }} onShippingChange={(addr) => setShippingAddress(addr)} />
                         <div className="bg-gray-800 rounded-lg p-6 sticky top-24">
                             {!addressesReady ? (
                                 <div className="text-sm text-gray-300">Select a shipping and billing address to start payment.</div>
-            ) : !clientSecret || !stripePromise ? (
+                            ) : !clientSecret || !stripePromise ? (
                                 <div>
                                     <div>Preparing checkout...</div>
                                     {prepError && (
@@ -257,8 +392,8 @@ export default function Checkout() {
 }
 
 // Address selection UI
-function AddressSection({ onSelectionChange }: { onSelectionChange?: (ready: boolean) => void }) {
-    const [addresses, setAddresses] = useState<Array<{ id: string; street: string; city: string; state: string; zipCode: string; country: string; isDefault: boolean }>>([]);
+function AddressSection({ onSelectionChange, onShippingChange }: { onSelectionChange?: (ready: boolean) => void; onShippingChange?: (addr: Addr | null) => void }) {
+    const [addresses, setAddresses] = useState<Array<Addr>>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedShip, setSelectedShip] = useState<string>('');
@@ -286,7 +421,7 @@ function AddressSection({ onSelectionChange }: { onSelectionChange?: (ready: boo
                 const res = await fetch(`${backendUrl}/api/addresses/`, { credentials: 'include' });
                 const json: { data?: Array<{ id: string; street: string; city: string; state: string; zipCode: string; country: string; isDefault: boolean }> } = await res.json();
                 const list = json.data || [];
-                setAddresses(list);
+                setAddresses(list as Addr[]);
                 const def = list.find((a) => (a as { isDefault?: boolean }).isDefault);
                 const inList = (id: string) => list.some((a) => a.id === id);
                 const shipStored = localStorage.getItem('default_shipping_address_id') || '';
@@ -298,7 +433,7 @@ function AddressSection({ onSelectionChange }: { onSelectionChange?: (ready: boo
                     try { localStorage.removeItem('default_shipping_address_id'); } catch { /* ignore */ }
                     try { localStorage.removeItem('default_billing_address_id'); } catch { /* ignore */ }
                 } else {
-                    const ship = inList(shipStored) ? shipStored : (def ? def.id : '');
+                    const ship = inList(shipStored) ? shipStored : (def ? (def as Addr).id : '');
                     const bill = sameAsShipping ? ship : (inList(billStored) && billStored !== ship ? billStored : '');
                     setSelectedShip(ship);
                     setSelectedBill(bill);
@@ -332,7 +467,11 @@ function AddressSection({ onSelectionChange }: { onSelectionChange?: (ready: boo
         }
         const ready = Boolean(inList(selectedShip) && inList(selectedBill));
         if (onSelectionChange) onSelectionChange(ready);
-    }, [selectedShip, selectedBill, sameAsShipping, addresses, onSelectionChange]);
+        if (onShippingChange) {
+            const addr = addresses.find((a) => a.id === selectedShip) || null;
+            onShippingChange(addr);
+        }
+    }, [selectedShip, selectedBill, sameAsShipping, addresses, onSelectionChange, onShippingChange]);
 
     return (
         <div className="bg-gray-800 rounded-lg p-6">
@@ -417,9 +556,9 @@ function AddressSection({ onSelectionChange }: { onSelectionChange?: (ready: boo
                                 // refresh list and set as selected
                                 const j = await fetch(`${backendUrl}/api/addresses/`, { credentials: 'include' });
                                 const jj = await j.json();
-                                type Addr = { id: string; street: string; city: string; state: string; zipCode: string; country: string; isDefault: boolean };
-                                const raw: Array<Partial<Addr>> = jj.data || [];
-                                const list: Addr[] = raw.map((x) => ({
+                                type AddrLocal = { id: string; street: string; city: string; state: string; zipCode: string; country: string; isDefault: boolean };
+                                const raw: Array<Partial<AddrLocal>> = jj.data || [];
+                                const list: AddrLocal[] = raw.map((x) => ({
                                     id: String(x.id || ''),
                                     street: String(x.street || ''),
                                     city: String(x.city || ''),
@@ -428,10 +567,11 @@ function AddressSection({ onSelectionChange }: { onSelectionChange?: (ready: boo
                                     country: String(x.country || ''),
                                     isDefault: Boolean(x.isDefault),
                                 }));
-                                setAddresses(list);
-                                const created = list.find((x: Addr) => x.street === payload.street && x.zipCode === payload.zipCode);
+                                setAddresses(list as Addr[]);
+                                const created = list.find((x: AddrLocal) => x.street === payload.street && x.zipCode === payload.zipCode);
                                 if (created) { setSelectedShip(created.id); setSelectedBill(created.id); }
                                 if (onSelectionChange) onSelectionChange(true);
+                                if (onShippingChange) onShippingChange(created as unknown as Addr);
                                 setCreating(false);
                             }
                         }} className="bg-ventauri text-black px-3 py-2 rounded">Save Address</button>

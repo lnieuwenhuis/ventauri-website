@@ -12,9 +12,9 @@ const Navbar: React.FC = () => {
 	return (
 		<nav className="bg-gray-900 border-b border-gray-800 sticky top-0 z-50">
 			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-				<div className="flex justify-between items-center h-16">
+                <div className="flex items-center h-16">
 					{/* Logo Section */}
-					<div className="flex items-center">
+                    <div className="flex items-center flex-1">
 						<Link to="/" className="flex items-center space-x-3">
 							{/* Ventauri Logo */}
 							<img 
@@ -29,58 +29,50 @@ const Navbar: React.FC = () => {
 						</Link>
 					</div>
 
-					{/* Desktop Navigation */}
-					<div className="hidden md:flex items-center space-x-8">
+                    {/* Desktop Navigation */}
+                    <div className="hidden md:flex items-center justify-center gap-6">
 						<Link
 							to="/"
-							className="text-gray-300 hover:text-ventauri px-3 py-2 text-sm font-medium transition-colors"
+							className="text-gray-300 hover:text-ventauri px-3 py-2 text-md font-medium transition-colors"
 						>
 							Home
 						</Link>
 						<Link
 							to="/products"
-							className="text-gray-300 hover:text-ventauri px-3 py-2 text-sm font-medium transition-colors"
+							className="text-gray-300 hover:text-ventauri px-3 py-2 text-md font-medium transition-colors"
 						>
 							Shop
 						</Link>
 						<Link
 							to="/about"
-							className="text-gray-300 hover:text-ventauri px-3 py-2 text-sm font-medium transition-colors"
+							className="text-gray-300 hover:text-ventauri px-3 py-2 text-md font-medium transition-colors"
 						>
 							Our Team
 						</Link>
 						<Link
 							to="/contact"
-							className="text-gray-300 hover:text-ventauri px-3 py-2 text-sm font-medium transition-colors"
+							className="text-gray-300 hover:text-ventauri px-3 py-2 text-md font-medium transition-colors"
 						>
 							Contact
 						</Link>
 					</div>
 
 					{/* Right Side - Cart, Account, etc. */}
-					<div className="hidden md:flex items-center space-x-4">
-						{/* Search */}
-						<div className="relative">
-							<input
-								type="text"
-								placeholder="Search products..."
-								className="bg-gray-800 text-white placeholder-gray-400 px-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ventauri w-64"
-							/>
+                    <div className="hidden md:flex items-center space-x-4 justify-end flex-1">
+						{/* Wishlist */}
+						<Link
+							to="/wishlists"
+							className="text-gray-300 hover:text-ventauri p-2 transition-colors"
+						>
 							<svg
-								className="absolute right-3 top-2.5 h-4 w-4 text-gray-400"
-								fill="none"
-								stroke="currentColor"
+								xmlns="http://www.w3.org/2000/svg"
 								viewBox="0 0 24 24"
+								fill="currentColor"
+								className="w-6 h-6"
 							>
-								<path
-									strokeLinecap="round"
-									strokeLinejoin="round"
-									strokeWidth={2}
-									d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-								/>
+								<path d="M11.645 20.91l-.01-.01-.011.01a.75.75 0 01-.29.135l-.014.004-.016.004-.02.003a.75.75 0 01-.236 0l-.02-.003-.016-.004-.014-.004a.75.75 0 01-.29-.135l-.011-.01-.01.01c-3.67-3.262-6.064-5.393-7.42-7.258C1.7 12.83 1 11.38 1 9.75 1 7.126 3.126 5 5.75 5c1.42 0 2.74.633 3.633 1.68L10.5 7.9l1.117-1.22C12.51 5.633 13.83 5 15.25 5 17.874 5 20 7.126 20 9.75c0 1.63-.7 3.08-1.667 4.902-1.356 1.865-3.75 3.996-7.42 7.258z" />
 							</svg>
-						</div>
-
+						</Link>
 						{/* Cart */}
 						<Link
 							to="/cart"
@@ -179,13 +171,6 @@ const Navbar: React.FC = () => {
 											>
 												Sign In
 											</Link>
-											<Link
-												to="/register"
-												className="block px-4 py-2 text-sm text-gray-300 hover:text-ventauri hover:bg-gray-700 rounded-b-lg"
-												onClick={() => setIsUserMenuOpen(false)}
-											>
-												Sign Up
-											</Link>
 										</>
 									)}
 								</div>
@@ -244,13 +229,6 @@ const Navbar: React.FC = () => {
 								Shop
 							</Link>
 							<Link
-								to="/categories"
-								className="block text-gray-300 hover:text-ventauri px-3 py-2 text-base font-medium"
-								onClick={() => setIsMenuOpen(false)}
-							>
-								Categories
-							</Link>
-							<Link
 								to="/about"
 								className="block text-gray-300 hover:text-ventauri px-3 py-2 text-base font-medium"
 								onClick={() => setIsMenuOpen(false)}
@@ -271,6 +249,13 @@ const Navbar: React.FC = () => {
 									onClick={() => setIsMenuOpen(false)}
 								>
 									Cart ({itemCount})
+								</Link>
+								<Link
+									to="/wishlists"
+									className="block text-gray-300 hover:text-ventauri px-3 py-2 text-base font-medium"
+									onClick={() => setIsMenuOpen(false)}
+								>
+									Wishlist
 								</Link>
 								{isAuthenticated && user ? (
 									<>
@@ -299,13 +284,6 @@ const Navbar: React.FC = () => {
 											onClick={() => setIsMenuOpen(false)}
 										>
 											Sign In
-										</Link>
-										<Link
-											to="/register"
-											className="block text-gray-300 hover:text-ventauri px-3 py-2 text-base font-medium"
-											onClick={() => setIsMenuOpen(false)}
-										>
-											Sign Up
 										</Link>
 									</>
 								)}

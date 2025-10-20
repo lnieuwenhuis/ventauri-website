@@ -35,8 +35,9 @@ func SeedProducts(db *gorm.DB) {
 			Weight:       0.2,
 			Images:       `["tshirt1.jpg", "tshirt2.jpg"]`,
 			IsActive:     true,
-			EnabledSizes: `["XS", "S", "M", "L", "XL"]`,
-		},
+            EnabledSizes: `["XS", "S", "M", "L", "XL"]`,
+            ShippingPrices: "[]",
+        },
 		{
 			Name:         "Ventauri Racing T-Shirt",
 			Description:  "Premium racing-inspired t-shirt with team colors",
@@ -46,8 +47,9 @@ func SeedProducts(db *gorm.DB) {
 			Weight:       0.2,
 			Images:       `["racing_tshirt1.jpg", "racing_tshirt2.jpg"]`,
 			IsActive:     true,
-			EnabledSizes: `["XS", "S", "M", "L", "XL"]`,
-		},
+            EnabledSizes: `["XS", "S", "M", "L", "XL"]`,
+            ShippingPrices: "[]",
+        },
 		{
 			Name:         "Ventauri Team T-Shirt",
 			Description:  "Official team t-shirt worn by crew members",
@@ -57,8 +59,9 @@ func SeedProducts(db *gorm.DB) {
 			Weight:       0.2,
 			Images:       `["team_tshirt1.jpg", "team_tshirt2.jpg"]`,
 			IsActive:     true,
-			EnabledSizes: `["XS", "S", "M", "L", "XL"]`,
-		},
+            EnabledSizes: `["XS", "S", "M", "L", "XL"]`,
+            ShippingPrices: "[]",
+        },
 		// Hoodies (3 products)
 		{
 			Name:         "Ventauri Classic Hoodie",
@@ -69,8 +72,9 @@ func SeedProducts(db *gorm.DB) {
 			Weight:       0.8,
 			Images:       `["hoodie1.jpg", "hoodie2.jpg"]`,
 			IsActive:     true,
-			EnabledSizes: `["S", "M", "L", "XL", "2XL"]`,
-		},
+            EnabledSizes: `["S", "M", "L", "XL", "2XL"]`,
+            ShippingPrices: "[]",
+        },
 		{
 			Name:         "Ventauri Racing Hoodie",
 			Description:  "Premium racing hoodie with team branding",
@@ -80,8 +84,9 @@ func SeedProducts(db *gorm.DB) {
 			Weight:       0.8,
 			Images:       `["racing_hoodie1.jpg", "racing_hoodie2.jpg"]`,
 			IsActive:     true,
-			EnabledSizes: `["S", "M", "L", "XL", "2XL"]`,
-		},
+            EnabledSizes: `["S", "M", "L", "XL", "2XL"]`,
+            ShippingPrices: "[]",
+        },
 		{
 			Name:         "Ventauri Zip-Up Hoodie",
 			Description:  "Stylish zip-up hoodie perfect for any weather",
@@ -92,6 +97,7 @@ func SeedProducts(db *gorm.DB) {
 			Images:       `["zip_hoodie1.jpg", "zip_hoodie2.jpg"]`,
 			IsActive:     true,
 			EnabledSizes: `["S", "M", "L", "XL", "2XL"]`,
+			ShippingPrices: "[]",
 		},
 		// Caps (2 products)
 		{
@@ -104,6 +110,7 @@ func SeedProducts(db *gorm.DB) {
 			Images:       `["cap1.jpg", "cap2.jpg"]`,
 			IsActive:     true,
 			EnabledSizes: `["S", "M", "L", "XL"]`,
+			ShippingPrices: "[]",
 		},
 		{
 			Name:         "Ventauri Classic Cap",
@@ -115,6 +122,7 @@ func SeedProducts(db *gorm.DB) {
 			Images:       `["classic_cap1.jpg", "classic_cap2.jpg"]`,
 			IsActive:     true,
 			EnabledSizes: `["S", "M", "L", "XL"]`,
+			ShippingPrices: "[]",
 		},
 		// Polo Shirts (2 products)
 		{
@@ -126,8 +134,9 @@ func SeedProducts(db *gorm.DB) {
 			Weight:       0.3,
 			Images:       `["polo1.jpg", "polo2.jpg"]`,
 			IsActive:     true,
-			EnabledSizes: `["XS", "S", "M", "L", "XL"]`,
-		},
+            EnabledSizes: `["XS", "S", "M", "L", "XL"]`,
+            ShippingPrices: "[]",
+        },
 		{
 			Name:         "Ventauri Team Polo",
 			Description:  "Official team polo shirt for formal events",
@@ -138,6 +147,7 @@ func SeedProducts(db *gorm.DB) {
 			Images:       `["team_polo1.jpg", "team_polo2.jpg"]`,
 			IsActive:     true,
 			EnabledSizes: `["XS", "S", "M", "L", "XL"]`,
+			ShippingPrices: "[]",
 		},
 		// Jackets (2 products)
 		{
@@ -149,8 +159,9 @@ func SeedProducts(db *gorm.DB) {
 			Weight:       0.6,
 			Images:       `["jacket1.jpg", "jacket2.jpg"]`,
 			IsActive:     true,
-			EnabledSizes: `["S", "M", "L", "XL", "2XL"]`,
-		},
+            EnabledSizes: `["S", "M", "L", "XL", "2XL"]`,
+            ShippingPrices: "[]",
+        },
 		{
 			Name:         "Ventauri Windbreaker",
 			Description:  "Water-resistant windbreaker for outdoor activities",
@@ -161,6 +172,7 @@ func SeedProducts(db *gorm.DB) {
 			Images:       `["windbreaker1.jpg", "windbreaker2.jpg"]`,
 			IsActive:     true,
 			EnabledSizes: `["S", "M", "L", "XL", "2XL"]`,
+			ShippingPrices: "[]",
 		},
 	}
 

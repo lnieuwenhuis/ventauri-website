@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../../Components/Navbar';
 import { useCart } from '../../Contexts/CartContext';
 import usePageTitle from '../../hooks/usePageTitle';
@@ -18,6 +18,9 @@ interface Product {
 		id: string;
 		name: string;
 	};
+	// Selection-relevant fields from backend
+	enabledSizes?: string;
+	options?: string;
 }
 
 interface ProductsResponse {
@@ -54,6 +57,7 @@ export default function Home() {
 	const [loading, setLoading] = useState(true);
 	const apiURL = import.meta.env.VITE_BACKEND_URL || '';
 	const { addToCart, loading: cartLoading } = useCart();
+	const navigate = useNavigate();
 	const [championshipStats, setChampionshipStats] = useState<ChampionshipStats>({
 		firstDriverPosition: '--',
 		firstDriverName: 'Loading...',
@@ -119,8 +123,31 @@ export default function Home() {
 		return [];
 	};
 
-	const handleAddToCart = async (productId: string) => {
-		await addToCart(productId, 1);
+	// Helpers to parse selection requirements
+	const parseList = (json?: string): string[] => {
+		try {
+			if (json && json.trim()) {
+				const parsed = JSON.parse(json);
+				if (Array.isArray(parsed)) {
+					return parsed.map((v) => String(v)).filter((s) => s.trim().length > 0);
+				}
+			}
+		} catch (err) {
+			void err; // ignore parse errors
+		}
+		return [];
+	};
+	const requiresSelection = (p: Product): boolean => {
+		return parseList(p.enabledSizes).length > 0 || parseList(p.options).length > 0;
+	};
+
+	const handleAddToCart = async (product: Product) => {
+		if (requiresSelection(product)) {
+			// Redirect to product page for selection
+			navigate(`/product/${product.id}`);
+			return;
+		}
+		await addToCart(product.id, 1);
 	};
 
 	return (
@@ -180,6 +207,7 @@ export default function Home() {
 							{featuredProducts.map((product) => {
 								const productImages = parseImages(product.images);
 								const firstImage = productImages.length > 0 ? productImages[0] : null;
+								const needsSelection = requiresSelection(product);
 
 								return (
 									<div
@@ -220,11 +248,11 @@ export default function Home() {
 													€{product.price.toFixed(2)}
 												</span>
 												<button
-													onClick={() => handleAddToCart(product.id)}
+													onClick={() => handleAddToCart(product)}
 													disabled={cartLoading}
 													className="bg-ventauri text-black px-4 py-2 rounded font-semibold hover:bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 												>
-													{cartLoading ? 'Adding...' : 'Add to Cart'}
+													{cartLoading ? 'Adding...' : needsSelection ? 'Select Options' : 'Add to Cart'}
 												</button>
 											</div>
 										</div>

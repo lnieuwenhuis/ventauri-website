@@ -29,6 +29,7 @@ interface OrderItem {
         size: string;
         price_adjust: number;
     };
+    options?: string; // JSON string of customization options
 }
 
 interface Order {
@@ -45,7 +46,23 @@ interface Order {
     shipping_address_id?: string;
     billing_address_id?: string;
     payment_method_id?: string | null;
+    shipping_estimate?: string;
     items: OrderItem[];
+}
+
+// New: Review type
+interface Review {
+    id: string;
+    userId: string;
+    productId: string;
+    orderId: string;
+    rating: number;
+    title: string;
+    comment: string;
+    isVerified: boolean;
+    isApproved: boolean;
+    helpfulCount: number;
+    createdAt: string;
 }
 
 const Orders: React.FC = () => {
@@ -59,6 +76,12 @@ const Orders: React.FC = () => {
 	const [totalPages, setTotalPages] = useState(1);
     const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
     const cartClearedRef = useRef(false);
+    // New: review states
+    const [userReviews, setUserReviews] = useState<Review[]>([]);
+    const [reviewModalOpen, setReviewModalOpen] = useState(false);
+    const [reviewLoading, setReviewLoading] = useState(false);
+    const [reviewError, setReviewError] = useState<string | null>(null);
+    const [reviewForm, setReviewForm] = useState<{ rating: number; title: string; comment: string; orderId?: string; productId?: string; reviewId?: string }>({ rating: 5, title: '', comment: '' });
 	usePageTitle('Orders');
 
 	const API_BASE_URL =
@@ -70,6 +93,41 @@ const Orders: React.FC = () => {
 		} catch {
 			return [];
 		}
+	};
+
+	// Parse customization options JSON string to array of objects
+	const parseOptions = (options?: string): Array<Record<string, unknown>> => {
+		const isPlainObject = (o: unknown): o is Record<string, unknown> => {
+			return !!o && typeof o === 'object' && !Array.isArray(o);
+		};
+		const filterObjectArray = (arr: unknown[]): Array<Record<string, unknown>> => {
+			return arr.filter(isPlainObject) as Array<Record<string, unknown>>;
+		};
+
+		if (!options || options.trim() === '') return [];
+		try {
+			const first = JSON.parse(options);
+			if (Array.isArray(first)) {
+				return filterObjectArray(first);
+			}
+			if (typeof first === 'string') {
+				// Handle double-encoded JSON string case
+				try {
+					const second = JSON.parse(first);
+					if (Array.isArray(second)) {
+						return filterObjectArray(second);
+					}
+				} catch {
+					return [];
+				}
+			}
+			if (isPlainObject(first)) {
+				return [first];
+			}
+		} catch {
+			// Ignore parse errors and return empty list
+		}
+		return [];
 	};
 
 	const fetchOrders = async (page: number = 1) => {
@@ -99,6 +157,21 @@ const Orders: React.FC = () => {
 			setLoading(false);
 		}
 	};
+
+    // New: fetch user reviews
+    const fetchUserReviews = async () => {
+        try {
+            const resp = await fetch(`${API_BASE_URL}/api/reviews/my?page=1&limit=100`, {
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            if (!resp.ok) return;
+            const data = await resp.json();
+            setUserReviews(Array.isArray(data.data) ? data.data : []);
+        } catch {
+            // ignore
+        }
+    };
 
     useEffect(() => {
         // Show a banner if redirected back from Stripe
@@ -159,9 +232,52 @@ const Orders: React.FC = () => {
     useEffect(() => {
         if (user) {
             fetchOrders(currentPage);
+            fetchUserReviews();
         }
         // eslint-disable-next-line
     }, [user, currentPage]);
+
+    const openReviewModal = (orderId: string, productId: string) => {
+        const existing = userReviews.find(r => r.orderId === orderId && r.productId === productId);
+        if (existing) {
+            setReviewForm({ rating: existing.rating, title: existing.title, comment: existing.comment, orderId, productId, reviewId: existing.id });
+        } else {
+            setReviewForm({ rating: 5, title: '', comment: '', orderId, productId });
+        }
+        setReviewError(null);
+        setReviewModalOpen(true);
+    };
+
+    const closeReviewModal = () => { setReviewModalOpen(false); setReviewError(null); };
+
+    const submitReview = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!reviewForm.orderId || !reviewForm.productId) return;
+        try {
+            setReviewLoading(true);
+            const isEdit = !!reviewForm.reviewId;
+            const url = isEdit ? `${API_BASE_URL}/api/reviews/${reviewForm.reviewId}` : `${API_BASE_URL}/api/reviews/`;
+            const method = isEdit ? 'PUT' : 'POST';
+            const body = isEdit ? { rating: reviewForm.rating, title: reviewForm.title, comment: reviewForm.comment } : { orderId: reviewForm.orderId, productId: reviewForm.productId, rating: reviewForm.rating, title: reviewForm.title, comment: reviewForm.comment };
+            const resp = await fetch(url, { method, credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            if (!resp.ok) {
+                const msg = await resp.json().catch(() => ({} as Record<string, unknown>));
+                throw new Error((msg as { error?: string })?.error || `Failed to ${isEdit ? 'update' : 'create'} review`);
+            }
+            const resJson = await resp.json();
+            const newReview: Review = resJson.data;
+            if (isEdit) {
+                setUserReviews(prev => prev.map(r => r.id === newReview.id ? newReview : r));
+            } else {
+                setUserReviews(prev => [newReview, ...prev]);
+            }
+            setReviewModalOpen(false);
+        } catch (err) {
+            setReviewError(err instanceof Error ? err.message : 'An error occurred');
+        } finally {
+            setReviewLoading(false);
+        }
+    };
 
 	const getStatusColor = (status: string) => {
 		switch (status.toLowerCase()) {
@@ -173,6 +289,8 @@ const Orders: React.FC = () => {
 				return 'bg-purple-900 text-purple-300';
 			case 'delivered':
 				return 'bg-green-900 text-green-300';
+            case 'completed':
+                return 'bg-green-900 text-green-300';
 			case 'cancelled':
 				return 'bg-red-900 text-red-300';
 			default:
@@ -274,7 +392,7 @@ const Orders: React.FC = () => {
 						</div>
 					</div>
 				) : (
-					<>
+					<React.Fragment>
 						<div className="space-y-6">
 							{orders.map((order) => (
 								<div
@@ -296,13 +414,20 @@ const Orders: React.FC = () => {
 													})}
 												</p>
 											</div>
-											<span
-												className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium capitalize ${getStatusColor(
-													order.status
-												)}`}
-											>
-												{order.status}
-											</span>
+                                        <div className="text-right">
+                                            <span
+                                                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium capitalize ${getStatusColor(
+                                                    order.status
+                                                )}`}
+                                            >
+                                                {order.status}
+                                            </span>
+                                            {order.status === 'shipped' && order.shipping_estimate && (
+                                                <div className="mt-2 text-xs text-gray-400">
+                                                    Estimated delivery: {order.shipping_estimate}
+                                                </div>
+                                            )}
+                                        </div>
 										</div>
 									</div>
 
@@ -310,122 +435,195 @@ const Orders: React.FC = () => {
 										{order.items && order.items.length > 0 ? (
 											<div className="space-y-4">
 												{order.items.map((item) => {
-													const productImages = item.product?.images
-														? parseImages(item.product.images)
-														: [];
-													const firstImage = productImages.length > 0 ? productImages[0] : null;
-													
-													return (
-														<div key={item.id} className="flex items-center space-x-6">
-															<div className="flex-shrink-0">
-																{firstImage ? (
-																	<img
-																		className="h-20 w-20 rounded-lg object-cover border border-gray-600"
-																		src={firstImage}
-																		alt={item.product?.name || 'Product'}
-																	/>
-																) : (
-																	<div className="h-20 w-20 rounded-lg bg-gray-700 flex items-center justify-center border border-gray-600">
-																		<span className="text-3xl text-ventauri">📦</span>
-																	</div>
-																)}
+											const productImages = item.product?.images
+												? parseImages(item.product.images)
+												: [];
+											const firstImage = productImages.length > 0 ? productImages[0] : null;
+											const optionList = parseOptions(item.options);
+											const productIdForReview = item.product?.id || item.product_id;
+											
+											return (
+												<div key={item.id} className="flex items-center space-x-6">
+													<div className="flex-shrink-0">
+														{firstImage ? (
+															<img
+																className="h-20 w-20 rounded-lg object-cover border border-gray-600"
+																src={firstImage}
+																alt={item.product?.name || 'Product'}
+															/>
+														) : (
+															<div className="h-20 w-20 rounded-lg bg-gray-700 flex items-center justify-center border border-gray-600">
+																<span className="text-3xl text-ventauri">📦</span>
 															</div>
-															<div className="flex-1 min-w-0">
-																<h4 className="text-lg font-medium text-white mb-1">
-																	{item.product?.name || 'Product'}
-																</h4>
-																<div className="flex items-center space-x-4 text-gray-400">
-																	<span>Qty: {item.quantity}</span>
-																	{item.product_variant && (
-																		<>
-																			<span>•</span>
-																			<span>Size: {item.product_variant.size}</span>
-																			<span>•</span>
-																			<span>{item.product_variant.title}</span>
-																		</>
-																	)}
+														)}
+													</div>
+													<div className="flex-1 min-w-0">
+														<h4 className="text-lg font-medium text-white mb-1">
+															{item.product?.name || 'Product'}
+														</h4>
+														<div className="flex items-center space-x-4 text-gray-400">
+															<span>Qty: {item.quantity}</span>
+															{item.product_variant && (
+																<>
 																	<span>•</span>
-																	<span>€{item.unit_price.toFixed(2)} each</span>
+																	<span>Size: {item.product_variant.size}</span>
+																	<span>•</span>
+																	<span>{item.product_variant.title}</span>
+																</>
+															)}
+															<span>•</span>
+															<span>€{item.unit_price.toFixed(2)} each</span>
+														</div>
+														{optionList.length > 0 && (
+															<div className="mt-2">
+																<span className="text-gray-400">Customizations:</span>
+																<div className="mt-1 space-y-1">
+																	{optionList.map((optObj, idx) => (
+																		<div key={idx}>
+																			{Object.entries(optObj).map(([k, v]) => (
+																				<div key={k} className="text-gray-300">
+																					<span className="text-gray-400">{k}:</span> {String(v)}
+																				</div>
+																			))}
+																		</div>
+																	))}
 																</div>
 															</div>
-															<div className="text-right">
-																<p className="text-lg font-bold text-ventauri">
-																	€{item.subtotal.toFixed(2)}
-																</p>
-																<p className="text-gray-400 text-sm">Subtotal</p>
-															</div>
-														</div>
-													);
-												})}
-											</div>
-										) : (
-											<div className="text-center text-gray-400 py-4">
-												No items found for this order
-											</div>
-										)}
-										
-										{/* Order Total */}
-										<div className="mt-6 pt-4 border-t border-gray-700">
-											<div className="flex justify-between items-center">
-												<div className="text-gray-400">
-													<p>Subtotal: €{order.subtotal.toFixed(2)}</p>
-													<p>Tax: €{order.tax.toFixed(2)}</p>
-													<p>Shipping: €{order.shipping.toFixed(2)}</p>
-												</div>
-												<div className="text-right">
-													<p className="text-2xl font-bold text-ventauri">
-														€{order.total.toFixed(2)}
-													</p>
-													<p className="text-gray-400 text-sm">Total</p>
-												</div>
-											</div>
+														)}
+														{/* New: Review button for delivered/completed orders */}
+									{['delivered', 'completed'].includes(order.status.toLowerCase()) && (
+										<div className="mt-3">
+											<button
+												onClick={() => openReviewModal(order.id, productIdForReview)}
+												className="inline-flex items-center bg-ventauri text-black px-3 py-1 rounded-lg font-semibold hover:bg-yellow-300 transition-colors duration-200"
+											>
+												{userReviews.some(r => r.orderId === order.id && r.productId === productIdForReview) ? 'Edit Review' : 'Write Review'}
+											</button>
 										</div>
-									</div>
-								</div>
-							))}
+									)}
+													</div>
+													<div className="text-right">
+														<p className="text-lg font-bold text-ventauri">€{item.subtotal.toFixed(2)}</p>
+													</div>
+												</div>
+											);
+										})}
 						</div>
-
-						{/* Pagination */}
-						{totalPages > 1 && (
-							<div className="mt-12 flex justify-center">
-								<nav className="flex items-center space-x-2">
-									<button
-										onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-										disabled={currentPage === 1}
-										className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-									>
-										Previous
-									</button>
-
-									{Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-										<button
-											key={page}
-											onClick={() => setCurrentPage(page)}
-											className={`px-4 py-2 rounded-lg font-medium transition-colors duration-200 ${
-												page === currentPage
-													? 'bg-ventauri text-black'
-													: 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-											}`}
-										>
-											{page}
-										</button>
-									))}
-
-									<button
-										onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-										disabled={currentPage === totalPages}
-										className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-									>
-										Next
-									</button>
-								</nav>
+					) : (
+						<div className="text-center text-gray-400 py-4">
+							No items found for this order
+						</div>
+					)}
+					
+					<div className="mt-6 pt-4 border-t border-gray-700">
+						<div className="flex justify-between items-center">
+							<div className="text-gray-400">
+								<p>Subtotal: €{order.subtotal.toFixed(2)}</p>
+								<p>Shipping: €{order.shipping.toFixed(2)}</p>
 							</div>
-						)}
-					</>
-				)}
+							<div className="text-right">
+								<p className="text-2xl font-bold text-ventauri">
+									€{order.total.toFixed(2)}
+								</p>
+								<p className="text-gray-400 text-sm">Total</p>
+							</div>
+						</div>
+					</div>
+				</div>
 			</div>
+		))}
+	</div>
+
+{totalPages > 1 && (
+	<div className="mt-12 flex justify-center">
+		<nav className="flex items-center space-x-2">
+			<button
+				onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+				disabled={currentPage === 1}
+				className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+			>
+				Previous
+			</button>
+
+			{Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+				<button
+					key={page}
+					onClick={() => setCurrentPage(page)}
+					className={`px-4 py-2 rounded-lg font-medium transition-colors duration-200 ${
+						page === currentPage
+							? 'bg-ventauri text-black'
+							: 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+					}`}
+				>
+					{page}
+				</button>
+			))}
+
+			<button
+				onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+				disabled={currentPage === totalPages}
+				className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+			>
+				Next
+			</button>
+		</nav>
+	</div>
+)}
+
+
+{/* New: Review Modal */}
+{reviewModalOpen && (
+	<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+		<div className="bg-gray-800 border border-gray-700 rounded-lg w-full max-w-lg p-6">
+			<h3 className="text-xl font-semibold text-white mb-4">{reviewForm.reviewId ? 'Edit Review' : 'Write Review'}</h3>
+			{reviewError && (
+				<div className="mb-3 text-red-400">{reviewError}</div>
+			)}
+			<form onSubmit={submitReview} className="space-y-4">
+				<div>
+					<label className="block text-gray-300 mb-1">Rating</label>
+					<select
+						value={reviewForm.rating}
+						onChange={(e) => setReviewForm((f) => ({ ...f, rating: Number(e.target.value) }))}
+						className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white"
+					>
+						{[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
+					</select>
+				</div>
+				<div>
+					<label className="block text-gray-300 mb-1">Title</label>
+					<input
+						type="text"
+						value={reviewForm.title}
+						onChange={(e) => setReviewForm((f) => ({ ...f, title: e.target.value }))}
+						className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white"
+						required
+					/>
+				</div>
+				<div>
+					<label className="block text-gray-300 mb-1">Comment</label>
+					<textarea
+						value={reviewForm.comment}
+						onChange={(e) => setReviewForm((f) => ({ ...f, comment: e.target.value }))}
+						className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white min-h-[120px]"
+						required
+					/>
+				</div>
+				<div className="flex justify-end gap-3 pt-2">
+					<button type="button" onClick={closeReviewModal} className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600">Cancel</button>
+					<button type="submit" disabled={reviewLoading} className="px-4 py-2 bg-ventauri text-black rounded hover:bg-yellow-300 disabled:opacity-50">
+						{reviewLoading ? 'Saving…' : 'Save Review'}
+					</button>
+				</div>
+			</form>
 		</div>
-	);
+	</div>
+)}
+</React.Fragment>
+)}
+</div>
+</div>
+);
 };
 
 export default Orders;

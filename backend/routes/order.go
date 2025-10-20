@@ -1,17 +1,18 @@
 package routes
 
 import (
-	"fmt"
-	"net/http"
-	"strconv"
-	"time"
+    "encoding/json"
+    "fmt"
+    "net/http"
+    "strconv"
+    "time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	"gorm.io/gorm"
+    "github.com/gin-gonic/gin"
+    "github.com/google/uuid"
+    "gorm.io/gorm"
 
-	"ventauri-merch/models"
-	"ventauri-merch/utils"
+    "ventauri-merch/models"
+    "ventauri-merch/utils"
 )
 
 func SetupOrderRoutes(router *gin.Engine, db *gorm.DB) {
@@ -72,16 +73,17 @@ func getOrder(db *gorm.DB) gin.HandlerFunc {
 func createOrder(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, _ := utils.GetCurrentUser(c)
-		var req struct {
-			Items []struct {
-				ProductID        string  `json:"productId" binding:"required"`
-				ProductVariantID *string `json:"productVariantId,omitempty"`
-				Quantity         int     `json:"quantity" binding:"required,min=1"`
-			} `json:"items" binding:"required,min=1"`
-			ShippingAddressID string  `json:"shippingAddressId" binding:"required"`
-			BillingAddressID  string  `json:"billingAddressId" binding:"required"`
-			PaymentMethodID   *string `json:"paymentMethodId,omitempty"`
-		}
+        var req struct {
+            Items []struct {
+                ProductID        string          `json:"productId" binding:"required"`
+                ProductVariantID *string         `json:"productVariantId,omitempty"`
+                Quantity         int             `json:"quantity" binding:"required,min=1"`
+                Options          json.RawMessage `json:"options"`
+            } `json:"items" binding:"required,min=1"`
+            ShippingAddressID string  `json:"shippingAddressId" binding:"required"`
+            BillingAddressID  string  `json:"billingAddressId" binding:"required"`
+            PaymentMethodID   *string `json:"paymentMethodId,omitempty"`
+        }
 
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -142,17 +144,17 @@ func createOrder(db *gorm.DB) gin.HandlerFunc {
 			subtotal := unitPrice * float64(item.Quantity)
 			orderSubtotal += subtotal
 
-			orderItem := models.OrderItem{
-				ProductID:        productID,
-				ProductVariantID: variantID,
-				Quantity:         item.Quantity,
-				UnitPrice:        unitPrice,
-				Subtotal:         subtotal,
-			}
+            orderItem := models.OrderItem{
+                ProductID:        productID,
+                ProductVariantID: variantID,
+                Quantity:         item.Quantity,
+                UnitPrice:        unitPrice,
+                Subtotal:         subtotal,
+                Options:          string(item.Options),
+            }
 			orderItems = append(orderItems, orderItem)
 		}
 
-        // All-inclusive pricing: product prices include tax and shipping
         // Do not add extra tax or shipping; totals equal subtotal
         tax := 0.0
         shipping := 0.0
@@ -318,7 +320,8 @@ func updateOrderStatus(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
 		var req struct {
-			Status string `json:"status" binding:"required"`
+			Status           string  `json:"status" binding:"required"`
+			ShippingEstimate *string `json:"shippingEstimate,omitempty"`
 		}
 
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -333,6 +336,9 @@ func updateOrderStatus(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		order.Status = req.Status
+		if req.ShippingEstimate != nil {
+			order.ShippingEstimate = *req.ShippingEstimate
+		}
 		if err := db.Save(&order).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update order status"})
 			return
@@ -378,11 +384,12 @@ func updateOrder(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
 		var req struct {
-			Subtotal *float64 `json:"subtotal,omitempty"`
-			Tax      *float64 `json:"tax,omitempty"`
-			Shipping *float64 `json:"shipping,omitempty"`
-			Total    *float64 `json:"total,omitempty"`
-			Status   *string  `json:"status,omitempty"`
+			Subtotal         *float64 `json:"subtotal,omitempty"`
+			Tax              *float64 `json:"tax,omitempty"`
+			Shipping         *float64 `json:"shipping,omitempty"`
+			Total            *float64 `json:"total,omitempty"`
+			Status           *string  `json:"status,omitempty"`
+			ShippingEstimate *string  `json:"shippingEstimate,omitempty"`
 		}
 
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -411,6 +418,9 @@ func updateOrder(db *gorm.DB) gin.HandlerFunc {
 		}
 		if req.Status != nil {
 			order.Status = *req.Status
+		}
+		if req.ShippingEstimate != nil {
+			order.ShippingEstimate = *req.ShippingEstimate
 		}
 
 		if err := db.Save(&order).Error; err != nil {

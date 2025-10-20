@@ -20,6 +20,7 @@ interface OrderItem {
 	quantity: number;
 	unitPrice: number;
 	subtotal: number;
+	customizations?: Array<Record<string, unknown>>;
 }
 
 
@@ -131,6 +132,20 @@ const ViewModal = <
 																	<div className="text-gray-600 mt-1">
 																		<span className="font-medium">Variant:</span> {item.variantInfo || 'Standard'}
 																	</div>
+																	{item.customizations && item.customizations.length > 0 && (
+																		<div className="text-gray-600 mt-1">
+																			<span className="font-medium">Customizations:</span>
+																			<div className="mt-1 space-y-1">
+																				{item.customizations.map((opt, i) => (
+																					<div key={i}>
+																						{Object.entries(opt).map(([k, v]) => (
+																							<div key={k}><span className="font-medium">{k}:</span> {String(v)}</div>
+																						))}
+																					</div>
+																				))}
+																			</div>
+																		</div>
+																	)}
 																	<div className="text-gray-600">
 																		<span className="font-medium">Quantity:</span> {item.quantity} × {item.unitPrice} = <span className="font-semibold">{item.subtotal}</span>
 																	</div>

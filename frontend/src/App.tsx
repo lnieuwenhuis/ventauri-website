@@ -11,6 +11,8 @@ import PasswordProtection from './Components/PasswordProtection';
 
 import Home from './Pages/Public/Home';
 import Login from './Pages/Public/Login';
+import Terms from './Pages/Public/Terms';
+import Privacy from './Pages/Public/Privacy';
 import AdminLayout from './Components/Admin/AdminLayout';
 import AdminDashboard from './Pages/Admin/Dashboard';
 import AdminProducts from './Pages/Admin/Products';
@@ -19,7 +21,6 @@ import AdminOrders from './Pages/Admin/Orders';
 import AdminUsers from './Pages/Admin/Users';
 import AdminCoupons from './Pages/Admin/Coupons';
 import AdminReviews from './Pages/Admin/Reviews';
-import AdminPayments from './Pages/Admin/Payments';
 import AdminAddresses from './Pages/Admin/Addresses';
 import AdminWishlists from './Pages/Admin/Wishlists';
 import AdminTeamMembers from './Pages/Admin/TeamMembers';
@@ -36,6 +37,7 @@ import About from './Pages/Public/About';
 import Competitions from './Pages/Public/Competitions';
 import CompetitionDetail from './Pages/Public/CompetitionDetail';
 import Contact from './Pages/Public/Contact';
+import Wishlists from './Pages/Protected/Wishlists';
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -57,11 +59,28 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 // App routes component
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+
 const AppRoutes = () => {
+	const location = useLocation();
+
+	useEffect(() => {
+		const isAdmin = location.pathname.startsWith('/admin');
+		const body = document.body;
+		// Toggle background classes for overscroll color
+		body.classList.toggle('admin-bg', isAdmin);
+		body.classList.toggle('site-bg', !isAdmin);
+		// Also set html background directly for safety across browsers
+		document.documentElement.style.backgroundColor = isAdmin ? '#ffffff' : '#111827';
+	}, [location.pathname]);
+
 	return (
 		<Routes>
 			<Route path="/" element={<Home />} />
 			<Route path="/login" element={<Login />} />
+			<Route path="/terms" element={<Terms />} />
+			<Route path="/privacy" element={<Privacy />} />
 
 			{/* Protected Admin Routes */}
 			<Route
@@ -80,7 +99,7 @@ const AppRoutes = () => {
 				<Route path="users" element={<AdminUsers />} />
 				<Route path="coupons" element={<AdminCoupons />} />
 				<Route path="reviews" element={<AdminReviews />} />
-				<Route path="payments" element={<AdminPayments />} />
+				{/* Removed: payments */}
 				<Route path="addresses" element={<AdminAddresses />} />
 				<Route path="wishlists" element={<AdminWishlists />} />
 				<Route path="team-members" element={<AdminTeamMembers />} />
@@ -91,11 +110,12 @@ const AppRoutes = () => {
 			<Route path="/product/:id" element={<Product />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
-			<Route path="/profile" element={<Profile />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/orders" element={<Orders />} />
             <Route path="/addresses" element={<ProtectedRoute><Addresses /></ProtectedRoute>} />
-			<Route path="/about" element={<About />} />
-			<Route path="/competitions" element={<Competitions />} />
+            <Route path="/wishlists" element={<ProtectedRoute><Wishlists /></ProtectedRoute>} />
+            <Route path="/about" element={<About />} />
+            <Route path="/competitions" element={<Competitions />} />
 			<Route path="/competitions/:id" element={<CompetitionDetail />} />
 			<Route path="/contact" element={<Contact />} />
 

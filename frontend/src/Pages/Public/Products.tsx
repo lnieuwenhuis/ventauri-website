@@ -4,6 +4,7 @@ import Navbar from '../../Components/Navbar';
 import { Link } from 'react-router-dom';
 import { useCart } from '../../Contexts/CartContext';
 import usePageTitle from '../../hooks/usePageTitle';
+import { useAuth } from '../../Contexts/AuthContext';
 
 interface ProductVariant {
 	id: string;
@@ -33,6 +34,9 @@ interface Product {
 		name: string;
 	};
 	variants?: ProductVariant[];
+	// Selection-relevant fields from backend
+	enabledSizes?: string;
+	options?: string;
 }
 
 interface Category {
@@ -47,6 +51,8 @@ interface ProductsResponse {
 	limit: number;
 }
 
+interface WishlistItem { id: string; productId: string; }
+
 // In the component
 export default function Products() {
 	usePageTitle('Shop');
@@ -54,6 +60,7 @@ export default function Products() {
 	const [categories, setCategories] = useState<Category[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [searchTerm, setSearchTerm] = useState('');
+	const [debouncedSearch, setDebouncedSearch] = useState('');
 	const [selectedCategory, setSelectedCategory] = useState<string>('');
 	const [sortBy, setSortBy] = useState<string>('newest');
 	const [currentPage, setCurrentPage] = useState(1);
@@ -74,6 +81,67 @@ export default function Products() {
 	const apiURL = import.meta.env.VITE_BACKEND_URL || '';
 
 	const { addToCart, loading: cartLoading } = useCart();
+	const { isAuthenticated } = useAuth();
+	const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
+	const [wishlistLoadingId, setWishlistLoadingId] = useState<string | null>(null);
+
+	// Fetch wishlist to mark toggles
+	useEffect(() => {
+		const fetchWishlist = async () => {
+			if (!isAuthenticated) return;
+			try {
+				const res = await fetch(`${apiURL}/api/wishlist/`, { credentials: 'include' });
+				if (!res.ok) return;
+				const data = await res.json();
+				const ids = new Set<string>((data.data || []).map((w: WishlistItem) => String(w.productId)));
+				setWishlistIds(ids);
+			} catch (e) { console.warn('Failed to fetch wishlist', e); }
+		};
+		fetchWishlist();
+	}, [isAuthenticated, apiURL]);
+
+	const toggleWishlist = async (productId: string, e?: React.MouseEvent) => {
+		if (e) { e.preventDefault(); e.stopPropagation(); }
+		if (!isAuthenticated) { window.location.href = '/login'; return; }
+		try {
+			setWishlistLoadingId(productId);
+			if (!wishlistIds.has(productId)) {
+				const res = await fetch(`${apiURL}/api/wishlist/`, {
+					method: 'POST',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ productId }),
+				});
+				if (res.ok) setWishlistIds((prev) => new Set([...prev, productId]));
+			} else {
+				const res = await fetch(`${apiURL}/api/wishlist/product/${productId}`, {
+					method: 'DELETE',
+					credentials: 'include',
+				});
+				if (res.ok) setWishlistIds((prev) => { const next = new Set([...prev]); next.delete(productId); return next; });
+			}
+		} finally {
+			setWishlistLoadingId(null);
+		}
+	};
+
+	// Helper to detect if selection is required
+	const parseList = (json?: string): string[] => {
+		try {
+			if (json && json.trim()) {
+				const parsed = JSON.parse(json);
+				if (Array.isArray(parsed)) {
+					return parsed.map((v) => String(v)).filter((s) => s.trim().length > 0);
+				}
+			}
+		} catch (err) {
+			void err;
+		}
+		return [];
+	};
+	const requiresSelection = (p: Product): boolean => {
+		return parseList(p.enabledSizes).length > 0 || parseList(p.options).length > 0;
+	};
 
 	// Variant selection logic (same as Product.tsx)
 	const getSelectedVariant = (): ProductVariant | null => {
@@ -146,15 +214,9 @@ export default function Products() {
 	};
 
 	const handleAddToCartClick = async (product: Product, e: React.MouseEvent) => {
-		e.preventDefault();
-
-		// If product has variants, show popup
-		if (product.variants && product.variants.length > 0) {
-			setSelectedProduct(product);
-			setShowVariantPopup(true);
-			clearSelections();
-		} else {
-			// If no variants, add directly to cart
+		const needsSelection = requiresSelection(product);
+		if (!needsSelection) {
+			e.preventDefault();
 			await addToCart(product.id, 1);
 		}
 	};
@@ -181,7 +243,10 @@ export default function Products() {
 		const sortFromUrl = searchParams.get('sort');
 
 		if (categoryFromUrl) setSelectedCategory(categoryFromUrl);
-		if (searchFromUrl) setSearchTerm(searchFromUrl);
+		if (searchFromUrl) {
+			setSearchTerm(searchFromUrl);
+			setDebouncedSearch(searchFromUrl);
+		}
 		if (sortFromUrl) setSortBy(sortFromUrl);
 	}, [searchParams]);
 
@@ -191,7 +256,7 @@ export default function Products() {
 			const params = new URLSearchParams({
 				page: currentPage.toString(),
 				limit: itemsPerPage.toString(),
-				...(searchTerm && { search: searchTerm }),
+				...(debouncedSearch && { search: debouncedSearch }),
 				...(selectedCategory && { categoryId: selectedCategory }),
 				...(sortBy && { sort: sortBy }),
 			});
@@ -224,7 +289,7 @@ export default function Products() {
 	useEffect(() => {
 		fetchProducts();
 		// eslint-disable-next-line
-	}, [currentPage, searchTerm, selectedCategory, sortBy]);
+	}, [currentPage, debouncedSearch, selectedCategory, sortBy]);
 
 	useEffect(() => {
 		fetchCategories();
@@ -240,8 +305,14 @@ export default function Products() {
 	const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
 		setSearchTerm(e.target.value);
 		setCurrentPage(1);
-		updateURL({ search: e.target.value || undefined });
 	};
+
+	useEffect(() => {
+		const id = setTimeout(() => {
+			setDebouncedSearch(searchTerm);
+		}, 300);
+		return () => clearTimeout(id);
+	}, [searchTerm]);
 
 	const handleSortChange = (sort: string) => {
 		setSortBy(sort);
@@ -262,6 +333,10 @@ export default function Products() {
 
 		setSearchParams(newSearchParams);
 	};
+
+	useEffect(() => {
+		updateURL({ search: debouncedSearch || undefined });
+	}, [debouncedSearch]);
 
 	const parseImages = (images: string): string[] => {
 		try {
@@ -420,7 +495,7 @@ export default function Products() {
 										<Link
 											key={product.id}
 											to={`/product/${product.id}`}
-											className="bg-gray-800 rounded-lg overflow-hidden hover:bg-gray-750 transition-colors group"
+											className="bg-gray-800 rounded-lg overflow-hidden hover:bg-gray-750 transition-colors group relative"
 										>
 											<div className="aspect-square overflow-hidden">
 												<img
@@ -432,6 +507,13 @@ export default function Products() {
 														target.src = 'https://picsum.photos/400/400';
 													}}
 												/>
+												<button
+													className={`absolute top-2 right-2 px-3 py-1 rounded text-sm font-medium ${wishlistIds.has(product.id) ? 'bg-gray-700 text-white' : 'border border-ventauri text-ventauri hover:bg-ventauri hover:text-black'}`}
+													onClick={(e) => toggleWishlist(product.id, e)}
+													disabled={wishlistLoadingId === product.id}
+												>
+													{wishlistLoadingId === product.id ? '...' : wishlistIds.has(product.id) ? 'Saved' : 'Wishlist'}
+												</button>
 											</div>
 											<div className="p-4">
 												<div className="mb-2">
@@ -456,7 +538,7 @@ export default function Products() {
 														onClick={(e) => handleAddToCartClick(product, e)}
 														disabled={cartLoading}
 													>
-														{cartLoading ? 'Adding...' : 'Add to Cart'}
+														{cartLoading ? 'Adding...' : requiresSelection(product) ? 'Select Options' : 'Add to Cart'}
 													</button>
 												</div>
 											</div>

@@ -25,6 +25,9 @@ type Order struct {
 	// Stripe integration
 	StripePaymentIntentID *string `gorm:"type:varchar(255);index:idx_order_stripe_pi" json:"stripe_payment_intent_id,omitempty"`
 
+	// Optional shipping ETA text for users (e.g., "2–4 business days")
+	ShippingEstimate string `gorm:"type:varchar(255)" json:"shipping_estimate,omitempty"`
+
 	User            User            `gorm:"foreignKey:UserID" json:"user"`
 	ShippingAddress Address         `gorm:"foreignKey:ShippingAddressID" json:"shipping_address"`
 	BillingAddress  Address         `gorm:"foreignKey:BillingAddressID" json:"billing_address"`

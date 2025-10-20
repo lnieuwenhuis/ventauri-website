@@ -90,9 +90,9 @@ func SeedOrders(db *gorm.DB) {
 			orderItems = append(orderItems, orderItem)
 		}
 
-		tax := orderSubtotal * 0.08
-		shipping := 5.99
-		total := orderSubtotal + tax + shipping
+		tax := 0.0
+		shipping := 0.0
+		total := orderSubtotal
 
 		order := models.Order{
 			UserID:            user.ID,

@@ -520,45 +520,62 @@ const AdminCompetitions: React.FC = () => {
 									)}
 									
 									{results.map((result, index) => (
-										<div key={index} className="flex gap-4 items-center p-4 border rounded-lg">
-											<select
-												value={result.driver}
-												onChange={(e) => handleResultChange(index, 'driver', e.target.value)}
-												className="flex-1 px-3 py-2 border rounded-lg bg-white"
-												disabled={getAvailableDrivers().length === 0}
-											>
-												<option value="">Select Driver...</option>
-												{getAvailableDrivers().map((member) => (
-													<option key={member.id} value={member.id}>
-														{getTeamMemberDisplayName(member)}
-													</option>
-												))}
-											</select>
-											{getAvailableDrivers().length === 0 && (
-												<div className="text-sm text-gray-500">
-													No drivers available
-												</div>
-											)}
-											<input
-												type="number"
-												placeholder="Quali Position"
-												value={result.quali_position}
-												onChange={(e) => handleResultChange(index, 'quali_position', parseInt(e.target.value) || 0)}
-												className="w-32 px-3 py-2 border rounded-lg"
-											/>
-											<input
-												type="number"
-												placeholder="Race Position"
-												value={result.race_position}
-												onChange={(e) => handleResultChange(index, 'race_position', parseInt(e.target.value) || 0)}
-												className="w-32 px-3 py-2 border rounded-lg"
-											/>
-											<button
-												onClick={() => handleRemoveResult(index)}
-												className="px-3 py-2 text-red-600 hover:text-red-800 border border-red-300 rounded-lg hover:bg-red-50"
-											>
-												×
-											</button>
+										<div key={index} className="grid grid-cols-12 gap-4 p-4 border rounded-lg">
+											<div className="col-span-12 sm:col-span-5">
+												<label htmlFor={`driver-${index}`} className="text-sm font-medium text-gray-600 mb-1">Driver</label>
+												<select
+													id={`driver-${index}`}
+													value={result.driver}
+													onChange={(e) => handleResultChange(index, 'driver', e.target.value)}
+													className="w-full px-3 py-2 border rounded-lg bg-white"
+													disabled={getAvailableDrivers().length === 0}
+												>
+													<option value="">Select Driver...</option>
+													{getAvailableDrivers().map((member) => (
+														<option key={member.id} value={member.id}>
+															{getTeamMemberDisplayName(member)}
+														</option>
+													))}
+												</select>
+												{getAvailableDrivers().length === 0 && (
+													<div className="text-xs text-gray-500 mt-1">No drivers available</div>
+												)}
+											</div>
+											<div className="col-span-6 sm:col-span-3">
+												<label htmlFor={`quali-position-${index}`} className="text-sm font-medium text-gray-600 mb-1">Qualifying Position</label>
+												<input
+													id={`quali-position-${index}`}
+													type="number"
+													value={result.quali_position}
+													onChange={(e) => handleResultChange(index, 'quali_position', parseInt(e.target.value) || 0)}
+													className="w-full px-3 py-2 border rounded-lg"
+												/>
+											</div>
+											<div className="col-span-6 sm:col-span-3">
+												<label htmlFor={`race-position-${index}`} className="text-sm font-medium text-gray-600 mb-1">Race Position</label>
+												<input
+													id={`race-position-${index}`}
+													type="number"
+													value={result.race_position}
+													onChange={(e) => handleResultChange(index, 'race_position', parseInt(e.target.value) || 0)}
+													className="w-full px-3 py-2 border rounded-lg"
+												/>
+											</div>
+											<div className="col-span-12 md:col-span-1 flex items-center justify-end">
+                                                <button
+                                                    onClick={() => handleRemoveResult(index)}
+                                                    className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-red-300 text-red-600 bg-red-50 hover:bg-red-100 hover:border-red-400 transition-colors"
+                                                    aria-label="Remove result"
+                                                >
+                                                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                        <path d="M3 6h18" />
+                                                        <path d="M8 6V4h8v2" />
+                                                        <path d="M19 6v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                                                        <path d="M10 11v6" />
+                                                        <path d="M14 11v6" />
+                                                    </svg>
+                                                </button>
+                                            </div>
 										</div>
 									))}
 									

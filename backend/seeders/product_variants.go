@@ -1,6 +1,7 @@
 package seeders
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
@@ -36,14 +37,32 @@ func SeedProductVariants(db *gorm.DB) {
 		{"Crisp White", "Clean white"},
 		{"Forest Green", "Rich green"},
 	}
-	sizes := []string{"XS", "S", "M", "L", "XL"}
+	// Use active sizes from DB (defaults to full range if empty)
+	sizes := models.GetAvailableSizes(db)
+	if len(sizes) == 0 {
+		sizes = []string{"2XS", "XS", "S", "M", "L", "XL", "2XL", "3XL"}
+	}
+
 	createdCount := 0
-	// Create 3-5 variants per product
-	for i, product := range products {
-		numVariants := 3 + (i % 3)
-		for j := 0; j < numVariants && createdCount < 75; j++ {
+	for _, product := range products {
+		// Determine enabled sizes for this product
+		var enabledSizes []string
+		if strings.TrimSpace(product.EnabledSizes) != "" {
+			_ = json.Unmarshal([]byte(product.EnabledSizes), &enabledSizes)
+		}
+		if len(enabledSizes) == 0 {
+			enabledSizes = sizes
+		}
+
+		// Seed up to 5 variants per product respecting enabled sizes
+		limit := 5
+		if len(enabledSizes) < limit {
+			limit = len(enabledSizes)
+		}
+
+		for j := 0; j < limit && createdCount < 75; j++ {
 			variantData := variants[j%len(variants)]
-			size := sizes[j%len(sizes)]
+			size := enabledSizes[j]
 			variant := models.ProductVariant{
 				ProductID:   product.ID,
 				SKU:         fmt.Sprintf("%s-%s-%s", product.SKU, size, strings.ToUpper(variantData.title[:3])),

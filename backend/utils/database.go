@@ -73,17 +73,18 @@ func InitDatabase() *gorm.DB {
 }
 
 func MigrateDatabase(db *gorm.DB) error {
-	return db.AutoMigrate(
-		&models.User{},
-		&models.Session{},
-		&models.Category{},
-		&models.Product{},
-		&models.ProductVariant{},
-		&models.Address{},
-		&models.PaymentMethod{},
-		&models.OrderItem{},
-		&models.Order{},
-		&models.Cart{},
+    return db.AutoMigrate(
+        &models.User{},
+        &models.Session{},
+        &models.Category{},
+        &models.Product{},
+        &models.ProductVariant{},
+        &models.SizeOption{},
+        &models.Address{},
+        &models.PaymentMethod{},
+        &models.OrderItem{},
+        &models.Order{},
+        &models.Cart{},
 		&models.Review{},
 		&models.Coupon{},
 		&models.Wishlist{},

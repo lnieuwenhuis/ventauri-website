@@ -18,6 +18,83 @@ import (
 	"ventauri-merch/utils"
 )
 
+// Helper: region detection and shipping price parsing
+var euCodes = map[string]bool{
+	"AT": true, "BE": true, "BG": true, "HR": true, "CY": true, "CZ": true, "DK": true, "EE": true,
+	"FI": true, "FR": true, "DE": true, "GR": true, "HU": true, "IE": true, "IT": true, "LV": true,
+	"LT": true, "LU": true, "MT": true, "NL": true, "PL": true, "PT": true, "RO": true, "SK": true,
+	"SI": true, "ES": true, "SE": true,
+}
+
+var euNames = map[string]bool{
+	"AUSTRIA": true, "BELGIUM": true, "BULGARIA": true, "CROATIA": true, "CYPRUS": true, "CZECH REPUBLIC": true,
+	"CZECHIA": true, "DENMARK": true, "ESTONIA": true, "FINLAND": true, "FRANCE": true, "GERMANY": true,
+	"GREECE": true, "HUNGARY": true, "IRELAND": true, "ITALY": true, "LATVIA": true, "LITHUANIA": true,
+	"LUXEMBOURG": true, "MALTA": true, "NETHERLANDS": true, "POLAND": true, "PORTUGAL": true, "ROMANIA": true,
+	"SLOVAKIA": true, "SLOVENIA": true, "SPAIN": true, "SWEDEN": true,
+}
+
+func normalizeLabel(lbl string) string {
+	l := strings.TrimSpace(strings.ToUpper(lbl))
+	if l == "UK" { return "UK" }
+	if l == "EU" { return "EU" }
+	if l == "WW" || strings.HasPrefix(l, "WORLD") { return "Worldwide" }
+	return strings.TrimSpace(lbl)
+}
+
+func regionForCountry(country string) string {
+	c := strings.TrimSpace(strings.ToUpper(country))
+	if c == "GB" || c == "UK" || c == "UNITED KINGDOM" { return "UK" }
+	if euCodes[c] || euNames[c] { return "EU" }
+	return "Worldwide"
+}
+
+func shippingForProduct(spStr, region string, qty int) float64 {
+	if strings.TrimSpace(spStr) == "" || qty <= 0 { return 0 }
+	var arr []interface{}
+	if err := json.Unmarshal([]byte(spStr), &arr); err != nil { return 0 }
+	if len(arr) == 0 { return 0 }
+
+	// Case 1: numeric array [UK, EU, Worldwide]
+	allNums := true
+	for _, v := range arr {
+		if _, ok := v.(float64); !ok { allNums = false; break }
+	}
+	if allNums {
+		idx := 2
+		if region == "UK" { idx = 0 } else if region == "EU" { idx = 1 }
+		if idx < len(arr) { if p, ok := arr[idx].(float64); ok { return p * float64(qty) } }
+		return 0
+	}
+
+	// Case 2: array of objects with label/key and price/value
+	for _, v := range arr {
+		m, ok := v.(map[string]interface{})
+		if !ok { continue }
+		rawLbl := m["label"]
+		if rawLbl == nil { rawLbl = m["key"] }
+		lbl := ""
+		switch t := rawLbl.(type) {
+		case string:
+			lbl = t
+		default:
+			lbl = fmt.Sprintf("%v", t)
+		}
+		if normalizeLabel(lbl) == region {
+			raw := m["price"]
+			if raw == nil { raw = m["value"] }
+			switch p := raw.(type) {
+			case float64:
+				return p * float64(qty)
+			case string:
+				if f, err := strconv.ParseFloat(p, 64); err == nil { return f * float64(qty) }
+			}
+			break
+		}
+	}
+	return 0
+}
+
 func SetupPaymentRoutes(router *gin.Engine, db *gorm.DB) {
 	auth := utils.NewAuthService(db)
 	payments := router.Group("/api/payment-methods")
@@ -79,11 +156,12 @@ func togglePaymentMethodStatus(db *gorm.DB) gin.HandlerFunc {
 // --- Stripe Integration ---
 
 type createPaymentIntentRequest struct {
-	Items []struct {
-		ProductID        string  `json:"productId"`
-		ProductVariantID *string `json:"productVariantId,omitempty"`
-		Quantity         int     `json:"quantity"`
-	} `json:"items"`
+    Items []struct {
+        ProductID        string  `json:"productId"`
+        ProductVariantID *string `json:"productVariantId,omitempty"`
+        Quantity         int     `json:"quantity"`
+        Options          json.RawMessage `json:"options"`
+    } `json:"items"`
 	ShippingAddressID string   `json:"shippingAddressId"`
 	BillingAddressID  string   `json:"billingAddressId"`
 	CouponCode        *string  `json:"couponCode,omitempty"`
@@ -133,6 +211,11 @@ func createStripePaymentIntent(db *gorm.DB) gin.HandlerFunc {
 
 		var orderIDs []string
 		var totalAmount float64
+		// Track coupon metadata to attach to PaymentIntent
+		var piHasCoupon bool
+		var piCouponCode string
+		var piCouponDiscount float64
+		var piCouponType string
 
 		// If client supplies existing order IDs, reuse them and compute total from DB
 		if len(req.ExistingOrderIDs) > 0 {
@@ -188,6 +271,13 @@ func createStripePaymentIntent(db *gorm.DB) gin.HandlerFunc {
 				}
 			}
 
+			// Load shipping address to determine region
+			var shippingAddrRec models.Address
+			shipRegion := "Worldwide"
+			if err := tx.First(&shippingAddrRec, "id = ?", shippingAddrID).Error; err == nil {
+				shipRegion = regionForCountry(shippingAddrRec.Country)
+			}
+
 			orderNumber := fmt.Sprintf("ORD-%d-%s", time.Now().Unix(), uuid.New().String()[:8])
 			order := models.Order{
 				UserID:            user.ID,
@@ -199,6 +289,7 @@ func createStripePaymentIntent(db *gorm.DB) gin.HandlerFunc {
 				OrderNumber:       orderNumber,
 				ShippingAddressID: shippingAddrID,
 				BillingAddressID:  billingAddrID,
+				ShippingEstimate:  shipRegion,
 			}
 			if err := tx.Create(&order).Error; err != nil {
 				tx.Rollback()
@@ -252,6 +343,7 @@ func createStripePaymentIntent(db *gorm.DB) gin.HandlerFunc {
 					Quantity:         item.Quantity,
 					UnitPrice:        unitPrice,
 					Subtotal:         lineSubtotal,
+					Options:          string(item.Options),
 				}
 				if err := tx.Create(&orderItem).Error; err != nil {
 					tx.Rollback()
@@ -259,18 +351,66 @@ func createStripePaymentIntent(db *gorm.DB) gin.HandlerFunc {
 					return
 				}
 				order.Subtotal += lineSubtotal
+				// Accumulate shipping from product's shippingPrices using shipping region
+				order.Shipping += shippingForProduct(product.ShippingPrices, shipRegion, item.Quantity)
 			}
-            // All-inclusive pricing: product prices already include tax and shipping
-            // Do not add extra tax or shipping here; totals equal subtotal
-            order.Tax = 0
-            order.Shipping = 0
-            order.Total = order.Subtotal
+
+			// Apply coupon if provided and valid
+			var appliedCoupon *models.Coupon
+			couponDiscount := 0.0
+			if req.CouponCode != nil && strings.TrimSpace(*req.CouponCode) != "" {
+				code := strings.TrimSpace(*req.CouponCode)
+				var cp models.Coupon
+				if err := tx.Where("code = ? AND is_active = ?", code, true).First(&cp).Error; err == nil {
+					now := time.Now()
+					if !now.Before(cp.StartDate) && !now.After(cp.EndDate) && (order.Subtotal+order.Shipping) >= cp.MinOrderAmount {
+						// Check global usage limit
+						if cp.UsageLimit == nil || cp.UsageCount < *cp.UsageLimit {
+							// Check per-user usage
+							var userUsageCount int64
+							tx.Model(&models.CouponUsage{}).Where("coupon_id = ? AND user_id = ?", cp.ID, user.ID).Count(&userUsageCount)
+							if cp.UserUsageLimit == nil || userUsageCount < int64(*cp.UserUsageLimit) {
+								// Compute discount
+								switch cp.Type {
+								case models.CouponTypeFreeShipping:
+									// Waive shipping; record waived amount as discount
+									couponDiscount = order.Shipping
+									order.Shipping = 0
+								case models.CouponTypePercentage:
+									couponDiscount = (order.Subtotal + order.Shipping) * (cp.Value / 100)
+									if cp.MaxDiscount != nil && couponDiscount > *cp.MaxDiscount {
+										couponDiscount = *cp.MaxDiscount
+									}
+								case models.CouponTypeFixed:
+									couponDiscount = cp.Value
+									if couponDiscount > (order.Subtotal + order.Shipping) {
+										couponDiscount = (order.Subtotal + order.Shipping)
+									}
+								}
+								appliedCoupon = &cp
+							}
+						}
+					}
+				}
+			}
+
+			// Tax currently 0; totals include shipping minus coupon discount
+			order.Tax = 0
+			order.Total = order.Subtotal + order.Shipping - couponDiscount
 			if err := tx.Save(&order).Error; err != nil {
 				tx.Rollback()
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to finalize order totals"})
 				return
 			}
 			totalAmount += order.Total
+
+			// Capture coupon info for PI metadata
+			if appliedCoupon != nil {
+				piHasCoupon = true
+				piCouponCode = appliedCoupon.Code
+				piCouponDiscount = couponDiscount
+				piCouponType = string(appliedCoupon.Type)
+			}
 		}
 
 		amountInCents := int64(totalAmount * 100)
@@ -279,11 +419,18 @@ func createStripePaymentIntent(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		// Create PaymentIntent via Stripe REST API
-		// curl -X POST https://api.stripe.com/v1/payment_intents -u sk_test: -d amount=2000 -d currency=usd -d automatic_payment_methods[enabled]=true
 		values := url.Values{}
 		values.Set("amount", strconv.FormatInt(amountInCents, 10))
 		values.Set("currency", currency)
 		values.Set("automatic_payment_methods[enabled]", "true")
+		// Attach helpful metadata for webhook processing
+		values.Set("metadata[order_ids]", strings.Join(orderIDs, ","))
+		if piHasCoupon {
+			values.Set("metadata[coupon_code]", piCouponCode)
+			values.Set("metadata[coupon_discount]", fmt.Sprintf("%.2f", piCouponDiscount))
+			values.Set("metadata[coupon_type]", piCouponType)
+			values.Set("metadata[user_id]", user.ID.String())
+		}
 
 		reqBody := strings.NewReader(values.Encode())
 		httpReq, _ := http.NewRequest("POST", "https://api.stripe.com/v1/payment_intents", reqBody)
@@ -410,8 +557,9 @@ func stripeWebhookHandler(db *gorm.DB) gin.HandlerFunc {
 			Type string `json:"type"`
 			Data struct {
 				Object struct {
-					ID     string `json:"id"`
-					Status string `json:"status"`
+					ID       string            `json:"id"`
+					Status   string            `json:"status"`
+					Metadata map[string]string `json:"metadata"`
 				} `json:"object"`
 			} `json:"data"`
 		}
@@ -433,6 +581,35 @@ func stripeWebhookHandler(db *gorm.DB) gin.HandlerFunc {
 				if order.Status == "pending" {
 					order.Status = "processing"
 					_ = db.Save(&order).Error
+				}
+			}
+
+			// Record coupon usage if coupon metadata present
+			md := event.Data.Object.Metadata
+			if md != nil {
+				code := strings.TrimSpace(md["coupon_code"])
+				if code != "" {
+					var coupon models.Coupon
+					if err := db.Where("code = ?", code).First(&coupon).Error; err == nil {
+						// Parse discount amount if provided
+						discount := 0.0
+						if s := md["coupon_discount"]; s != "" {
+							if v, err := strconv.ParseFloat(s, 64); err == nil {
+								discount = v
+							}
+						}
+						// Create usage rows per order if not already recorded
+						for _, order := range orders {
+							var exists int64
+							db.Model(&models.CouponUsage{}).Where("coupon_id = ? AND order_id = ?", coupon.ID, order.ID).Count(&exists)
+							if exists == 0 {
+								cu := models.CouponUsage{CouponID: coupon.ID, UserID: order.UserID, OrderID: order.ID, Discount: discount}
+								_ = db.Create(&cu).Error
+								// Increment aggregate usage count
+								_ = db.Model(&models.Coupon{}).Where("id = ?", coupon.ID).UpdateColumn("usage_count", gorm.Expr("usage_count + ?", 1)).Error
+							}
+						}
+					}
 				}
 			}
 

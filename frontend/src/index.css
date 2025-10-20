@@ -3,3 +3,16 @@
 @theme {
     --color-ventauri: #DFB666;
 }
+
+/* Global background handling for overscroll */
+html, body {
+  min-height: 100%;
+}
+
+body.site-bg {
+  background-color: #111827; /* tailwind gray-900 */
+}
+
+body.admin-bg {
+  background-color: #ffffff;
+}

@@ -8,9 +8,9 @@ export default function Login() {
 
 	if (loading)
 		return (
-			<div className="min-screen bg-gray-700 flex items-center justify-center">
+			<div className="min-h-screen bg-gray-900 flex items-center justify-center">
 				<div className="text-center">
-					<div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+					<div className="w-16 h-16 border-4 border-ventauri border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
 					<p className="text-gray-400">Loading...</p>
 				</div>
 			</div>
@@ -19,13 +19,13 @@ export default function Login() {
 	if (user) return <Navigate to="/admin" replace />;
 
 	return (
-		<div className="min-h-screen bg-gray-700 flex items-center justify-center relative">
+		<div className="min-h-screen bg-gray-900 flex items-center justify-center relative">
 			<Link
 				to="/"
-				className="absolute top-6 left-6 flex items-center space-x-2 text-gray-400 hover:text-blue-300 transition-colors"
+				className="absolute top-6 left-6 flex items-center space-x-2 text-gray-400 hover:text-ventauri transition-colors"
 			>
 				<svg
-					className="w-5 h-5 transform group-hover:translate-x-1 transition-transform duration-200"
+					className="w-5 h-5 transition-transform duration-200 hover:-translate-x-1"
 					fill="none"
 					stroke="currentColor"
 					viewBox="0 0 24 24"
@@ -40,7 +40,7 @@ export default function Login() {
 				<span className="text-sm font-medium">Back to Home</span>
 			</Link>
 
-			<div className="bg-gray-800 p-8 rounded-lg shadow-lg max-w-md w-full mx-4">
+			<div className="bg-gray-800 border border-gray-700 p-8 rounded-xl shadow-xl max-w-md w-full mx-4">
 				<div className="text-center">
 					<h1 className="text-2xl font-bold text-white mb-2">
 						Ventauri Merch Login
@@ -51,7 +51,7 @@ export default function Login() {
 				<div className="space-y-4">
 					<button
 						onClick={signIn}
-						className="w-full bg-indigo-600 hover:bg-gray-700 text-gray-900 text-sessionsId py-3 px-4 rounded-lg flex items-center justify-center space-x-3 transition-all duration-300 transform hover:scale-105 cursor-pointer"
+						className="w-full bg-ventauri text-black py-3 px-4 rounded-lg flex items-center justify-center space-x-3 transition-colors duration-200 hover:bg-yellow-300"
 					>
 						<svg className="w-5 h-5" viewBox="0 0 24 24">
 							<path
@@ -80,14 +80,14 @@ export default function Login() {
 						By signing in, you agree to our{' '}
 						<Link
 							to="/terms"
-							className="text-blue-400 hover:text-blue-300 transition-colors"
+							className="text-ventauri hover:brightness-110 transition-colors"
 						>
 							Terms of Service
 						</Link>
 					</p>
 					<Link
 						to="/privacy"
-						className="text-blue-400 hover:text-blue-300 transition-colors"
+						className="text-ventauri hover:brightness-110 transition-colors"
 					>
 						Privacy Policy
 					</Link>

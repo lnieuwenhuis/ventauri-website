@@ -8,13 +8,15 @@ import (
 
 // SeedAll runs all seeders in the correct order
 func SeedAll(db *gorm.DB) {
-	log.Println("🌱 Starting database seeding...")
-	
-	SeedUsers(db)
-	SeedCategories(db)
-	SeedProducts(db)
-	SeedProductVariants(db)
-	SeedAddresses(db)
+    log.Println("🌱 Starting database seeding...")
+    
+    SeedUsers(db)
+    SeedCategories(db)
+    // Ensure size options exist before products and variants
+    SeedSizeOptions(db)
+    SeedProducts(db)
+    SeedProductVariants(db)
+    SeedAddresses(db)
 	SeedPaymentMethods(db)
 	SeedOrders(db)
 	SeedReviews(db)

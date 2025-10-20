@@ -275,11 +275,14 @@ func updateProduct(db *gorm.DB) gin.HandlerFunc {
 			Name:        updatedProduct.Name,
 			Price:       updatedProduct.Price,
 			Images:      updatedProduct.Images,
+			Options:     updatedProduct.Options,
 			CategoryID:  updatedProduct.CategoryID,
 			Description: updatedProduct.Description,
 			SKU:         updatedProduct.SKU,
 			Weight:      updatedProduct.Weight,
 			IsActive:    updatedProduct.IsActive,
+			EnabledSizes: updatedProduct.EnabledSizes,
+			ShippingPrices: updatedProduct.ShippingPrices,
 		}
 
 		if err := tx.Save(&productUpdate).Error; err != nil {
@@ -411,11 +414,11 @@ func createProductVariant(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Validate size
-		if !models.IsValidSize(variant.Size) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid size: " + variant.Size})
-			return
-		}
+        // Validate size via database-backed options
+        if !models.IsValidSize(db, variant.Size) {
+            c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid size: " + variant.Size})
+            return
+        }
 
 		// Check if size is enabled for this product
 		var enabledSizes []string
@@ -568,10 +571,10 @@ func toggleProductStatus(db *gorm.DB) gin.HandlerFunc {
 
 // New functions for improved variant system
 func getAvailableSizes(db *gorm.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		sizes := models.GetAvailableSizes()
-		c.JSON(http.StatusOK, gin.H{"data": sizes})
-	}
+    return func(c *gin.Context) {
+        sizes := models.GetAvailableSizes(db)
+        c.JSON(http.StatusOK, gin.H{"data": sizes})
+    }
 }
 
 func getProductSizes(db *gorm.DB) gin.HandlerFunc {
@@ -593,12 +596,12 @@ func getProductSizes(db *gorm.DB) gin.HandlerFunc {
 			}
 		}
 
-		// Get all available sizes and mark which ones are enabled
-		allSizes := models.GetAvailableSizes()
-		sizeStatus := make(map[string]bool)
-		for _, size := range allSizes {
-			sizeStatus[size] = false
-		}
+        // Get all available sizes and mark which ones are enabled
+        allSizes := models.GetAvailableSizes(db)
+        sizeStatus := make(map[string]bool)
+        for _, size := range allSizes {
+            sizeStatus[size] = false
+        }
 		for _, size := range enabledSizes {
 			sizeStatus[size] = true
 		}
@@ -631,13 +634,13 @@ func updateProductSizes(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Validate sizes
-		for _, size := range req.EnabledSizes {
-			if !models.IsValidSize(size) {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid size: " + size})
-				return
-			}
-		}
+        // Validate sizes via database-backed options
+        for _, size := range req.EnabledSizes {
+            if !models.IsValidSize(db, size) {
+                c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid size: " + size})
+                return
+            }
+        }
 
 		// Convert to JSON string
 		enabledSizesJSON, err := json.Marshal(req.EnabledSizes)

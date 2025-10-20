@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import Navbar from '../../Components/Navbar';
 import { useCart } from '../../Contexts/CartContext';
 import usePageTitle from '../../hooks/usePageTitle';
+import { useAuth } from '../../Contexts/AuthContext';
 
 interface ProductVariant {
 	id: string;
@@ -33,6 +34,8 @@ interface Review {
 	};
 }
 
+interface WishlistItem { id: string; productId: string; }
+
 interface Product {
 	id: string;
 	name: string;
@@ -47,27 +50,30 @@ interface Product {
 		id: string;
 		name: string;
 	};
-	variants?: ProductVariant[];
+	variants?: ProductVariant[]; // legacy, not used
 	reviews?: Review[];
+	// New product-level fields
+	enabledSizes?: string;
+	options?: string;
+	shippingPrices?: string;
 }
 
 export default function Product() {
 	const { id } = useParams<{ id: string }>();
 	const [product, setProduct] = useState<Product | null>(null);
 	const [selectedSize, setSelectedSize] = useState<string | null>(null);
-	const [selectedVariantTitle, setSelectedVariantTitle] = useState<string | null>(null);
+	const [customOptions, setCustomOptions] = useState<Record<string, string>>({});
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const apiURL = import.meta.env.VITE_BACKEND_URL || '';
 	const { addToCart, loading: cartLoading } = useCart();
+	const [shippingModalOpen, setShippingModalOpen] = useState(false);
+	const { isAuthenticated } = useAuth();
+	const [wishlisted, setWishlisted] = useState(false);
+	const [wishlistLoading, setWishlistLoading] = useState(false);
 	usePageTitle(product?.name || 'Product');
 
-	const handleAddToCart = async () => {
-		if (product && selectedVariant && selectedVariant.stock > 0) {
-			await addToCart(product.id, 1, selectedVariant.id);
-		}
-	};
-
+	// Fetch product
 	useEffect(() => {
 		const fetchProduct = async () => {
 			try {
@@ -93,115 +99,157 @@ export default function Product() {
 		}
 	}, [id, apiURL]);
 
-	// Get the currently selected variant based on size and variant title
-	const getSelectedVariant = (): ProductVariant | null => {
-		if (!product?.variants || !selectedSize || !selectedVariantTitle) return null;
-		return (
-			product.variants.find(
-				(v) => v.size === selectedSize && v.title === selectedVariantTitle
-			) || null
-		);
-	};
+	// Fetch wishlist status for this product
+	useEffect(() => {
+		const checkWishlist = async () => {
+			if (!isAuthenticated || !id) return;
+			try {
+				const res = await fetch(`${apiURL}/api/wishlist/`, { credentials: 'include' });
+				if (!res.ok) return;
+				const data = await res.json();
+				const exists = Array.isArray(data.data) && data.data.some((w: WishlistItem) => String(w.productId) === String(id));
+				setWishlisted(exists);
+			} catch (e) { console.warn('Failed to check wishlist', e); }
+		};
+		checkWishlist();
+	}, [isAuthenticated, id, apiURL]);
 
-	// Check if a size is available for the current variant title selection
-	const isSizeAvailable = (size: string): boolean => {
-		if (!product?.variants) return false;
-		if (!selectedVariantTitle) {
-			return product.variants.some((v) => v.size === size && v.stock > 0);
+	const toggleWishlist = async () => {
+		if (!product) return;
+		if (!isAuthenticated) {
+			// Redirect to login by navigating
+			window.location.href = '/login';
+			return;
 		}
-		return product.variants.some(
-			(v) => v.size === size && v.title === selectedVariantTitle && v.stock > 0
-		);
-	};
-
-	// Check if a variant title is available for the current size selection
-	const isVariantTitleAvailable = (title: string): boolean => {
-		if (!product?.variants) return false;
-		if (!selectedSize) {
-			return product.variants.some((v) => v.title === title && v.stock > 0);
-		}
-		return product.variants.some(
-			(v) => v.title === title && v.size === selectedSize && v.stock > 0
-		);
-	};
-
-	// Handle size selection/deselection
-	const handleSizeClick = (size: string) => {
-		if (selectedSize === size) {
-			// Deselect if clicking on already selected size
-			setSelectedSize(null);
-		} else if (isSizeAvailable(size)) {
-			setSelectedSize(size);
-			// Reset variant title if current combination is not available
-			if (
-				selectedVariantTitle &&
-				!product?.variants?.some(
-					(v) => v.size === size && v.title === selectedVariantTitle && v.stock > 0
-				)
-			) {
-				setSelectedVariantTitle(null);
-			}
-		}
-	};
-
-	// Handle variant title selection/deselection
-	const handleVariantTitleClick = (title: string) => {
-		if (selectedVariantTitle === title) {
-			// Deselect if clicking on already selected variant title
-			setSelectedVariantTitle(null);
-		} else if (isVariantTitleAvailable(title)) {
-			setSelectedVariantTitle(title);
-			// Reset size if current combination is not available
-			if (
-				selectedSize &&
-				!product?.variants?.some(
-					(v) => v.title === title && v.size === selectedSize && v.stock > 0
-				)
-			) {
-				setSelectedSize(null);
-			}
-		}
-	};
-
-	// Clear all selections
-	const clearSelections = () => {
-		setSelectedSize(null);
-		setSelectedVariantTitle(null);
-	};
-
-	const parseImages = (images: string): string[] => {
 		try {
-			if (images && images.trim()) {
-				const parsed = JSON.parse(images);
-				return Array.isArray(parsed) ? parsed : [];
+			setWishlistLoading(true);
+			if (!wishlisted) {
+				const res = await fetch(`${apiURL}/api/wishlist/`, {
+					method: 'POST',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ productId: product.id }),
+				});
+				if (res.ok) setWishlisted(true);
+			} else {
+				const res = await fetch(`${apiURL}/api/wishlist/product/${product.id}`, {
+					method: 'DELETE',
+					credentials: 'include',
+				});
+				if (res.ok) setWishlisted(false);
 			}
-		} catch (error) {
-			console.warn('Failed to parse product images:', error);
+		} finally {
+			setWishlistLoading(false);
+		}
+	};
+	// Parse product-level sizes
+	const sizeList = useMemo(() => {
+		try {
+			if (product?.enabledSizes) {
+				const parsed = JSON.parse(product.enabledSizes);
+				return Array.isArray(parsed) ? (parsed as string[]) : [];
+			}
+		} catch {
+			return [];
 		}
 		return [];
+	}, [product?.enabledSizes]);
+
+	// Parse product options (labels)
+	const optionLabels = useMemo(() => {
+		try {
+			if (product?.options) {
+				const parsed = JSON.parse(product.options);
+				if (Array.isArray(parsed)) {
+					return parsed
+						.map((v) => String(v))
+						.filter((s) => s.trim().length > 0);
+				}
+			}
+		} catch {
+			return [];
+		}
+		return [];
+	}, [product?.options]);
+
+	// Compute validation state: require size if sizes exist, and all option labels filled
+	const needsSize = sizeList.length > 0;
+	const needsOptions = optionLabels.length > 0;
+	const missingOptionLabels = useMemo(() => {
+		return optionLabels.filter((label) => !customOptions[label] || !customOptions[label].trim());
+	}, [optionLabels, customOptions]);
+	const isFormValid = (needsSize ? !!selectedSize : true) && (!needsOptions || missingOptionLabels.length === 0);
+
+	// Parse labeled shipping prices for display
+	const shippingMap = useMemo(() => {
+		try {
+			if (product?.shippingPrices) {
+				const parsed = JSON.parse(product.shippingPrices);
+				if (Array.isArray(parsed)) {
+					// Prefer array of objects: [{ label, price }] or [{ name|key, value }]
+					if (parsed.every((obj) => obj && typeof obj === 'object' && !Array.isArray(obj))) {
+						const map: Record<string, number> = {};
+						(parsed as Array<Record<string, unknown>>).forEach((obj) => {
+							const label = String(obj.label ?? obj.key ?? obj.name ?? '').trim();
+							const priceVal = obj.price ?? obj.value;
+							const n = typeof priceVal === 'number' ? priceVal : parseFloat(String(priceVal));
+							if (label && !isNaN(n)) map[label] = n;
+						});
+						return map;
+					}
+					// Backward compatibility: array of numbers with default labels
+					const labels = ['UK', 'EU', 'WW'];
+					const arr = parsed.filter((v) => typeof v === 'number' || !isNaN(parseFloat(String(v))));
+					const map: Record<string, number> = {};
+					arr.slice(0, labels.length).forEach((v, i) => {
+						const n = typeof v === 'number' ? v : parseFloat(String(v));
+						if (!isNaN(n)) map[labels[i]] = n;
+					});
+					return map;
+				}
+				if (parsed && typeof parsed === 'object') {
+					// Object mapping { label: price }
+					const map: Record<string, number> = {};
+					Object.entries(parsed as Record<string, unknown>).forEach(([label, val]) => {
+						const n = typeof val === 'number' ? val : parseFloat(String(val));
+						if (label && !isNaN(n)) map[label] = n;
+					});
+					return map;
+				}
+			}
+		} catch {
+			return {} as Record<string, number>;
+		}
+		return {} as Record<string, number>;
+	}, [product?.shippingPrices]);
+
+	// Handle size selection/deselection from product-level sizes
+	const handleSizeClick = (size: string) => {
+		if (selectedSize === size) {
+			setSelectedSize(null);
+		} else {
+			setSelectedSize(size);
+		}
 	};
 
-	const getStarRating = (rating: number) => {
-		return '★'.repeat(rating) + '☆'.repeat(5 - rating);
-	};
-
-	const formatDate = (dateString: string) => {
-		return new Date(dateString).toLocaleDateString('en-US', {
-			year: 'numeric',
-			month: 'long',
-			day: 'numeric',
-		});
+	// Add to cart with validation and include size as an option
+	const handleAddToCart = async () => {
+		if (!product) return;
+		// Prevent adding when invalid
+		if (!isFormValid) return;
+		const optionsObject: Record<string, string> = { ...customOptions };
+		if (needsSize && selectedSize) {
+			optionsObject['Size'] = selectedSize;
+		}
+		await addToCart(product.id, 1, undefined, [optionsObject]);
 	};
 
 	if (loading) {
 		return (
 			<div className="min-h-screen bg-gray-900 text-white">
 				<Navbar />
-				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-					<div className="flex items-center justify-center py-12">
-						<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ventauri"></div>
-						<span className="ml-3 text-gray-300">Loading product...</span>
-					</div>
+				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+					<p>Loading product...</p>
 				</div>
 			</div>
 		);
@@ -211,41 +259,33 @@ export default function Product() {
 		return (
 			<div className="min-h-screen bg-gray-900 text-white">
 				<Navbar />
-				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-					<div className="text-center py-12">
-						<div className="text-gray-400 text-lg mb-4">
-							{error || 'Product not found'}
-						</div>
-					</div>
+				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+					<p>{error || 'Product not found'}</p>
 				</div>
 			</div>
 		);
 	}
 
-	const productImages = parseImages(product.images);
-	const mainImage =
-		productImages.length > 0 ? productImages[0] : 'https://picsum.photos/400/400';
-	const selectedVariant = getSelectedVariant();
-
 	return (
 		<div className="min-h-screen bg-gray-900 text-white">
 			<Navbar />
-			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
 				{/* Breadcrumb */}
-				<nav className="mb-8">
-					<ol className="flex space-x-2 text-sm text-gray-400">
+				<nav className="text-sm text-gray-400 mb-6">
+					<ol className="list-reset flex">
 						<li>
-							<a href="/" className="hover:text-ventauri">
+							<a href="/" className="text-gray-400 hover:text-white">
 								Home
 							</a>
 						</li>
-						<li>/</li>
+						<span className="mx-2">/</span>
 						<li>
-							<a href="/products" className="hover:text-ventauri">
+							<a href="/products" className="text-gray-400 hover:text-white">
 								Products
 							</a>
 						</li>
-						<li>/</li>
+						<span className="mx-2">/</span>
 						<li className="text-ventauri">{product.name}</li>
 					</ol>
 				</nav>
@@ -256,229 +296,139 @@ export default function Product() {
 					<div className="space-y-4">
 						<div className="aspect-square overflow-hidden rounded-lg bg-gray-800">
 							<img
-								src={selectedVariant?.images?.[0] || mainImage}
-								alt={product.name}
-								className="w-full h-full object-cover"
-								onError={(e) => {
-									const target = e.target as HTMLImageElement;
-									target.src = 'https://picsum.photos/400/400';
-								}}
-							/>
-						</div>
-						<div className="grid grid-cols-4 gap-4">
-							{productImages.map((img, index) => (
-								<button
-									key={index}
-									className="aspect-square rounded-lg overflow-hidden bg-gray-800 hover:ring-2 hover:ring-ventauri"
-									onClick={clearSelections}
-								>
-									<img
-										src={img}
-										alt={`${product.name} ${index + 1}`}
-										className="w-full h-full object-cover"
-										onError={(e) => {
-											const target = e.target as HTMLImageElement;
-											target.src = 'https://picsum.photos/400/400';
-										}}
-									/>
-								</button>
-							))}
+								src={(() => {
+								try {
+									const arr = JSON.parse(product.images);
+									return Array.isArray(arr) && arr.length > 0 ? arr[0] : '';
+								} catch {
+									return '';
+								}
+							})()}
+							alt={product.name}
+							className="w-full h-full object-cover"
+							onError={(e) => {
+								const target = e.target as HTMLImageElement;
+								target.src = 'https://picsum.photos/600/600';
+							}}
+						/>
 						</div>
 					</div>
 
-					{/* Info */}
-					<div className="space-y-6">
-						{product.category && (
-							<div className="text-sm text-ventauri font-medium uppercase tracking-wide">
-								{product.category.name}
-							</div>
-						)}
-						<h1 className="text-4xl font-bold text-white">{product.name}</h1>
-						<p className="text-gray-300 text-lg leading-relaxed">
-							{product.description}
-						</p>
-
-						{/* Price */}
-						<div className="text-3xl font-bold text-ventauri">
-							${(product.price || 0).toFixed(2)}
+					{/* Product Info */}
+					<div>
+						<h1 className="text-3xl font-bold text-white mb-4">{product.name}</h1>
+						<p className="text-gray-300 mb-6">{product.description}</p>
+						<div className="mb-4">
+							<span className="text-2xl font-bold text-ventauri">€{product.price.toFixed(2)}</span>
 						</div>
 
-						{/* Variants */}
-						{product.variants && product.variants.length > 0 && (
-							<div className="space-y-4">
-								<div className="flex items-center justify-between">
-									<h3 className="text-lg font-semibold">Available Options</h3>
-									{(selectedSize || selectedVariantTitle) && (
+						{/* Size selector (product-level sizes) */}
+						{sizeList.length > 0 && (
+							<div className="mb-6">
+								<div className="text-sm text-gray-400 mb-2">Select Size</div>
+								<div className="flex flex-wrap gap-2">
+									{sizeList.map((size) => (
 										<button
-											onClick={clearSelections}
-											className="text-sm text-ventauri hover:text-ventauri underline"
+											key={size}
+											onClick={() => handleSizeClick(size)}
+											className={`px-4 py-2 rounded border transition-colors ${
+												selectedSize === size
+													? 'bg-ventauri text-black border-ventauri'
+													: 'bg-gray-800 text-white border-gray-700 hover:border-gray-500'
+											}`}
 										>
-											Clear Selection
+											{size}
 										</button>
-									)}
+									))}
 								</div>
-
-								{/* Sizes */}
-								{Array.from(new Set(product.variants.map((v) => v.size))).length >
-									0 && (
-									<div className="space-y-2">
-										<label className="block text-sm font-medium text-gray-300">
-											Size{' '}
-											{selectedSize && (
-												<span className="text-ventauri">(Click to deselect)</span>
-											)}
-										</label>
-										<div className="flex flex-wrap gap-2">
-											{Array.from(new Set(product.variants.map((v) => v.size))).map(
-												(size) => {
-													const isAvailable = isSizeAvailable(size);
-													const isSelected = selectedSize === size;
-													return (
-														<button
-															key={size}
-															className={`px-4 py-2 rounded-lg border transition-all ${
-																isSelected
-																	? 'border-ventauri bg-ventauri text-black hover:bg-yellow-300'
-																	: isAvailable
-																		? 'border-gray-600 hover:bg-yellow-300 text-white'
-																		: 'border-gray-700 bg-gray-800 text-gray-500 cursor-not-allowed'
-															}`}
-															disabled={!isAvailable && !isSelected}
-															onClick={() => handleSizeClick(size)}
-														>
-															{size}
-														</button>
-													);
-												}
-											)}
-										</div>
-									</div>
-								)}
-
-								{/* Variant Titles */}
-								{Array.from(new Set(product.variants.map((v) => v.title))).length >
-									0 && (
-									<div className="space-y-2">
-										<label className="block text-sm font-medium text-gray-300">
-											Style{' '}
-											{selectedVariantTitle && (
-												<span className="text-ventauri">(Click to deselect)</span>
-											)}
-										</label>
-										<div className="flex flex-wrap gap-2">
-											{Array.from(new Set(product.variants.map((v) => v.title))).map(
-												(title) => {
-													const isAvailable = isVariantTitleAvailable(title);
-													const isSelected = selectedVariantTitle === title;
-													return (
-														<button
-															key={title}
-															className={`px-4 py-2 rounded-lg border transition-all ${
-																isSelected
-																	? 'border-ventauri bg-ventauri text-black hover:bg-yellow-300'
-																	: isAvailable
-																		? 'border-gray-600 hover:border-yellow-300 text-white'
-																		: 'border-gray-700 bg-gray-800 text-gray-500 cursor-not-allowed'
-															}`}
-															disabled={!isAvailable && !isSelected}
-															onClick={() => handleVariantTitleClick(title)}
-														>
-															{title}
-														</button>
-													);
-												}
-											)}
-										</div>
-									</div>
+								{needsSize && !selectedSize && (
+									<div className="mt-2 text-sm text-red-400">Please select a size before adding to cart.</div>
 								)}
 							</div>
 						)}
 
-						{/* Selection Status */}
-						{(selectedSize || selectedVariantTitle) && (
-							<div className="bg-gray-800 rounded-lg p-4">
-								<h4 className="font-medium mb-2">Current Selection:</h4>
-								<div className="text-sm text-gray-300">
-									{selectedSize && (
-										<span>
-											Size: <span className="ventauri">{selectedSize}</span>
-										</span>
-									)}
-									{selectedSize && selectedVariantTitle && <span className="mx-2">•</span>}
-									{selectedVariantTitle && (
-										<span>
-											Style: <span className="text-ventauri">{selectedVariantTitle}</span>
-										</span>
-									)}
+						{/* Customization options */}
+						{optionLabels.length > 0 && (
+							<div className="mb-6">
+								<div className="text-sm text-gray-400 mb-2">Customizations</div>
+								<div className="space-y-3">
+									{optionLabels.map((label) => (
+										<div key={label}>
+											<label className="block text-sm text-gray-300 mb-1">{label}</label>
+											<input
+												type="text"
+												className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-ventauri"
+												value={customOptions[label] || ''}
+												onChange={(e) =>
+													setCustomOptions((prev) => ({ ...prev, [label]: e.target.value }))
+												}
+											/>
+											{(!customOptions[label] || !customOptions[label].trim()) && (
+												<div className="mt-1 text-xs text-red-400">Required</div>
+											)}
+										</div>
+									))}
 								</div>
-								{selectedVariant && (
-									<div className="text-sm text-gray-400 mt-1">
-										Stock:{' '}
-										{selectedVariant.stock > 0
-											? `${selectedVariant.stock} units`
-											: 'Out of stock'}
-									</div>
+								{needsOptions && missingOptionLabels.length > 0 && (
+									<div className="mt-2 text-sm text-red-400">Please fill all customization fields.</div>
 								)}
-							</div>
+						</div>
 						)}
 
-						{/* Add to Cart */}
-						<button
-							className="w-full md:w-auto bg-ventauri text-black px-8 py-3 rounded-lg font-medium hover:bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-							disabled={!selectedVariant || selectedVariant.stock <= 0 || cartLoading}
-							onClick={handleAddToCart}
-						>
-							{cartLoading
-								? 'Adding to Cart...'
-								: !selectedSize || !selectedVariantTitle
-									? 'Select Size and Style'
-									: selectedVariant && selectedVariant.stock <= 0
-										? 'Out of Stock'
-										: 'Add to Cart'}
-						</button>
+						{/* Actions */}
+						<div className="mt-8 flex flex-col sm:flex-row gap-3">
+							<button
+								onClick={handleAddToCart}
+								disabled={cartLoading || !isFormValid}
+								className="bg-ventauri text-black px-6 py-3 rounded font-semibold hover:bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								{cartLoading ? 'Adding...' : 'Add to Cart'}
+							</button>
+							<button
+								onClick={() => setShippingModalOpen(true)}
+								className="border border-ventauri text-ventauri px-6 py-3 rounded font-semibold hover:bg-ventauri hover:text-black transition-colors"
+							>
+								View Shipping Prices
+							</button>
+							<button
+								onClick={toggleWishlist}
+								disabled={wishlistLoading}
+								className={`px-6 py-3 rounded font-semibold transition-colors ${wishlisted ? 'bg-gray-700 text-white' : 'border border-ventauri text-ventauri hover:bg-ventauri hover:text-black'}`}
+							>
+								{wishlistLoading ? '...' : wishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
+							</button>
+						</div>
+
+						{/* Shipping modal */}
+						{shippingModalOpen && (
+							<div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+								<div className="bg-gray-900 rounded-lg border border-gray-700 w-full max-w-md p-6">
+									<div className="flex items-center justify-between mb-4">
+										<h2 className="text-lg font-semibold text-white">Shipping Prices</h2>
+										<button
+											onClick={() => setShippingModalOpen(false)}
+											className="text-gray-400 hover:text-white"
+										>
+											Close
+										</button>
+									</div>
+									<div className="space-y-2">
+										{Object.keys(shippingMap).length === 0 ? (
+											<div className="text-gray-400">No shipping prices available</div>
+										) : (
+											Object.entries(shippingMap).map(([label, price]) => (
+												<div key={label} className="flex justify-between text-gray-300">
+													<span>{label}</span>
+													<span>€{price.toFixed(2)}</span>
+												</div>
+											))
+										)}
+									</div>
+								</div>
+							</div>
+						)}
 					</div>
 				</div>
-
-				{/* Reviews Section */}
-				{product.reviews && product.reviews.length > 0 && (
-					<div className="border-t border-gray-800 pt-12">
-						<h2 className="text-2xl font-bold mb-8">Customer Reviews</h2>
-						<div className="space-y-8">
-							{product.reviews
-								.filter((review) => review.isApproved)
-								.sort(
-									(a, b) =>
-										new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-								)
-								.map((review) => (
-									<div key={review.id} className="bg-gray-800 rounded-lg p-6">
-										<div className="flex items-center justify-between mb-4">
-											<div>
-												<div className="text-ventauri text-lg mb-1">
-													{getStarRating(review.rating)}
-												</div>
-												<h3 className="font-semibold text-lg">{review.title}</h3>
-											</div>
-											<div className="text-sm text-gray-400">
-												{formatDate(review.createdAt)}
-											</div>
-										</div>
-										<p className="text-gray-300 mb-4">{review.comment}</p>
-										<div className="flex items-center justify-between text-sm">
-											<div className="flex items-center space-x-2">
-												<span className="text-gray-400">
-													By {review.user.firstName} {review.user.lastName}
-												</span>
-											</div>
-											{review.isVerified && (
-												<span className="text-green-400 ml-auto">✓ Verified Purchase</span>
-											)}
-										</div>
-									</div>
-								))}
-						</div>
-					</div>
-				)}
 			</div>
 		</div>
 	);

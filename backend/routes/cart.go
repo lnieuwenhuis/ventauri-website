@@ -1,14 +1,15 @@
 package routes
 
 import (
-	"net/http"
+    "encoding/json"
+    "net/http"
 
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	"gorm.io/gorm"
+    "github.com/gin-gonic/gin"
+    "github.com/google/uuid"
+    "gorm.io/gorm"
 
-	"ventauri-merch/models"
-	"ventauri-merch/utils"
+    "ventauri-merch/models"
+    "ventauri-merch/utils"
 )
 
 func SetupCartRoutes(router *gin.Engine, db *gorm.DB) {
@@ -137,13 +138,14 @@ func getCart(db *gorm.DB) gin.HandlerFunc {
 }
 
 func addToCart(db *gorm.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		user, _ := utils.GetCurrentUser(c)
-		var req struct {
-			ProductID        string `json:"productId" binding:"required"`
-			ProductVariantID string `json:"productVariantId"`
-			Quantity         int    `json:"quantity" binding:"required,min=1"`
-		}
+    return func(c *gin.Context) {
+        user, _ := utils.GetCurrentUser(c)
+        var req struct {
+            ProductID        string          `json:"productId" binding:"required"`
+            ProductVariantID string          `json:"productVariantId"`
+            Quantity         int             `json:"quantity" binding:"required,min=1"`
+            Options          json.RawMessage `json:"options"`
+        }
 
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -167,10 +169,10 @@ func addToCart(db *gorm.DB) gin.HandlerFunc {
 			variantID = &varID
 		}
 
-		// Check if item with same product and variant already exists in cart
-		var existingItem models.Cart
-		err = db.Where("user_id = ? AND product_id = ? AND product_variant_id = ?",
-			user.ID, productID, variantID).First(&existingItem).Error
+        // Check if item with same product, variant, and options already exists in cart
+        var existingItem models.Cart
+        err = db.Where("user_id = ? AND product_id = ? AND product_variant_id = ? AND options = ?",
+            user.ID, productID, variantID, string(req.Options)).First(&existingItem).Error
 
 		if err == nil {
 			// Item exists, update quantity
@@ -179,14 +181,15 @@ func addToCart(db *gorm.DB) gin.HandlerFunc {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update cart"})
 				return
 			}
-		} else {
-			// Item doesn't exist, create new
-			cartItem := models.Cart{
-				UserID:           user.ID,
-				ProductID:        productID,
-				ProductVariantID: variantID,
-				Quantity:         req.Quantity,
-			}
+        } else {
+            // Item doesn't exist, create new
+            cartItem := models.Cart{
+                UserID:           user.ID,
+                ProductID:        productID,
+                ProductVariantID: variantID,
+                Quantity:         req.Quantity,
+                Options:          string(req.Options),
+            }
 
 			if err := db.Create(&cartItem).Error; err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add to cart"})
@@ -195,16 +198,17 @@ func addToCart(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"message": "Item added to cart successfully"})
-	}
+    }
 }
 
 func updateCartItem(db *gorm.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		user, _ := utils.GetCurrentUser(c)
-		id := c.Param("id")
-		var req struct {
-			Quantity int `json:"quantity" binding:"required,min=1"`
-		}
+    return func(c *gin.Context) {
+        user, _ := utils.GetCurrentUser(c)
+        id := c.Param("id")
+        var req struct {
+            Quantity int             `json:"quantity" binding:"required,min=1"`
+            Options  json.RawMessage `json:"options"`
+        }
 
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -217,11 +221,14 @@ func updateCartItem(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		cartItem.Quantity = req.Quantity
-		if err := db.Save(&cartItem).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update cart item"})
-			return
-		}
+        cartItem.Quantity = req.Quantity
+        if len(req.Options) > 0 {
+            cartItem.Options = string(req.Options)
+        }
+        if err := db.Save(&cartItem).Error; err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update cart item"})
+            return
+        }
 
 		c.JSON(http.StatusOK, gin.H{"data": cartItem})
 	}

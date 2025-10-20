@@ -20,6 +20,8 @@ type OrderItem struct {
 	UnitPrice        float64    `json:"unit_price"`
 	Subtotal         float64    `json:"subtotal"`
 
+	Options          string     `gorm:"type:json" json:"options"`
+
 	// Relations
 	Product        Product         `gorm:"foreignKey:ProductID" json:"product"`
 	ProductVariant *ProductVariant `gorm:"foreignKey:ProductVariantID" json:"product_variant,omitempty"`

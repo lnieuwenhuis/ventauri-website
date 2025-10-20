@@ -15,6 +15,7 @@ type Product struct {
 	Name        string         `gorm:"index:idx_product_name_search" json:"name"`
 	Price       float64        `gorm:"index:idx_product_price_range" json:"price"`
 	Images      string         `gorm:"type:json" json:"images"`
+	Options     string         `gorm:"type:json" json:"options"`
 	CategoryID  uuid.UUID      `gorm:"type:char(36);index:idx_product_category_active,priority:1" json:"categoryId"`
 	Description string         `gorm:"type:text;index:idx_product_desc_search" json:"description"`
 	SKU         string         `gorm:"unique;index:idx_product_sku" json:"sku"`
@@ -22,6 +23,8 @@ type Product struct {
 	IsActive    bool           `gorm:"default:true;index:idx_product_active_created,priority:1;index:idx_product_category_active,priority:2" json:"isActive"`
 	// Size configuration - JSON array of enabled sizes
 	EnabledSizes string `gorm:"type:json" json:"enabledSizes"`
+	// Shipping prices - JSON array of numbers (e.g., [4.99, 7.99, 12.99])
+	ShippingPrices string `gorm:"type:json" json:"shippingPrices"`
 
 	Category Category         `gorm:"foreignKey:CategoryID" json:"category"`
 	Variants []ProductVariant `gorm:"foreignKey:ProductID" json:"variants"`

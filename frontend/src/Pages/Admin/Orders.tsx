@@ -23,6 +23,7 @@ interface OrderItem {
 		size: string;
 		price_adjust: number;
 	};
+	options?: string; // JSON string of customization options
 }
 
 interface Order {
@@ -39,6 +40,8 @@ interface Order {
 	order_number: string;
 	created_at: string;
 	updated_at: string;
+	// New optional field from backend
+	shipping_estimate?: string;
 	items: OrderItem[];
 	user?: {
 		id: string;
@@ -63,6 +66,7 @@ interface OrderFormData extends Record<string, unknown> {
 	tax?: number;
 	shipping?: number;
 	total?: number;
+	shippingEstimate?: string;
 }
 
 export default function AdminOrders() {
@@ -164,7 +168,39 @@ export default function AdminOrders() {
 						: 'Standard',
 					quantity: item.quantity,
 					unitPrice: fmtMoney(item.unit_price),
-					subtotal: fmtMoney(item.subtotal)
+					subtotal: fmtMoney(item.subtotal),
+					customizations: (() => {
+						const isPlainObject = (v: unknown): v is Record<string, unknown> => {
+							return !!v && typeof v === 'object' && !Array.isArray(v);
+						};
+						const filterObjectArray = (arr: unknown[]): Array<Record<string, unknown>> => {
+							return arr.filter(isPlainObject) as Array<Record<string, unknown>>;
+						};
+						const raw = item.options || '';
+						if (!raw.trim()) return [];
+						try {
+							const first = JSON.parse(raw);
+							if (Array.isArray(first)) {
+								return filterObjectArray(first);
+							}
+							if (typeof first === 'string') {
+								try {
+									const second = JSON.parse(first);
+									if (Array.isArray(second)) {
+										return filterObjectArray(second);
+									}
+								} catch {
+									return [];
+								}
+							}
+							if (isPlainObject(first)) {
+								return [first];
+							}
+						} catch {
+							// ignore
+						}
+						return [];
+					})()
 				}))
 				: [];
 			
@@ -181,6 +217,7 @@ export default function AdminOrders() {
 			items: itemsData,
 			shipping_address: fmtAddr(o.shipping_address || o.ShippingAddress),
 			billing_address: fmtAddr(o.billing_address || o.BillingAddress),
+			shipping_estimate: o.shipping_estimate || '',
 			});
 		} else {
 			setViewOrder(order);
@@ -199,7 +236,7 @@ export default function AdminOrders() {
 		try {
 			setModalLoading(true);
 
-			// For orders, we typically only allow status updates
+			// For orders, we typically only allow status and totals updates
 			const response = await fetch(
 				`${apiURL}/api/admin/orders/${editingOrder.id}`,
 				{
@@ -214,6 +251,7 @@ export default function AdminOrders() {
 						tax: formData.tax,
 						shipping: formData.shipping,
 						total: formData.total,
+						shippingEstimate: formData.shippingEstimate,
 					}),
 				}
 			);
@@ -240,6 +278,7 @@ export default function AdminOrders() {
 			tax: order.tax,
 			shipping: order.shipping,
 			total: order.total,
+			shippingEstimate: order.shipping_estimate || '',
 		};
 	};
 
@@ -257,7 +296,13 @@ export default function AdminOrders() {
 				{ value: 'cancelled', label: 'Cancelled' },
 			],
 		},
-
+		{
+			name: 'shippingEstimate',
+			label: 'Shipping Estimate',
+			type: 'text' as const,
+			required: false,
+			placeholder: 'e.g., 2–4 business days',
+		},
 		{
 			name: 'subtotal',
 			label: 'Subtotal',
@@ -288,7 +333,7 @@ export default function AdminOrders() {
 		},
 	];
 
-	const updateOrderStatus = async (orderId: string, newStatus: string) => {
+	const updateOrderStatus = async (orderId: string, newStatus: string, estimate?: string) => {
 		try {
 			const response = await fetch(
 				`${apiURL}/api/admin/orders/${orderId}/status`,
@@ -298,7 +343,7 @@ export default function AdminOrders() {
 					headers: {
 						'Content-Type': 'application/json',
 					},
-					body: JSON.stringify({ status: newStatus }),
+					body: JSON.stringify({ status: newStatus, shippingEstimate: estimate }),
 				}
 			);
 
@@ -345,13 +390,9 @@ export default function AdminOrders() {
 	return (
 		<div className="space-y-6">
 			<div className="flex justify-between items-center">
-				<h1 className="text-3xl font-bold text-gray-900">Orders Management</h1>
-				<div className="flex space-x-2">
-					<button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-						Export Orders
-					</button>
-				</div>
-			</div>
+			<h1 className="text-3xl font-bold text-gray-900">Orders Management</h1>
+			<div className="flex space-x-2"></div>
+		</div>
 
 			{error && (
 				<div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
@@ -503,7 +544,17 @@ export default function AdminOrders() {
                                                 </button>
                                                 <select
 													value={order.status}
-													onChange={(e) => updateOrderStatus(order.id, e.target.value)}
+													onChange={(e) => {
+														const next = e.target.value;
+														let estimate: string | undefined;
+														if (next === 'shipped') {
+															estimate = window.prompt(
+																'Add shipping estimate (optional)',
+																order.shipping_estimate || ''
+															) || undefined;
+														}
+														updateOrderStatus(order.id, next, estimate);
+													}}
 													className="inline-flex items-center px-2 py-1.5 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
 												>
 													<option value="pending">Pending</option>
@@ -593,6 +644,7 @@ export default function AdminOrders() {
                     { name: 'subtotal', label: 'Subtotal' },
                     { name: 'tax', label: 'Tax' },
                     { name: 'shipping', label: 'Shipping' },
+                    { name: 'shipping_estimate', label: 'Shipping Estimate' },
                     { name: 'created_at', label: 'Created At' },
                     { name: 'updated_at', label: 'Updated At' },
                     { name: 'user', label: 'User' },

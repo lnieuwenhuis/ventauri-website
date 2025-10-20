@@ -16,6 +16,8 @@ type Cart struct {
 	ProductVariantID *uuid.UUID `gorm:"type:char(36);index:idx_cart_variant" json:"productVariantId,omitempty"`
 	Quantity         int        `json:"quantity"`
 
+	Options         string     `gorm:"type:json" json:"options"`
+
 	User           User            `gorm:"foreignKey:UserID" json:"user"`
 	Product        Product         `gorm:"foreignKey:ProductID" json:"product"`
 	ProductVariant *ProductVariant `gorm:"foreignKey:ProductVariantID" json:"productVariant,omitempty"`

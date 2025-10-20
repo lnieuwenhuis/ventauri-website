@@ -64,10 +64,17 @@ func createReview(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Verify user owns the order and it's completed
+		// Verify user owns the order and it's delivered or completed, and the product is part of that order
 		var order models.Order
-		if err := db.Where("id = ? AND user_id = ? AND product_id = ? AND status = ?", orderID, user.ID, productID, "completed").First(&order).Error; err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot review this product - order not found or not completed"})
+		if err := db.Where("id = ? AND user_id = ? AND status IN ?", orderID, user.ID, []string{"delivered", "completed"}).First(&order).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot review this product - order not found or not delivered/completed"})
+			return
+		}
+
+		// Ensure the requested product exists in the order items
+		var orderItem models.OrderItem
+		if err := db.Where("order_id = ? AND product_id = ?", order.ID, productID).First(&orderItem).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot review this product - item not found in order"})
 			return
 		}
 

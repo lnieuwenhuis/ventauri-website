@@ -7,13 +7,47 @@ import { useNavigate } from 'react-router-dom';
 import usePageTitle from '../../hooks/usePageTitle';
 
 export default function Cart() {
-	const { items, total, loading, updateQuantity, removeFromCart, clearCart } =
+	const { items, total, loading, updateQuantity, removeFromCart, clearCart, appliedCouponCode, couponDiscount, applyCoupon, clearCoupon, appliedCoupon } =
 		useCart();
 	const { isAuthenticated } = useAuth();
 	const [updatingItems, setUpdatingItems] = useState<Set<string>>(new Set());
 	const [isOperationLoading, setIsOperationLoading] = useState(false);
     usePageTitle('Cart');
-    const navigate = useNavigate();
+	const navigate = useNavigate();
+
+	// Coupon UI state
+	const [couponInput, setCouponInput] = useState<string>('');
+	const [couponMessage, setCouponMessage] = useState<string>('');
+	const [couponError, setCouponError] = useState<string>('');
+
+	// Derived totals
+	const displaySubtotal = total;
+	const displayDiscount = couponDiscount || 0;
+	const displayTotal = Math.max(0, displaySubtotal - displayDiscount);
+
+	const onApplyCoupon = async () => {
+		setCouponMessage('');
+		setCouponError('');
+		try {
+			const result = await applyCoupon?.(couponInput.trim());
+			if (result) {
+				setCouponMessage(`Coupon applied${appliedCoupon?.type === 'free_shipping' ? ' (free shipping at checkout)' : ''}.`);
+			}
+		} catch (e: unknown) {
+			if (e instanceof Error) {
+				setCouponError(e.message);
+			} else {
+				setCouponError('An unknown error occurred.');
+			}
+		}
+	};
+
+	const onClearCoupon = () => {
+		clearCoupon?.();
+		setCouponInput('');
+		setCouponMessage('');
+		setCouponError('');
+	};
 
 	const parseImages = (images: string): string[] => {
 		try {
@@ -21,8 +55,8 @@ export default function Cart() {
 				const parsed = JSON.parse(images);
 				return Array.isArray(parsed) ? parsed : [];
 			}
-		} catch (error) {
-			console.warn('Failed to parse product images:', error);
+		} catch {
+			// ignore
 		}
 		return [];
 	};
@@ -87,10 +121,7 @@ export default function Cart() {
 			<div className="min-h-screen bg-gray-900 text-white">
 				<Navbar />
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-					<div className="flex items-center justify-center py-12">
-						<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ventauri"></div>
-						<span className="ml-3 text-gray-300">Loading cart...</span>
-					</div>
+					<p>Loading cart...</p>
 				</div>
 			</div>
 		);
@@ -101,15 +132,13 @@ export default function Cart() {
 			<div className="min-h-screen bg-gray-900 text-white">
 				<Navbar />
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-					<div className="text-center py-12">
-						<h2 className="text-2xl font-bold mb-4">Your cart is empty</h2>
-						<p className="text-gray-400 mb-6">Add some items to get started!</p>
-						<Link
-							to="/products"
-							className="bg-ventauri text-black px-6 py-3 rounded-lg font-medium hover:bg-yellow-300 transition-colors"
-						>
-							Continue Shopping
-						</Link>
+					<div className="bg-gray-800 rounded-lg p-6 text-center">
+						<h2 className="text-2xl font-bold mb-3">Your cart is empty</h2>
+						<p className="text-gray-300 mb-6">Sign in to save items to your cart.</p>
+						<div className="flex justify-center gap-4">
+							<Link to="/products" className="bg-ventauri text-black px-6 py-3 rounded-lg font-medium hover:bg-yellow-300 transition-colors">Shop Now</Link>
+							<Link to="/" className="bg-gray-700 text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-600 transition-colors">Home</Link>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -186,6 +215,22 @@ export default function Cart() {
 													Size: {item.productVariant.size} • {item.productVariant.title}
 												</p>
 											)}
+                                            {item.options && item.options.length > 0 && (
+                                                <div className="mt-2 text-sm text-gray-300">
+                                                    <span className="text-gray-400">Customizations:</span>
+                                                    <div className="mt-1 space-y-1">
+                                                        {item.options.map((optObj, idx) => (
+                                                            <div key={idx}>
+                                                                {Object.entries(optObj).map(([k, v]) => (
+                                                                    <div key={k}>
+                                                                        <span className="text-gray-400">{k}:</span> {v}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
 										</div>
 
 										{/* Quantity Controls */}
@@ -258,18 +303,53 @@ export default function Cart() {
 							</h3>
 
                             <div className="space-y-4 mb-6">
+                                {/* Coupon input */}
+                                <div className="mb-2">
+                                    <label htmlFor="coupon" className="block text-sm mb-2">Coupon Code</label>
+                                    <div className="flex gap-2 items-center">
+                                        <div className="relative flex-1">
+                                            <input
+                                                id="coupon"
+                                                type="text"
+                                                value={couponInput}
+                                                onChange={(e) => setCouponInput(e.target.value)}
+                                                className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 pr-8"
+                                                placeholder="Enter coupon"
+                                            />
+                                            {appliedCouponCode && (
+                                                <button
+                                                    type="button"
+                                                    onClick={onClearCoupon}
+                                                    aria-label="Clear coupon"
+                                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500 hover:text-red-400 font-bold"
+                                                >
+                                                    ×
+                                                </button>
+                                            )}
+                                        </div>
+                                        <button onClick={onApplyCoupon} className="px-3 py-2 rounded bg-blue-600 hover:bg-blue-700">Apply</button>
+                                    </div>
+                                    {couponMessage && (<p className="text-green-400 text-sm mt-2">{couponMessage}</p>)}
+                                    {couponError && (<p className="text-red-400 text-sm mt-2">{couponError}</p>)}
+                                </div>
+
                                 <div className="flex justify-between">
                                     <span>Subtotal ({items.length} items)</span>
-                                    <span>€{total.toFixed(2)}</span>
+                                    <span>€{displaySubtotal.toFixed(2)}</span>
                                 </div>
-                                {/* Informational note: prices include tax and shipping */}
-                                <div className="mt-1 text-xs text-gray-400 italic">
-                                    Prices include tax and shipping.
-                                </div>
+                                {appliedCouponCode && displayDiscount > 0 && (
+                                    <div className="flex justify-between text-green-400">
+                                        <span>Coupon ({appliedCouponCode})</span>
+                                        <span>-€{displayDiscount.toFixed(2)}</span>
+                                    </div>
+                                )}
+                                {appliedCoupon?.type === 'free_shipping' && (
+                                    <div className="text-xs text-green-300">Free shipping will apply at checkout.</div>
+                                )}
                                 <div className="border-t border-gray-700 pt-4">
                                     <div className="flex justify-between text-lg font-bold text-white">
                                         <span>Total <span className="text-xs text-gray-400">(Inc. VAT)</span></span>
-                                        <span className="text-ventauri">€{total.toFixed(2)}</span>
+                                        <span className="text-ventauri">€{displayTotal.toFixed(2)}</span>
                                     </div>
                                 </div>
                             </div>
