@@ -336,6 +336,7 @@ export default function Products() {
 
 	useEffect(() => {
 		updateURL({ search: debouncedSearch || undefined });
+		// eslint-disable-next-line
 	}, [debouncedSearch]);
 
 	const parseImages = (images: string): string[] => {

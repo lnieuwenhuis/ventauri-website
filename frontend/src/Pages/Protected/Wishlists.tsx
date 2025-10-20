@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Navbar from '../../Components/Navbar';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../Contexts/AuthContext';
@@ -57,7 +57,10 @@ export default function Wishlists() {
     }
   };
 
-  useEffect(() => { if (isAuthenticated) fetchWishlist(); /* eslint-disable-next-line */ }, [isAuthenticated]);
+  useEffect(() => { 
+    if (isAuthenticated) fetchWishlist(); 
+    // eslint-disable-next-line
+  }, [isAuthenticated]);
 
   if (!isAuthenticated) {
     return (

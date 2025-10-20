@@ -88,6 +88,7 @@ const FormModal = <
 			
 			setErrors({});
 		}
+        // eslint-disable-next-line
 	}, [isOpen, initialData]);
 
 	const handleInputChange = (name: keyof T, value: unknown) => {
@@ -392,7 +393,7 @@ const FormModal = <
                                         next[index] = { ...item, key: e.target.value };
                                         // Merge back into original array
                                         const merged = Array.isArray(field.fixedKeys)
-                                            ? field.fixedKeys.map((k, i) => (i === index ? next[index] : next[i]))
+                                            ? field.fixedKeys.map((_, i) => (i === index ? next[index] : next[i]))
                                             : next;
                                         handleInputChange(field.name as keyof T, merged as unknown as Partial<T>[keyof T]);
                                     }}
@@ -410,7 +411,7 @@ const FormModal = <
                                         const next = [...displayArray];
                                         next[index] = { ...item, value: e.target.value };
                                         const merged = Array.isArray(field.fixedKeys)
-                                            ? field.fixedKeys.map((k, i) => (i === index ? next[index] : next[i]))
+                                            ? field.fixedKeys.map((_, i) => (i === index ? next[index] : next[i]))
                                             : next;
                                         handleInputChange(field.name as keyof T, merged as unknown as Partial<T>[keyof T]);
                                     }}

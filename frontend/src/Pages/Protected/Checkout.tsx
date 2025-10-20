@@ -190,6 +190,7 @@ export default function Checkout() {
             }
         };
         start();
+        // eslint-disable-next-line
     }, [addressesReady, items, clientSecret]);
 
     const options = useMemo(() => ({
