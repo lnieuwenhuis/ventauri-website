@@ -17,8 +17,8 @@ func SeedSizeOptions(db *gorm.DB) {
         var existing models.SizeOption
         err := db.Where("name = ?", name).First(&existing).Error
         if errors.Is(err, gorm.ErrRecordNotFound) {
-            if err := db.Create(&models.SizeOption{Name: name, IsActive: true}).Error; err != nil {
-                log.Printf("Failed to seed size option %s: %v", name, err)
+            if createErr := db.Create(&models.SizeOption{Name: name, IsActive: true}).Error; createErr != nil {
+                log.Printf("Failed to seed size option %s: %v", name, createErr)
             } else {
                 created++
             }

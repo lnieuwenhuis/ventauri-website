@@ -161,8 +161,8 @@ func addToCart(db *gorm.DB) gin.HandlerFunc {
 		// Parse variant ID if provided
 		var variantID *uuid.UUID
 		if req.ProductVariantID != "" {
-			varID, err := uuid.Parse(req.ProductVariantID)
-			if err != nil {
+			varID, parseErr := uuid.Parse(req.ProductVariantID)
+			if parseErr != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid variant ID"})
 				return
 			}
